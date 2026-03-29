@@ -538,6 +538,26 @@
 .form-input::placeholder {
   color: var(--clr-gray-400);
 }
+.form-hint {
+  font-size: var(--fs-xs);
+  color: var(--clr-gray-400);
+  margin-top: 4px;
+  font-style: italic;
+}
+.forgot-password-link {
+  text-align: center;
+  margin-top: var(--sp-lg);
+}
+.forgot-password-link a {
+  font-size: var(--fs-small);
+  color: var(--clr-saffron);
+  font-weight: 600;
+  transition: color var(--dur-fast);
+}
+.forgot-password-link a:hover {
+  color: var(--clr-saffron-dark);
+  text-decoration: underline;
+}
 textarea.form-input {
   resize: vertical;
   min-height: 80px;

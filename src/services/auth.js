@@ -72,9 +72,9 @@ function recordLoginAttempt(email, success) {
   localStorage.setItem(ATTEMPTS_KEY, JSON.stringify(attempts));
 }
 
-// Validation
+// Validation — only @gmail.com emails allowed
 function validateEmail(email) {
-  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
+  return /^[a-zA-Z0-9]([a-zA-Z0-9._%+-]*[a-zA-Z0-9])?@gmail\.com$/.test(email);
 }
 
 function validatePhone(phone) {
@@ -96,7 +96,7 @@ export function register({ name, phone, email, password }) {
   // Validate
   if (!name || name.length < 2) return { success: false, error: 'Name must be at least 2 characters' };
   if (name.length > 100) return { success: false, error: 'Name is too long' };
-  if (!validateEmail(email)) return { success: false, error: 'Please enter a valid email address' };
+  if (!validateEmail(email)) return { success: false, error: 'Only Gmail addresses are accepted (example@gmail.com)' };
   if (!validatePhone(phone)) return { success: false, error: 'Please enter a valid Indian phone number' };
   
   const pwError = validatePassword(password);
@@ -133,7 +133,7 @@ export function register({ name, phone, email, password }) {
 export function login(email, password) {
   email = sanitizeInput(email).trim().toLowerCase();
 
-  if (!validateEmail(email)) return { success: false, error: 'Invalid email format' };
+  if (!validateEmail(email)) return { success: false, error: 'Please enter a valid Gmail address (example@gmail.com)' };
   
   // Rate limiting
   if (isLockedOut(email)) {
@@ -174,4 +174,38 @@ export function getCurrentUser() {
 
 export function isLoggedIn() {
   return getCurrentUser() !== null;
+}
+
+// Forgot / Reset Password
+export function resetPassword(email, phone, newPassword) {
+  email = sanitizeInput(email).trim().toLowerCase();
+  phone = sanitizeInput(phone).trim();
+
+  if (!validateEmail(email)) {
+    return { success: false, error: 'Please enter a valid Gmail address (example@gmail.com)' };
+  }
+
+  const pwError = validatePassword(newPassword);
+  if (pwError) return { success: false, error: pwError };
+
+  const users = getUsers();
+  const user = users.find(u => u.email === email);
+
+  if (!user) {
+    return { success: false, error: 'No account found with this email address' };
+  }
+
+  // Verify identity via registered phone number
+  const cleanInputPhone = phone.replace(/[\s\-+]/g, '').replace(/^91/, '');
+  const cleanStoredPhone = user.phone.replace(/[\s\-+]/g, '').replace(/^91/, '');
+
+  if (cleanInputPhone !== cleanStoredPhone) {
+    return { success: false, error: 'Phone number does not match our records for this email' };
+  }
+
+  // Update password
+  user.passwordHash = simpleHash(newPassword);
+  saveUsers(users);
+
+  return { success: true };
 }
