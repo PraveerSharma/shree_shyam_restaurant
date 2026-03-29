@@ -2,7 +2,7 @@
    RESPONSIVE STYLES (Mobile-First)
    ============================================ */
 
-/* ── Tablets & Below (< 1024px) ── */
+/* ── Tablets & Below (<1024px) ── */
 @media (max-width: 1024px) {
   .cart-layout {
     grid-template-columns: 1fr;
@@ -30,12 +30,8 @@
   }
 }
 
-/* ── Mobile (< 768px) ── */
-@media (max-width: 768px) {
-  :root {
-    --header-height: 64px;
-  }
-  
+/* ── Tablet (<900px) — Hamburger trigger ── */
+@media (max-width: 900px) {
   .hamburger {
     display: flex;
   }
@@ -48,12 +44,25 @@
   .header-actions .cart-btn {
     display: flex;
   }
+}
+
+/* ── Mobile (<768px) ── */
+@media (max-width: 768px) {
+  :root {
+    --header-height: 64px;
+  }
   
   .hero {
     min-height: 85vh;
   }
   .hero-content {
     padding: var(--sp-lg);
+  }
+  .hero-title {
+    font-size: clamp(2rem, 8vw, 3.5rem);
+  }
+  .hero-subtitle {
+    font-size: 0.95rem;
   }
   .hero-cta {
     flex-direction: column;
@@ -142,7 +151,7 @@
   }
 }
 
-/* ── Small Mobile (< 480px) ── */
+/* ── Small Mobile (<480px) ── */
 @media (max-width: 480px) {
   .container {
     padding: 0 var(--sp-md);
@@ -174,6 +183,14 @@
   .hero-badge {
     font-size: var(--fs-xs);
     padding: 6px 14px;
+  }
+
+  .hero-title {
+    font-size: clamp(1.8rem, 7vw, 2.5rem);
+  }
+
+  .cart-page h1 {
+    font-size: var(--fs-h2);
   }
 }
 

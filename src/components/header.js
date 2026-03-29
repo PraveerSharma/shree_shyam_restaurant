@@ -55,23 +55,23 @@ export function renderHeader() {
           </div>
         </div>
       </div>
-
-      <div class="mobile-nav" id="mobile-nav">
-        <a href="#/" class="nav-link" data-page="home">🏠 Home</a>
-        <a href="#/sweets" class="nav-link" data-page="sweets">🍬 Sweets & Snacks</a>
-        <a href="#/restaurant" class="nav-link" data-page="restaurant">🍛 Restaurant Menu</a>
-        <a href="#/cart" class="nav-link" data-page="cart">🛒 Cart (${cartCount})</a>
-        <div class="header-actions">
-          ${user ? `
-            <span style="color:var(--clr-gray-600);font-size:0.9rem;">Hello, ${user.name}</span>
-            <button class="btn btn-secondary btn-sm" id="mobile-logout-btn" style="width:100%">Logout</button>
-          ` : `
-            <button class="btn btn-ghost btn-sm" id="mobile-login-btn" style="width:100%">Login</button>
-            <button class="btn btn-primary btn-sm" id="mobile-register-btn" style="width:100%">Register</button>
-          `}
-        </div>
-      </div>
     </header>
+
+    <div class="mobile-nav" id="mobile-nav">
+      <a href="#/" class="nav-link" data-page="home">🏠 Home</a>
+      <a href="#/sweets" class="nav-link" data-page="sweets">🍬 Sweets & Snacks</a>
+      <a href="#/restaurant" class="nav-link" data-page="restaurant">🍛 Restaurant Menu</a>
+      <a href="#/cart" class="nav-link" data-page="cart">🛒 Cart (${cartCount})</a>
+      <div class="mobile-nav-auth">
+        ${user ? `
+          <span class="mobile-nav-user">Hello, ${user.name}</span>
+          <button class="btn btn-secondary btn-sm" id="mobile-logout-btn">Logout</button>
+        ` : `
+          <button class="btn btn-ghost btn-sm" id="mobile-login-btn">Login</button>
+          <button class="btn btn-primary btn-sm" id="mobile-register-btn">Register</button>
+        `}
+      </div>
+    </div>
   `;
 }
 
@@ -108,51 +108,39 @@ export function initHeader() {
     });
   });
 
-  // Auth buttons
-  const loginBtn = document.getElementById('login-btn') || document.getElementById('mobile-login-btn');
-  const registerBtn = document.getElementById('register-btn') || document.getElementById('mobile-register-btn');
-  const logoutBtn = document.getElementById('logout-btn') || document.getElementById('mobile-logout-btn');
+  // Auth buttons — bind BOTH desktop and mobile buttons independently
+  const desktopLoginBtn = document.getElementById('login-btn');
+  const desktopRegisterBtn = document.getElementById('register-btn');
+  const desktopLogoutBtn = document.getElementById('logout-btn');
+  const mobileLoginBtn = document.getElementById('mobile-login-btn');
+  const mobileRegisterBtn = document.getElementById('mobile-register-btn');
+  const mobileLogoutBtn = document.getElementById('mobile-logout-btn');
 
-  loginBtn?.addEventListener('click', () => {
-    window.dispatchEvent(new CustomEvent('show-auth-modal', { detail: 'login' }));
+  const closeMobileMenu = () => {
     hamburger?.classList.remove('active');
     mobileNav?.classList.remove('open');
     document.body.style.overflow = '';
+  };
+
+  [desktopLoginBtn, mobileLoginBtn].forEach(btn => {
+    btn?.addEventListener('click', () => {
+      closeMobileMenu();
+      window.dispatchEvent(new CustomEvent('show-auth-modal', { detail: 'login' }));
+    });
   });
 
-  registerBtn?.addEventListener('click', () => {
-    window.dispatchEvent(new CustomEvent('show-auth-modal', { detail: 'register' }));
-    hamburger?.classList.remove('active');
-    mobileNav?.classList.remove('open');
-    document.body.style.overflow = '';
+  [desktopRegisterBtn, mobileRegisterBtn].forEach(btn => {
+    btn?.addEventListener('click', () => {
+      closeMobileMenu();
+      window.dispatchEvent(new CustomEvent('show-auth-modal', { detail: 'register' }));
+    });
   });
 
-  // Mobile auth buttons
-  document.getElementById('mobile-login-btn')?.addEventListener('click', () => {
-    window.dispatchEvent(new CustomEvent('show-auth-modal', { detail: 'login' }));
-    hamburger?.classList.remove('active');
-    mobileNav?.classList.remove('open');
-    document.body.style.overflow = '';
-  });
-  document.getElementById('mobile-register-btn')?.addEventListener('click', () => {
-    window.dispatchEvent(new CustomEvent('show-auth-modal', { detail: 'register' }));
-    hamburger?.classList.remove('active');
-    mobileNav?.classList.remove('open');
-    document.body.style.overflow = '';
-  });
-
-  logoutBtn?.addEventListener('click', () => {
-    logout();
-    hamburger?.classList.remove('active');
-    mobileNav?.classList.remove('open');
-    document.body.style.overflow = '';
-  });
-
-  document.getElementById('mobile-logout-btn')?.addEventListener('click', () => {
-    logout();
-    hamburger?.classList.remove('active');
-    mobileNav?.classList.remove('open');
-    document.body.style.overflow = '';
+  [desktopLogoutBtn, mobileLogoutBtn].forEach(btn => {
+    btn?.addEventListener('click', () => {
+      closeMobileMenu();
+      logout();
+    });
   });
 
   // Active nav link
