@@ -15,10 +15,9 @@ export function renderHomePage() {
         </div>
         <div class="hero-overlay"></div>
         <div class="hero-content">
-          <img src="/images/logo.png" alt="${SITE_CONFIG.name}" class="hero-logo" width="80" height="80">
+          <img src="/images/logo.png" alt="${SITE_CONFIG.name}" class="hero-logo" width="160" height="160">
           <div class="hero-badge">✦ Since Sikar, Rajasthan ✦</div>
           <h1 class="hero-title">
-            Shree Shyam Restaurant
             <span class="accent">Pure Veg · Sweets · Thalis</span>
           </h1>
           <p class="hero-subtitle">
