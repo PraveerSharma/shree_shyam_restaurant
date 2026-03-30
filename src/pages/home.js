@@ -15,10 +15,13 @@ export function renderHomePage() {
         </div>
         <div class="hero-overlay"></div>
         <div class="hero-content">
-          <img src="/images/logo.png" alt="${SITE_CONFIG.name}" class="hero-logo" width="160" height="160">
-          <div class="hero-badge">✦ Since Sikar, Rajasthan ✦</div>
+          <img src="/images/logo.png" alt="${SITE_CONFIG.name}" class="hero-logo">
+          <div class="hero-badge" style="margin-bottom: var(--sp-md);">✦ Since Sikar, Rajasthan ✦</div>
           <h1 class="hero-title">
-            <span class="accent">Pure Veg · Sweets · Thalis</span>
+            Shree Shyam Restaurant
+            <span class="accent" style="display: block; font-size: 0.55em; margin-top: 15px; color: var(--clr-gold-light); font-family: var(--ff-accent); letter-spacing: 2px; text-transform: uppercase;">
+              Pure Veg · Sweets · Thalis
+            </span>
           </h1>
           <p class="hero-subtitle">
             Traditional Rajasthani flavors, made with pure ghee & love.

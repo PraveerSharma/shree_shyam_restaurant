@@ -59,8 +59,8 @@
     padding: var(--sp-lg);
   }
   .hero-logo {
-    width: 120px;
-    height: 120px;
+    width: 90px;
+    height: 90px;
   }
   .hero-title {
     font-size: clamp(2rem, 8vw, 3.5rem);
@@ -162,8 +162,8 @@
   }
 
   .hero-logo {
-    width: 100px;
-    height: 100px;
+    width: 75px;
+    height: 75px;
   }
   
   .products-grid {

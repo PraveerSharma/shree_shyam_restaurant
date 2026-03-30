@@ -35,11 +35,11 @@
   max-width: 800px;
 }
 .hero-logo {
-  width: 160px;
-  height: 160px;
+  width: 120px;
+  height: 120px;
   border-radius: 50%;
   object-fit: cover;
-  margin: 0 auto var(--sp-xl) auto;
+  margin: 0 auto 1.5rem auto;
   box-shadow: 0 8px 40px rgba(212, 115, 26, 0.45), 0 0 80px rgba(212, 115, 26, 0.15);
   border: 3px solid rgba(255, 255, 255, 0.35);
   animation: fadeInDown var(--dur-slow) var(--ease-smooth);
