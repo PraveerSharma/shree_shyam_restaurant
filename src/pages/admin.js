@@ -15,6 +15,7 @@ import {
 
 let activeTab = 'sweets';
 let showAddForm = false;
+let editingItemId = null;
 
 export function renderAdminPage() {
   if (!isAdminLoggedIn()) {
@@ -86,6 +87,7 @@ function renderAdminDashboard() {
           </div>
 
           ${showAddForm ? renderAddForm() : ''}
+          ${editingItemId ? renderEditForm(editingItemId) : ''}
 
           <!-- Items Table -->
           <div class="admin-table-wrapper">
@@ -106,21 +108,11 @@ function renderAdminDashboard() {
                 ${items.map(item => `
                   <tr data-id="${item.id}">
                     <td><img class="admin-item-img" src="${item.image}" alt="${item.name}" loading="lazy"></td>
-                    <td>
-                      <input type="text" value="${item.name}" data-field="name" data-id="${item.id}" maxlength="100" class="admin-edit-input">
-                    </td>
-                    <td>
-                      <span style="font-size:0.8rem;color:var(--clr-gray-500);text-transform:capitalize;">${item.category}</span>
-                    </td>
-                    <td>
-                      <textarea data-field="description" data-id="${item.id}" rows="2" maxlength="500" class="admin-edit-input" style="min-width:200px;">${item.description}</textarea>
-                    </td>
-                    <td>
-                      <input type="number" value="${item.price}" data-field="price" data-id="${item.id}" min="0" max="99999" style="width:80px;" class="admin-edit-input">
-                    </td>
-                    <td>
-                      <input type="text" value="${item.unit}" data-field="unit" data-id="${item.id}" maxlength="50" style="width:100px;" class="admin-edit-input">
-                    </td>
+                    <td style="font-weight:600;">${item.name}</td>
+                    <td><span style="font-size:0.8rem;color:var(--clr-gray-500);text-transform:capitalize;">${item.category}</span></td>
+                    <td style="font-size:0.85rem;color:var(--clr-gray-600);max-width:200px;text-overflow:ellipsis;overflow:hidden;white-space:nowrap;" title="${item.description}">${item.description}</td>
+                    <td style="font-variant-numeric: tabular-nums;">${item.price}</td>
+                    <td style="color:var(--clr-gray-500);font-size:0.9rem;">${item.unit}</td>
                     <td>
                       <label class="admin-toggle">
                         <input type="checkbox" ${item.isAvailable ? 'checked' : ''} data-field="isAvailable" data-id="${item.id}" class="admin-toggle-input">
@@ -128,8 +120,8 @@ function renderAdminDashboard() {
                       </label>
                     </td>
                     <td>
-                      <button class="btn btn-ghost btn-sm admin-save-btn" data-id="${item.id}" style="color:var(--clr-success);">💾</button>
-                      <button class="btn btn-ghost btn-sm admin-delete-btn" data-id="${item.id}" style="color:var(--clr-error);">🗑️</button>
+                      <button class="btn btn-ghost btn-sm admin-edit-btn" data-id="${item.id}" title="Edit Item">✏️</button>
+                      <button class="btn btn-ghost btn-sm admin-delete-btn" data-id="${item.id}" style="color:var(--clr-error);" title="Delete Item">🗑️</button>
                     </td>
                   </tr>
                 `).join('')}
@@ -177,9 +169,70 @@ function renderAddForm() {
             <input class="form-input" type="text" id="new-item-unit" maxlength="50" placeholder="per piece" value="per piece">
           </div>
         </div>
+        </div>
         <div style="display:flex;gap:0.5rem;">
           <button type="submit" class="btn btn-primary">Add Item</button>
           <button type="button" class="btn btn-ghost" id="cancel-add-btn">Cancel</button>
+        </div>
+      </form>
+    </div>
+  `;
+}
+
+function renderEditForm(itemId) {
+  const items = activeTab === 'sweets' ? getSweetsItems() : getRestaurantItems();
+  const item = items.find(i => i.id === itemId);
+  if (!item) return '';
+
+  const categories = activeTab === 'sweets' 
+    ? ['sweets', 'snacks'] 
+    : ['starters', 'sabzi', 'roti', 'thali'];
+
+  return `
+    <div class="admin-add-form" id="admin-edit-form" style="border-color: var(--clr-primary);">
+      <h2>✏️ Edit Item</h2>
+      <form id="edit-item-form" data-id="${item.id}" novalidate>
+        <div class="form-row">
+          <div class="form-group">
+            <label class="form-label">Name *</label>
+            <input class="form-input" type="text" id="edit-item-name" required maxlength="100" value="${item.name}">
+          </div>
+          <div class="form-group">
+            <label class="form-label">Category *</label>
+            <select class="form-input" id="edit-item-category">
+              ${categories.map(c => `<option value="${c}" ${c === item.category ? 'selected' : ''}>${c}</option>`).join('')}
+            </select>
+          </div>
+        </div>
+        
+        <div class="form-row">
+          <div class="form-group">
+            <label class="form-label">Image URL</label>
+            <input class="form-input" type="url" id="edit-item-image" placeholder="/images/sweets/item.png OR https://..." value="${item.image}">
+            <div class="form-hint" style="margin-top:0.25rem;">Provide an absolute URL or a path relative to the site root.</div>
+          </div>
+          <div class="form-group">
+            <img src="${item.image}" alt="Preview" style="height:60px; object-fit:contain; border-radius:var(--radius-sm); border:1px solid var(--clr-gray-200); background:#fff;">
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label class="form-label">Description</label>
+          <textarea class="form-input" id="edit-item-desc" rows="2" maxlength="500">${item.description || ''}</textarea>
+        </div>
+        <div class="form-row">
+          <div class="form-group">
+            <label class="form-label">Price (₹) *</label>
+            <input class="form-input" type="number" id="edit-item-price" min="0" max="99999" required value="${item.price}">
+          </div>
+          <div class="form-group">
+            <label class="form-label">Unit</label>
+            <input class="form-input" type="text" id="edit-item-unit" maxlength="50" value="${item.unit || ''}">
+          </div>
+        </div>
+        <div style="display:flex;gap:0.5rem;">
+          <button type="submit" class="btn btn-primary" style="background-color: var(--clr-success);">Save Changes</button>
+          <button type="button" class="btn btn-ghost" id="cancel-edit-btn">Cancel</button>
         </div>
       </form>
     </div>
@@ -249,31 +302,56 @@ export function initAdminPage() {
     window.dispatchEvent(new HashChangeEvent('hashchange'));
   });
 
-  // Save individual items
-  document.querySelectorAll('.admin-save-btn').forEach(btn => {
+  // Show edit form
+  document.querySelectorAll('.admin-edit-btn').forEach(btn => {
     btn.addEventListener('click', () => {
-      const id = btn.dataset.id;
-      const row = btn.closest('tr');
-      const updates = {};
+      editingItemId = btn.dataset.id;
+      showAddForm = false; // Close add form if open
+      window.dispatchEvent(new HashChangeEvent('hashchange'));
       
-      row.querySelectorAll('.admin-edit-input').forEach(input => {
-        const field = input.dataset.field;
-        if (field === 'price') {
-          updates[field] = parseFloat(input.value) || 0;
-        } else if (input.tagName === 'TEXTAREA') {
-          updates[field] = input.value;
-        } else {
-          updates[field] = input.value;
-        }
-      });
-      
-      const toggle = row.querySelector('.admin-toggle-input');
-      if (toggle) {
-        updates.isAvailable = toggle.checked;
-      }
+      // Scroll to edit form
+      setTimeout(() => {
+        document.getElementById('admin-edit-form')?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      }, 50);
+    });
+  });
 
-      updateItem(activeTab, id, updates);
-      showToast('Item updated', 'success');
+  // Cancel edit
+  document.getElementById('cancel-edit-btn')?.addEventListener('click', () => {
+    editingItemId = null;
+    window.dispatchEvent(new HashChangeEvent('hashchange'));
+  });
+
+  // Edit item form submit
+  document.getElementById('edit-item-form')?.addEventListener('submit', (e) => {
+    e.preventDefault();
+    const id = e.target.dataset.id;
+    const updates = {
+      name: document.getElementById('edit-item-name').value,
+      category: document.getElementById('edit-item-category').value,
+      description: document.getElementById('edit-item-desc').value,
+      price: parseFloat(document.getElementById('edit-item-price').value),
+      unit: document.getElementById('edit-item-unit').value,
+      image: document.getElementById('edit-item-image').value,
+    };
+    
+    if (!updates.name || isNaN(updates.price)) {
+      showToast('Name and valid price are required', 'error');
+      return;
+    }
+    
+    updateItem(activeTab, id, updates);
+    editingItemId = null;
+    showToast('Item updated successfully', 'success');
+    window.dispatchEvent(new HashChangeEvent('hashchange'));
+  });
+
+  // Fast availability toggle
+  document.querySelectorAll('.admin-toggle-input').forEach(input => {
+    input.addEventListener('change', () => {
+      const id = input.dataset.id;
+      updateItem(activeTab, id, { isAvailable: input.checked });
+      showToast(input.checked ? 'Marked as Available' : 'Marked as Unavailable', 'success');
     });
   });
 

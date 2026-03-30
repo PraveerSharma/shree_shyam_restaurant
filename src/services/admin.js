@@ -70,9 +70,11 @@ export function updateItem(type, itemId, updates) {
 
   // Sanitize updatable fields
   if (updates.name) updates.name = sanitizeInput(updates.name).slice(0, 100);
+  if (updates.category) updates.category = sanitizeInput(updates.category).slice(0, 50);
   if (updates.description) updates.description = sanitizeInput(updates.description).slice(0, 500);
   if (updates.price) updates.price = Math.max(0, Math.min(Number(updates.price) || 0, 99999));
   if (updates.unit) updates.unit = sanitizeInput(updates.unit).slice(0, 50);
+  if (updates.image !== undefined) updates.image = sanitizeInput(updates.image);
   
   items[index] = { ...items[index], ...updates };
   localStorage.setItem(key, JSON.stringify(items));
