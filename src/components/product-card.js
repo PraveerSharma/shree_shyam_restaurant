@@ -1,17 +1,26 @@
 // ============================================
 // PRODUCT CARD COMPONENT
 // Reusable card with add-to-cart
+// Shows "Add to Cart" first, then qty controls
 // ============================================
 
-import { addToCart } from '../services/cart.js';
+import { addToCart, getCart } from '../services/cart.js';
 import { formatPrice } from '../utils/format.js';
 import { showToast } from '../utils/dom.js';
+
+function getCartQty(productId) {
+  const cart = getCart();
+  const item = cart.find(i => i.id === productId);
+  return item ? item.quantity : 0;
+}
 
 export function renderProductCard(product) {
   const card = document.createElement('div');
   card.className = 'product-card';
   card.id = `product-${product.id}`;
   
+  const existingQty = getCartQty(product.id);
+
   card.innerHTML = `
     <div class="product-card-img">
       <img data-src="${product.image}" src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='300' height='225' viewBox='0 0 300 225'%3E%3Crect fill='%23f2f2f6' width='300' height='225'/%3E%3Ctext fill='%23c4c4d0' font-family='sans-serif' font-size='14' x='50%25' y='50%25' text-anchor='middle' dy='.3em'%3ELoading...%3C/text%3E%3C/svg%3E" 
@@ -32,15 +41,18 @@ export function renderProductCard(product) {
         <small>${product.unit}</small>
       </div>
       <div class="product-card-actions">
-        <div class="qty-selector">
-          <button class="qty-btn qty-minus" data-id="${product.id}" aria-label="Decrease quantity">−</button>
-          <input class="qty-value" type="text" value="1" readonly data-id="${product.id}" aria-label="Quantity">
-          <button class="qty-btn qty-plus" data-id="${product.id}" aria-label="Increase quantity">+</button>
-        </div>
-        <button class="add-to-cart-btn" data-id="${product.id}" aria-label="Add ${product.name} to cart">
-          <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M6 2L3 6v14a2 2 0 002 2h14a2 2 0 002-2V6l-3-4z"/><line x1="3" y1="6" x2="21" y2="6"/><path d="M16 10a4 4 0 01-8 0"/></svg>
-          Add to Cart
-        </button>
+        ${existingQty > 0 ? `
+          <div class="qty-selector active" data-id="${product.id}">
+            <button class="qty-btn qty-minus" data-id="${product.id}" aria-label="Decrease quantity">−</button>
+            <span class="qty-value">${existingQty}</span>
+            <button class="qty-btn qty-plus" data-id="${product.id}" aria-label="Increase quantity">+</button>
+          </div>
+        ` : `
+          <button class="add-to-cart-btn" data-id="${product.id}" aria-label="Add ${product.name} to cart">
+            <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M6 2L3 6v14a2 2 0 002 2h14a2 2 0 002-2V6l-3-4z"/><line x1="3" y1="6" x2="21" y2="6"/><path d="M16 10a4 4 0 01-8 0"/></svg>
+            Add to Cart
+          </button>
+        `}
       </div>
     </div>
   `;
@@ -58,37 +70,109 @@ export function renderProductCard(product) {
   }, { rootMargin: '200px' });
   observer.observe(img);
 
-  // Quantity controls
-  const qtyInput = card.querySelector('.qty-value');
-  card.querySelector('.qty-minus').addEventListener('click', () => {
-    const val = parseInt(qtyInput.value) || 1;
-    qtyInput.value = Math.max(1, val - 1);
-  });
-  card.querySelector('.qty-plus').addEventListener('click', () => {
-    const val = parseInt(qtyInput.value) || 1;
-    qtyInput.value = Math.min(10, val + 1);
-  });
-
-  // Add to cart
+  // Bind events based on current state
   const addBtn = card.querySelector('.add-to-cart-btn');
-  addBtn.addEventListener('click', () => {
-    const qty = parseInt(qtyInput.value) || 1;
-    addToCart(product, qty);
-    
-    // Visual feedback
-    addBtn.classList.add('added');
-    addBtn.innerHTML = `<svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg> Added!`;
-    
-    showToast(`${product.name} × ${qty} added to cart`, 'success');
-    
-    setTimeout(() => {
-      addBtn.classList.remove('added');
-      addBtn.innerHTML = `<svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M6 2L3 6v14a2 2 0 002 2h14a2 2 0 002-2V6l-3-4z"/><line x1="3" y1="6" x2="21" y2="6"/><path d="M16 10a4 4 0 01-8 0"/></svg> Add to Cart`;
-      qtyInput.value = 1;
-    }, 1500);
-  });
+  const qtySelector = card.querySelector('.qty-selector');
+
+  if (addBtn) {
+    // Initial state: "Add to Cart" button
+    addBtn.addEventListener('click', () => {
+      addToCart(product, 1);
+      showToast(`${product.name} added to cart`, 'success');
+      switchToQtyControls(card, product, 1);
+    });
+  }
+
+  if (qtySelector) {
+    // Already in cart: bind +/- controls
+    bindQtyControls(card, product, existingQty);
+  }
 
   return card;
+}
+
+function switchToQtyControls(card, product, qty) {
+  const actionsDiv = card.querySelector('.product-card-actions');
+  actionsDiv.innerHTML = `
+    <div class="qty-selector active" data-id="${product.id}">
+      <button class="qty-btn qty-minus" data-id="${product.id}" aria-label="Decrease quantity">−</button>
+      <span class="qty-value">${qty}</span>
+      <button class="qty-btn qty-plus" data-id="${product.id}" aria-label="Increase quantity">+</button>
+    </div>
+  `;
+  // Trigger entry animation
+  const selector = actionsDiv.querySelector('.qty-selector');
+  selector.classList.add('animate-in');
+  bindQtyControls(card, product, qty);
+}
+
+function switchToAddButton(card, product) {
+  const actionsDiv = card.querySelector('.product-card-actions');
+  actionsDiv.innerHTML = `
+    <button class="add-to-cart-btn" data-id="${product.id}" aria-label="Add ${product.name} to cart">
+      <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M6 2L3 6v14a2 2 0 002 2h14a2 2 0 002-2V6l-3-4z"/><line x1="3" y1="6" x2="21" y2="6"/><path d="M16 10a4 4 0 01-8 0"/></svg>
+      Add to Cart
+    </button>
+  `;
+  const addBtn = actionsDiv.querySelector('.add-to-cart-btn');
+  addBtn.addEventListener('click', () => {
+    addToCart(product, 1);
+    showToast(`${product.name} added to cart`, 'success');
+    switchToQtyControls(card, product, 1);
+  });
+}
+
+function bindQtyControls(card, product, currentQty) {
+  let qty = currentQty;
+  const qtyDisplay = card.querySelector('.qty-value');
+  
+  card.querySelector('.qty-minus').addEventListener('click', () => {
+    qty--;
+    if (qty <= 0) {
+      // Remove from cart and revert to "Add to Cart" button
+      const { removeFromCart } = getCartModule();
+      removeFromCart(product.id);
+      showToast(`${product.name} removed from cart`, 'info');
+      switchToAddButton(card, product);
+      return;
+    }
+    qtyDisplay.textContent = qty;
+    const { updateQuantity } = getCartModule();
+    updateQuantity(product.id, qty);
+  });
+
+  card.querySelector('.qty-plus').addEventListener('click', () => {
+    if (qty >= 10) return;
+    qty++;
+    qtyDisplay.textContent = qty;
+    addToCart(product, 1);
+  });
+}
+
+// Lazy import to avoid circular dependency
+function getCartModule() {
+  // These are already loaded; use dynamic re-import
+  return { 
+    removeFromCart: (id) => {
+      const cart = JSON.parse(localStorage.getItem('ssr_cart') || '[]');
+      const filtered = cart.filter(item => item.id !== id);
+      localStorage.setItem('ssr_cart', JSON.stringify(filtered));
+      const count = filtered.reduce((s, i) => s + i.quantity, 0);
+      const total = filtered.reduce((s, i) => s + (i.price * i.quantity), 0);
+      window.dispatchEvent(new CustomEvent('cart-updated', { detail: { cart: filtered, count, total } }));
+    },
+    updateQuantity: (id, qty) => {
+      const cart = JSON.parse(localStorage.getItem('ssr_cart') || '[]');
+      const item = cart.find(i => i.id === id);
+      if (item) {
+        item.quantity = Math.min(Math.max(qty, 1), 10);
+        localStorage.setItem('ssr_cart', JSON.stringify(cart));
+        const count = cart.reduce((s, i) => s + i.quantity, 0);
+        const total = cart.reduce((s, i) => s + (i.price * i.quantity), 0);
+        window.dispatchEvent(new CustomEvent('cart-updated', { detail: { cart, count, total } }));
+      }
+    }
+  };
 }
 
 export function renderProductsGrid(products, containerId) {

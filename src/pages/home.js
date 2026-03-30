@@ -15,14 +15,14 @@ export function renderHomePage() {
         </div>
         <div class="hero-overlay"></div>
         <div class="hero-content">
+          <img src="/images/logo.png" alt="${SITE_CONFIG.name}" class="hero-logo" width="80" height="80">
           <div class="hero-badge">✦ Since Sikar, Rajasthan ✦</div>
           <h1 class="hero-title">
             Shree Shyam Restaurant
-            <span class="accent">Authentic Vegetarian Delights</span>
+            <span class="accent">Pure Veg · Sweets · Thalis</span>
           </h1>
           <p class="hero-subtitle">
-            Experience the rich flavors of traditional Rajasthani and North Indian vegetarian cuisine. 
-            From divine sweets to aromatic thalis — every dish is a celebration of taste and tradition.
+            Traditional Rajasthani flavors, made with pure ghee & love.
           </p>
           <div class="hero-cta">
             <a href="#/sweets" class="btn btn-primary btn-lg">
