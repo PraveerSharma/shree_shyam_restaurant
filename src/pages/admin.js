@@ -156,9 +156,18 @@ function renderAddForm() {
             </select>
           </div>
         </div>
-        <div class="form-group">
-          <label class="form-label">Description</label>
-          <textarea class="form-input" id="new-item-desc" rows="2" maxlength="500" placeholder="Item description"></textarea>
+        <div class="form-row">
+          <div class="form-group">
+            <label class="form-label">Description</label>
+            <textarea class="form-input" id="new-item-desc" rows="2" maxlength="500" placeholder="Item description"></textarea>
+          </div>
+          <div class="form-group" style="display:flex; flex-direction:column; justify-content:center; align-items:flex-start;">
+            <label class="form-label">Available (In Stock)</label>
+            <label class="admin-toggle" style="display:inline-block;">
+              <input type="checkbox" id="new-item-available" checked>
+              <span class="slider"></span>
+            </label>
+          </div>
         </div>
         <div class="form-row">
           <div class="form-group">
@@ -234,9 +243,18 @@ function renderEditForm(itemId) {
           </div>
         </div>
 
-        <div class="form-group">
-          <label class="form-label">Description</label>
-          <textarea class="form-input" id="edit-item-desc" rows="2" maxlength="500">${item.description || ''}</textarea>
+        <div class="form-row">
+          <div class="form-group">
+            <label class="form-label">Description</label>
+            <textarea class="form-input" id="edit-item-desc" rows="2" maxlength="500">${item.description || ''}</textarea>
+          </div>
+          <div class="form-group" style="display:flex; flex-direction:column; justify-content:center; align-items:flex-start;">
+            <label class="form-label">Available (In Stock)</label>
+            <label class="admin-toggle" style="display:inline-block;">
+              <input type="checkbox" id="edit-item-available" ${item.isAvailable ? 'checked' : ''}>
+              <span class="slider"></span>
+            </label>
+          </div>
         </div>
         <div class="form-row">
           <div class="form-group">
@@ -310,6 +328,7 @@ export function initAdminPage() {
       price: document.getElementById('new-item-price').value,
       unit: document.getElementById('new-item-unit').value,
       image: document.getElementById('new-item-image').value || undefined,
+      isAvailable: document.getElementById('new-item-available').checked
     };
     if (!item.name || !item.price) {
       showToast('Name and price are required', 'error');
@@ -396,6 +415,7 @@ export function initAdminPage() {
       price: parseFloat(document.getElementById('edit-item-price').value),
       unit: document.getElementById('edit-item-unit').value,
       image: document.getElementById('edit-item-image').value,
+      isAvailable: document.getElementById('edit-item-available').checked
     };
     
     if (!updates.name || isNaN(updates.price)) {

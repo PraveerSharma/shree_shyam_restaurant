@@ -18,7 +18,7 @@ function getCartQty(productId) {
 
 export function renderProductCard(product) {
   const card = document.createElement('div');
-  card.className = 'product-card';
+  card.className = `product-card ${!product.isAvailable ? 'disabled' : ''}`;
   card.id = `product-${product.id}`;
   
   const existingQty = getCartQty(product.id);
@@ -43,7 +43,9 @@ export function renderProductCard(product) {
         <small>${product.unit}</small>
       </div>
       <div class="product-card-actions">
-        ${existingQty > 0 ? `
+        ${!product.isAvailable ? `
+          <button disabled style="width:100%; cursor:not-allowed; background:var(--clr-gray-200); color:var(--clr-gray-500); border:none; padding:10px 16px; border-radius:var(--radius-full); font-weight:600; font-size: 0.9rem;">Out of Stock</button>
+        ` : (existingQty > 0 ? `
           <div class="qty-selector active" data-id="${product.id}">
             <button class="qty-btn qty-minus" data-id="${product.id}" aria-label="Decrease quantity">−</button>
             <span class="qty-value">${existingQty}</span>
@@ -54,7 +56,7 @@ export function renderProductCard(product) {
             <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M6 2L3 6v14a2 2 0 002 2h14a2 2 0 002-2V6l-3-4z"/><line x1="3" y1="6" x2="21" y2="6"/><path d="M16 10a4 4 0 01-8 0"/></svg>
             Add to Cart
           </button>
-        `}
+        `)}
       </div>
     </div>
   `;
@@ -72,30 +74,32 @@ export function renderProductCard(product) {
   }, { rootMargin: '200px' });
   observer.observe(img);
 
-  // Bind events based on current state
-  const addBtn = card.querySelector('.add-to-cart-btn');
-  const qtySelector = card.querySelector('.qty-selector');
+  // Bind events based on current state (only if available)
+  if (product.isAvailable) {
+    const addBtn = card.querySelector('.add-to-cart-btn');
+    const qtySelector = card.querySelector('.qty-selector');
 
-  if (addBtn) {
-    // Initial state: "Add to Cart" button
-    addBtn.addEventListener('click', () => {
-      if (!isLoggedIn()) {
-        showAuthModal('login', () => {
-          addToCart(product, 1);
-          showToast(`${product.name} added to cart`, 'success');
-          switchToQtyControls(card, product, 1);
-        });
-        return;
-      }
-      addToCart(product, 1);
-      showToast(`${product.name} added to cart`, 'success');
-      switchToQtyControls(card, product, 1);
-    });
-  }
+    if (addBtn) {
+      // Initial state: "Add to Cart" button
+      addBtn.addEventListener('click', () => {
+        if (!isLoggedIn()) {
+          showAuthModal('login', () => {
+            addToCart(product, 1);
+            showToast(`${product.name} added to cart`, 'success');
+            switchToQtyControls(card, product, 1);
+          });
+          return;
+        }
+        addToCart(product, 1);
+        showToast(`${product.name} added to cart`, 'success');
+        switchToQtyControls(card, product, 1);
+      });
+    }
 
-  if (qtySelector) {
-    // Already in cart: bind +/- controls
-    bindQtyControls(card, product, existingQty);
+    if (qtySelector) {
+      // Already in cart: bind +/- controls
+      bindQtyControls(card, product, existingQty);
+    }
   }
 
   return card;
@@ -211,8 +215,6 @@ export function renderProductsGrid(products, containerId) {
   }
 
   products.forEach(product => {
-    if (product.isAvailable) {
-      container.appendChild(renderProductCard(product));
-    }
+    container.appendChild(renderProductCard(product));
   });
 }
