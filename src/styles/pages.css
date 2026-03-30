@@ -46,18 +46,18 @@
 }
 .hero-badge {
   display: inline-block;
-  padding: 8px 24px;
+  padding: 6px 16px;
   background: rgba(212, 115, 26, 0.4);
   backdrop-filter: blur(4px);
   border: 1px solid rgba(255, 215, 150, 0.4);
   border-radius: var(--radius-full);
   color: #fff;
   font-family: var(--ff-accent);
-  font-size: 0.95rem;
+  font-size: 0.8rem;
   font-weight: 500;
-  letter-spacing: 0.15em;
+  letter-spacing: 0.1em;
   text-transform: uppercase;
-  margin-bottom: var(--sp-xl);
+  margin-bottom: var(--sp-lg);
   animation: fadeInDown var(--dur-slow) var(--ease-smooth);
 }
 .hero-title {
