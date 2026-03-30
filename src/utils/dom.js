@@ -109,3 +109,36 @@ export function debounce(fn, delay = 300) {
     timer = setTimeout(() => fn.apply(this, args), delay);
   };
 }
+
+// Custom UI Confirm Modal
+export function showConfirm(message, onConfirm) {
+  const overlay = createElement('div', { className: 'modal-overlay', style: { zIndex: '9999' } });
+  
+  const closeBtn = createElement('button', { className: 'modal-close', textContent: '×' });
+  closeBtn.addEventListener('click', () => overlay.remove());
+
+  const title = createElement('h3', { className: 'modal-title', textContent: 'Confirm Action', style: { marginBottom: '0.5rem' } });
+  const text = createElement('p', { className: 'modal-subtitle', textContent: message, style: { marginBottom: '2rem' } });
+
+  const cancelBtn = createElement('button', { className: 'btn btn-ghost', textContent: 'Cancel' });
+  cancelBtn.addEventListener('click', () => overlay.remove());
+
+  const confirmBtn = createElement('button', { className: 'btn btn-primary', textContent: 'Yes, Delete', style: { backgroundColor: 'var(--clr-error)' } });
+  confirmBtn.addEventListener('click', () => {
+    overlay.remove();
+    if (typeof onConfirm === 'function') onConfirm();
+  });
+
+  const actions = createElement('div', { style: { display: 'flex', gap: '1rem', justifyContent: 'flex-end', marginTop: '1.5rem' } });
+  actions.appendChild(cancelBtn);
+  actions.appendChild(confirmBtn);
+
+  const modal = createElement('div', { className: 'modal' });
+  modal.appendChild(closeBtn);
+  modal.appendChild(title);
+  modal.appendChild(text);
+  modal.appendChild(actions);
+
+  overlay.appendChild(modal);
+  document.body.appendChild(overlay);
+}

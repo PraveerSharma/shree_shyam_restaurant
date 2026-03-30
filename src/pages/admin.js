@@ -9,7 +9,9 @@ import {
   updateItem, addItem, deleteItem, resetToDefaults 
 } from '../services/admin.js';
 import { formatPrice } from '../utils/format.js';
-import { showToast, sanitizeInput } from '../utils/dom.js';
+import { 
+  showToast, unescapeForText, showConfirm
+} from '../utils/dom.js';
 
 let activeTab = 'sweets';
 let showAddForm = false;
@@ -279,20 +281,20 @@ export function initAdminPage() {
   document.querySelectorAll('.admin-delete-btn').forEach(btn => {
     btn.addEventListener('click', () => {
       const id = btn.dataset.id;
-      if (confirm('Are you sure you want to delete this item?')) {
+      showConfirm('Are you sure you want to delete this item?', () => {
         deleteItem(activeTab, id);
         showToast('Item deleted', 'info');
         window.dispatchEvent(new HashChangeEvent('hashchange'));
-      }
+      });
     });
   });
 
   // Reset
   document.getElementById('admin-reset-btn')?.addEventListener('click', () => {
-    if (confirm(`Reset all ${activeTab} items to defaults? Custom changes will be lost.`)) {
+    showConfirm(`Reset all ${activeTab} items to defaults? Custom changes will be lost.`, () => {
       resetToDefaults(activeTab);
       showToast('Reset to defaults', 'info');
       window.dispatchEvent(new HashChangeEvent('hashchange'));
-    }
+    });
   });
 }
