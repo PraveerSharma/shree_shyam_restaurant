@@ -109,7 +109,7 @@ export function renderCartPage() {
                 <div class="form-group">
                   <label class="form-label" for="customer-phone">📱 Phone / WhatsApp *</label>
                   <input class="form-input" type="tel" id="customer-phone" 
-                         placeholder="+91 98XXX XXXXX" required maxlength="15"
+                         placeholder="+91 86907 56828" required maxlength="15"
                          value="${user?.phone || ''}"
                          autocomplete="tel"
                          aria-label="Your phone number">

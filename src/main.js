@@ -48,7 +48,7 @@ function renderPage(route) {
     case 'home':
     case '':
       pageContent = renderHomePage();
-      pageTitle = 'Shree Shyam Restaurant - Best Vegetarian Food in Sikar';
+      pageTitle = 'Shree Shyam Restaurant - Best Vegetarian Food in Golaghat';
       break;
     case 'sweets':
       pageContent = renderSweetsPage();

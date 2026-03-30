@@ -18,7 +18,7 @@ export function renderHeader() {
           <img src="/images/logo.png" alt="${SITE_CONFIG.name} Logo" width="48" height="48" loading="eager">
           <div class="header-logo-text">
             Shree Shyam<br>Restaurant
-            <small>Est. Sikar, Rajasthan</small>
+            <small>Est. Golaghat, Assam</small>
           </div>
         </a>
 

@@ -54,7 +54,7 @@ export function renderTermsPage() {
           <p>We shall not be liable for any indirect, incidental, or consequential damages arising from the use of our website or services, beyond the amount paid for the specific order in question.</p>
 
           <h2>8. Governing Law</h2>
-          <p>These terms are governed by the laws of India. Any disputes shall be subject to the jurisdiction of courts in Sikar, Rajasthan.</p>
+          <p>These terms are governed by the laws of India. Any disputes shall be subject to the jurisdiction of courts in Golaghat, Assam.</p>
 
           <h2>9. Contact</h2>
           <p>For any queries regarding these terms, please contact us:</p>

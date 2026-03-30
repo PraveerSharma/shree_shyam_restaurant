@@ -6,14 +6,14 @@
 export const SITE_CONFIG = {
   name: 'Shree Shyam Restaurant',
   tagline: 'Authentic Vegetarian Delights',
-  description: 'Best Vegetarian Food in Sikar - Traditional sweets, snacks, sabzis, rotis, and thalis',
+  description: 'Best Vegetarian Food in Golaghat - Traditional sweets, snacks, sabzis, rotis, and thalis',
   
   address: {
-    line1: 'Main Market Road',
-    line2: 'Near Bus Stand',
-    city: 'Sikar',
-    state: 'Rajasthan',
-    pin: '332001',
+    line1: 'NRL Road',
+    line2: 'Telagaram',
+    city: 'Golaghat',
+    state: 'Assam',
+    pin: '785699',
     country: 'India',
     get full() {
       return `${this.line1}, ${this.line2}, ${this.city}, ${this.state} ${this.pin}`;
@@ -21,9 +21,9 @@ export const SITE_CONFIG = {
   },
 
   contact: {
-    phone: '+91-XXXXXXXXXX',
-    phoneClean: '+91XXXXXXXXXX',
-    whatsapp: '+91XXXXXXXXXX',
+    phone: '+91 86907 56828',
+    phoneClean: '+918690756828',
+    whatsapp: '+918690756828',
     get whatsappLink() {
       return `https://wa.me/${this.whatsapp}`;
     },
@@ -44,14 +44,14 @@ export const SITE_CONFIG = {
   social: {
     instagram: 'https://instagram.com/shreeshyamrestaurant',
     facebook: 'https://facebook.com/shreeshyamrestaurant',
-    googleMaps: 'https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d28344.54!2d75.13!3d27.62!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x396c9b0c0c0c0c0%3A0x0!2sSikar%2C+Rajasthan!5e0!3m2!1sen!2sin!4v1',
-    googleMapsSearch: 'https://maps.google.com/?q=Shree+Shyam+Restaurant+Sikar+Rajasthan',
+    googleMaps: 'https://share.google/XMipNElHF5Ap7e8QQ',
+    googleMapsSearch: 'https://share.google/XMipNElHF5Ap7e8QQ',
   },
 
   seo: {
-    title: 'Shree Shyam Restaurant - Best Vegetarian Food in Sikar',
-    description: 'Order authentic Indian vegetarian sweets, snacks, sabzis & thalis from Shree Shyam Restaurant, Sikar, Rajasthan. Fresh, hygienic & traditionally prepared.',
-    keywords: 'Shree Shyam Restaurant, Sikar, vegetarian food, Indian sweets, thali, Rajasthan, restaurant',
+    title: 'Shree Shyam Restaurant - Best Vegetarian Food in Golaghat, Assam',
+    description: 'Order authentic Indian vegetarian sweets, snacks, sabzis & thalis from Shree Shyam Restaurant, Golaghat, Assam. Fresh, hygienic & traditionally prepared.',
+    keywords: 'Shree Shyam Restaurant, Golaghat, vegetarian food, Indian sweets, thali, Assam, restaurant',
     ogImage: '/images/hero-bg.png',
   },
 

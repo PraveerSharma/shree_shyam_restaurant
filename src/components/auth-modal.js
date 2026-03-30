@@ -113,7 +113,7 @@ function renderRegisterForm() {
       
       <div class="form-group">
         <label class="form-label" for="reg-phone">Phone Number</label>
-        <input class="form-input" type="tel" id="reg-phone" placeholder="+91 98XXX XXXXX" required autocomplete="tel" maxlength="15">
+        <input class="form-input" type="tel" id="reg-phone" placeholder="+91 86907 56828" required autocomplete="tel" maxlength="15">
         <div class="form-error" id="reg-phone-error"></div>
       </div>
       
@@ -152,7 +152,7 @@ function renderForgotPasswordForm() {
       
       <div class="form-group">
         <label class="form-label" for="forgot-phone">Registered Phone Number</label>
-        <input class="form-input" type="tel" id="forgot-phone" placeholder="+91 98XXX XXXXX" required autocomplete="tel" maxlength="15">
+        <input class="form-input" type="tel" id="forgot-phone" placeholder="+91 86907 56828" required autocomplete="tel" maxlength="15">
         <div class="form-hint">Must match the phone number on your account</div>
         <div class="form-error" id="forgot-phone-error"></div>
       </div>
