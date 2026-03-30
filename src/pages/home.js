@@ -16,7 +16,7 @@ export function renderHomePage() {
         <div class="hero-overlay"></div>
         <div class="hero-content">
           <img src="/images/logo.png" alt="${SITE_CONFIG.name}" class="hero-logo">
-          <div class="hero-badge" style="margin-bottom: var(--sp-md);">✦ Golaghat, Assam ✦</div>
+          <div class="hero-badge" style="margin-bottom: var(--sp-md);">✦ Since 2005 ✦</div>
           <h1 class="hero-title">
             Shree Shyam Restaurant
             <span class="accent" style="display: block; font-size: 0.55em; margin-top: 15px; color: var(--clr-gold-light); font-family: var(--ff-accent); letter-spacing: 2px; text-transform: uppercase;">
