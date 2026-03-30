@@ -12,6 +12,7 @@ import { formatPrice } from '../utils/format.js';
 import { 
   showToast, unescapeForText, showConfirm
 } from '../utils/dom.js';
+import { compressImageToDataURL } from '../utils/image.js';
 
 let activeTab = 'sweets';
 let showAddForm = false;
@@ -169,8 +170,22 @@ function renderAddForm() {
             <input class="form-input" type="text" id="new-item-unit" maxlength="50" placeholder="per piece" value="per piece">
           </div>
         </div>
+        
+        <div class="form-row">
+          <div class="form-group">
+            <label class="form-label">Image URL</label>
+            <input class="form-input" type="url" id="new-item-image" placeholder="/images/sweets/item.png OR https://...">
+            <div style="margin-top: 0.5rem;">
+              <label class="form-label" style="font-size: 0.8rem;">Or Upload Image (Auto-compressed for safe storage)</label>
+              <input type="file" id="new-item-upload" accept="image/*" class="form-input" style="padding: 0.4rem;">
+            </div>
+          </div>
+          <div class="form-group" style="display:flex; align-items:flex-end;">
+            <img id="new-item-preview" src="/images/sweets/samosa.png" alt="Preview" style="height:80px; width:100%; object-fit:contain; border-radius:var(--radius-sm); border:1px solid var(--clr-gray-200); background:#fff;">
+          </div>
         </div>
-        <div style="display:flex;gap:0.5rem;">
+
+        <div style="display:flex;gap:0.5rem; margin-top:1rem;">
           <button type="submit" class="btn btn-primary">Add Item</button>
           <button type="button" class="btn btn-ghost" id="cancel-add-btn">Cancel</button>
         </div>
@@ -209,10 +224,13 @@ function renderEditForm(itemId) {
           <div class="form-group">
             <label class="form-label">Image URL</label>
             <input class="form-input" type="url" id="edit-item-image" placeholder="/images/sweets/item.png OR https://..." value="${item.image}">
-            <div class="form-hint" style="margin-top:0.25rem;">Provide an absolute URL or a path relative to the site root.</div>
+            <div style="margin-top: 0.5rem;">
+              <label class="form-label" style="font-size: 0.8rem;">Or Upload Image (Auto-compressed)</label>
+              <input type="file" id="edit-item-upload" accept="image/*" class="form-input" style="padding: 0.4rem;">
+            </div>
           </div>
-          <div class="form-group">
-            <img src="${item.image}" alt="Preview" style="height:60px; object-fit:contain; border-radius:var(--radius-sm); border:1px solid var(--clr-gray-200); background:#fff;">
+          <div class="form-group" style="display:flex; align-items:flex-end;">
+            <img id="edit-item-preview" src="${item.image}" alt="Preview" style="height:80px; width:100%; object-fit:contain; border-radius:var(--radius-sm); border:1px solid var(--clr-gray-200); background:#fff;">
           </div>
         </div>
 
@@ -230,7 +248,7 @@ function renderEditForm(itemId) {
             <input class="form-input" type="text" id="edit-item-unit" maxlength="50" value="${item.unit || ''}">
           </div>
         </div>
-        <div style="display:flex;gap:0.5rem;">
+        <div style="display:flex;gap:0.5rem; margin-top:1rem;">
           <button type="submit" class="btn btn-primary" style="background-color: var(--clr-success);">Save Changes</button>
           <button type="button" class="btn btn-ghost" id="cancel-edit-btn">Cancel</button>
         </div>
@@ -291,6 +309,7 @@ export function initAdminPage() {
       description: document.getElementById('new-item-desc').value,
       price: document.getElementById('new-item-price').value,
       unit: document.getElementById('new-item-unit').value,
+      image: document.getElementById('new-item-image').value || undefined,
     };
     if (!item.name || !item.price) {
       showToast('Name and price are required', 'error');
@@ -314,6 +333,50 @@ export function initAdminPage() {
         document.getElementById('admin-edit-form')?.scrollIntoView({ behavior: 'smooth', block: 'center' });
       }, 50);
     });
+  });
+
+  // Handle file uploads (Add form)
+  document.getElementById('new-item-upload')?.addEventListener('change', async (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+    try {
+      const dataUrl = await compressImageToDataURL(file);
+      document.getElementById('new-item-image').value = dataUrl;
+      const preview = document.getElementById('new-item-preview');
+      if (preview) preview.src = dataUrl;
+      showToast('Image locally compressed and ready for upload', 'info');
+    } catch (err) {
+      showToast('Image processing failed', 'error');
+      console.error(err);
+    }
+  });
+
+  // Handle URL change to update preview (Add form)
+  document.getElementById('new-item-image')?.addEventListener('input', (e) => {
+    const preview = document.getElementById('new-item-preview');
+    if (preview && e.target.value) preview.src = e.target.value;
+  });
+
+  // Handle file uploads (Edit form)
+  document.getElementById('edit-item-upload')?.addEventListener('change', async (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+    try {
+      const dataUrl = await compressImageToDataURL(file);
+      document.getElementById('edit-item-image').value = dataUrl;
+      const preview = document.getElementById('edit-item-preview');
+      if (preview) preview.src = dataUrl;
+      showToast('Image locally compressed and ready to save', 'info');
+    } catch (err) {
+      showToast('Image processing failed', 'error');
+      console.error(err);
+    }
+  });
+
+  // Handle URL change to update preview (Edit form)
+  document.getElementById('edit-item-image')?.addEventListener('input', (e) => {
+    const preview = document.getElementById('edit-item-preview');
+    if (preview && e.target.value) preview.src = e.target.value;
   });
 
   // Cancel edit
