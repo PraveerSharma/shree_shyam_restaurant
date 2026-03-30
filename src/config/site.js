@@ -44,7 +44,7 @@ export const SITE_CONFIG = {
   social: {
     instagram: 'https://instagram.com/shreeshyamrestaurant',
     facebook: 'https://facebook.com/shreeshyamrestaurant',
-    googleMaps: 'https://share.google/XMipNElHF5Ap7e8QQ',
+    googleMaps: 'https://maps.google.com/maps?q=Shree%20Shyam%20Restaurant,%20Golaghat,%20Assam&t=&z=13&ie=UTF8&iwloc=&output=embed',
     googleMapsSearch: 'https://share.google/XMipNElHF5Ap7e8QQ',
   },
 
