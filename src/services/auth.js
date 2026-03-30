@@ -11,15 +11,13 @@ const MAX_LOGIN_ATTEMPTS = 5;
 const LOCKOUT_DURATION = 15 * 60 * 1000; // 15 minutes
 const ATTEMPTS_KEY = 'ssr_login_attempts';
 
-// Simple hash function (in production, use bcrypt on server)
-function simpleHash(str) {
-  let hash = 0;
-  for (let i = 0; i < str.length; i++) {
-    const char = str.charCodeAt(i);
-    hash = ((hash << 5) - hash) + char;
-    hash = hash & hash; // Convert to 32bit integer
-  }
-  return 'h_' + Math.abs(hash).toString(36) + '_' + btoa(str).slice(0, 12);
+// Cryptographic hash using SHA-256 (Web Crypto API)
+async function hashPassword(password, salt = 'ssr_default_salt') {
+  const encoder = new TextEncoder();
+  const data = encoder.encode(password + salt);
+  const hashBuffer = await crypto.subtle.digest('SHA-256', data);
+  const hashArray = Array.from(new Uint8Array(hashBuffer));
+  return hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
 }
 
 function getUsers() {
@@ -87,7 +85,7 @@ function validatePassword(password) {
   return null;
 }
 
-export function register({ name, phone, email, password }) {
+export async function register({ name, phone, email, password }) {
   // Sanitize inputs
   name = sanitizeInput(name).trim();
   phone = sanitizeInput(phone).trim();
@@ -109,12 +107,17 @@ export function register({ name, phone, email, password }) {
     return { success: false, error: 'An account with this email already exists' };
   }
 
+  // Generate a unique salt for this user
+  const salt = Math.random().toString(36).slice(2, 10);
+  const passwordHash = await hashPassword(password, salt);
+
   const user = {
     id: 'user_' + Date.now().toString(36) + Math.random().toString(36).slice(2, 6),
     name,
     phone,
     email,
-    passwordHash: simpleHash(password),
+    salt,
+    passwordHash,
     createdAt: new Date().toISOString(),
   };
 
@@ -124,13 +127,14 @@ export function register({ name, phone, email, password }) {
   // Auto-login
   const session = { ...user };
   delete session.passwordHash;
+  delete session.salt;
   localStorage.setItem(SESSION_KEY, JSON.stringify(session));
 
   window.dispatchEvent(new CustomEvent('auth-changed', { detail: session }));
   return { success: true, user: session };
 }
 
-export function login(email, password) {
+export async function login(email, password) {
   email = sanitizeInput(email).trim().toLowerCase();
 
   if (!validateEmail(email)) return { success: false, error: 'Please enter a valid Gmail address (example@gmail.com)' };
@@ -143,7 +147,15 @@ export function login(email, password) {
   const users = getUsers();
   const user = users.find(u => u.email === email);
   
-  if (!user || user.passwordHash !== simpleHash(password)) {
+  if (!user) {
+    recordLoginAttempt(email, false);
+    return { success: false, error: 'Invalid email or password' };
+  }
+
+  // Check password with user's salt
+  const enteredHash = await hashPassword(password, user.salt || 'ssr_default_salt');
+  
+  if (user.passwordHash !== enteredHash) {
     recordLoginAttempt(email, false);
     return { success: false, error: 'Invalid email or password' };
   }
@@ -152,6 +164,7 @@ export function login(email, password) {
 
   const session = { ...user };
   delete session.passwordHash;
+  delete session.salt;
   localStorage.setItem(SESSION_KEY, JSON.stringify(session));
 
   window.dispatchEvent(new CustomEvent('auth-changed', { detail: session }));
@@ -177,7 +190,7 @@ export function isLoggedIn() {
 }
 
 // Forgot / Reset Password
-export function resetPassword(email, phone, newPassword) {
+export async function resetPassword(email, phone, newPassword) {
   email = sanitizeInput(email).trim().toLowerCase();
   phone = sanitizeInput(phone).trim();
 
@@ -203,8 +216,10 @@ export function resetPassword(email, phone, newPassword) {
     return { success: false, error: 'Phone number does not match our records for this email' };
   }
 
-  // Update password
-  user.passwordHash = simpleHash(newPassword);
+  // Update password with new salt
+  const salt = Math.random().toString(36).slice(2, 10);
+  user.salt = salt;
+  user.passwordHash = await hashPassword(newPassword, salt);
   saveUsers(users);
 
   return { success: true };

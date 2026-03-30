@@ -19,6 +19,7 @@ import { renderSweetsPage, initSweetsPage, cleanupSweetsPage } from './pages/swe
 import { renderRestaurantPage, initRestaurantPage, cleanupRestaurantPage } from './pages/restaurant.js';
 import { renderCartPage, initCartPage, resetCartPageState } from './pages/cart.js';
 import { renderAdminPage, initAdminPage } from './pages/admin.js';
+import { renderOrdersPage, initOrdersPage } from './pages/orders.js';
 import { renderPrivacyPage } from './pages/privacy.js';
 import { renderTermsPage } from './pages/terms.js';
 
@@ -71,6 +72,11 @@ function renderPage(route) {
       pageContent = renderAdminPage();
       pageTitle = 'Admin Panel - Shree Shyam Restaurant';
       initFn = initAdminPage;
+      break;
+    case 'orders':
+      pageContent = renderOrdersPage();
+      pageTitle = 'My Orders - Shree Shyam Restaurant';
+      initFn = initOrdersPage;
       break;
     case 'privacy':
       pageContent = renderPrivacyPage();
@@ -140,7 +146,12 @@ window.addEventListener('cart-updated', () => {
 });
 
 window.addEventListener('show-auth-modal', (e) => {
-  showAuthModal(e.detail);
+  const detail = e.detail;
+  if (typeof detail === 'string') {
+    showAuthModal(detail);
+  } else if (detail && typeof detail === 'object') {
+    showAuthModal(detail.tab || 'login', detail.onSuccess);
+  }
 });
 
 // ── Security: CSP violation logging ──

@@ -27,6 +27,7 @@ export function renderHeader() {
             <a href="#/" class="nav-link" data-page="home">Home</a>
             <a href="#/sweets" class="nav-link" data-page="sweets">Sweets & Snacks</a>
             <a href="#/restaurant" class="nav-link" data-page="restaurant">Restaurant</a>
+            ${user ? `<a href="#/orders" class="nav-link" data-page="orders">My Orders</a>` : ''}
           </div>
         </nav>
 
@@ -61,6 +62,7 @@ export function renderHeader() {
       <a href="#/" class="nav-link" data-page="home">🏠 Home</a>
       <a href="#/sweets" class="nav-link" data-page="sweets">🍬 Sweets & Snacks</a>
       <a href="#/restaurant" class="nav-link" data-page="restaurant">🍛 Restaurant Menu</a>
+      ${user ? `<a href="#/orders" class="nav-link" data-page="orders">📦 My Orders</a>` : ''}
       <a href="#/cart" class="nav-link" data-page="cart">🛒 Cart (${cartCount})</a>
       <div class="mobile-nav-auth">
         ${user ? `

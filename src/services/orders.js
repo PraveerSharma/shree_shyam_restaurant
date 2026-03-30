@@ -7,6 +7,7 @@ import { SITE_CONFIG } from '../config/site.js';
 import { formatPrice } from '../utils/format.js';
 import { sanitizeInput } from '../utils/dom.js';
 import { clearCart } from './cart.js';
+import { getCurrentUser } from './auth.js';
 
 const ORDERS_KEY = 'ssr_orders';
 
@@ -30,6 +31,9 @@ function generateOrderId() {
 }
 
 export function createOrder(cart, customerInfo) {
+  const user = getCurrentUser();
+  if (!user) return { success: false, error: 'Please login to place an order' };
+
   // Sanitize inputs
   const phone = sanitizeInput(customerInfo.phone || '').trim();
   const pickupDate = sanitizeInput(customerInfo.pickupDate || '').trim();
@@ -42,6 +46,8 @@ export function createOrder(cart, customerInfo) {
 
   const order = {
     orderId: generateOrderId(),
+    userId: user.id,
+    customerName: user.name,
     customerPhone: phone,
     pickupDate,
     notes: notes.slice(0, 500), // Limit notes length
@@ -121,5 +127,10 @@ export function sendToWhatsApp(order) {
 }
 
 export function getOrderHistory() {
-  return getOrders().sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+  const user = getCurrentUser();
+  if (!user) return [];
+  
+  return getOrders()
+    .filter(o => o.userId === user.id)
+    .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
 }

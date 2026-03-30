@@ -7,9 +7,11 @@ import { login, register, resetPassword } from '../services/auth.js';
 import { showToast } from '../utils/dom.js';
 
 let currentTab = 'login';
+let successCallback = null;
 
-export function showAuthModal(tab = 'login') {
+export function showAuthModal(tab = 'login', onSuccess = null) {
   currentTab = tab;
+  successCallback = onSuccess;
   
   // Remove existing modal
   const existing = document.getElementById('auth-modal-overlay');
@@ -195,7 +197,7 @@ function initFormHandlers() {
   const forgotForm = document.getElementById('forgot-form');
 
   // LOGIN
-  loginForm?.addEventListener('submit', (e) => {
+  loginForm?.addEventListener('submit', async (e) => {
     e.preventDefault();
     const email = document.getElementById('login-email').value;
     const password = document.getElementById('login-password').value;
@@ -203,11 +205,22 @@ function initFormHandlers() {
     document.querySelectorAll('#login-form .form-error').forEach(el => el.textContent = '');
     document.querySelectorAll('#login-form .form-input').forEach(el => el.classList.remove('error'));
 
-    const result = login(email, password);
+    const submitBtn = document.getElementById('login-submit');
+    const originalText = submitBtn.textContent;
+    submitBtn.disabled = true;
+    submitBtn.textContent = 'Verifying...';
+
+    const result = await login(email, password);
     if (result.success) {
       showToast(`Welcome back, ${result.user.name}!`, 'success');
       closeAuthModal();
+      if (typeof successCallback === 'function') {
+        successCallback(result.user);
+        successCallback = null; // Clear it
+      }
     } else {
+      submitBtn.disabled = false;
+      submitBtn.textContent = originalText;
       document.getElementById('login-general-error').textContent = result.error;
     }
   });
@@ -219,7 +232,7 @@ function initFormHandlers() {
   });
 
   // REGISTER
-  registerForm?.addEventListener('submit', (e) => {
+  registerForm?.addEventListener('submit', async (e) => {
     e.preventDefault();
     const name = document.getElementById('reg-name').value;
     const phone = document.getElementById('reg-phone').value;
@@ -229,17 +242,28 @@ function initFormHandlers() {
     document.querySelectorAll('#register-form .form-error').forEach(el => el.textContent = '');
     document.querySelectorAll('#register-form .form-input').forEach(el => el.classList.remove('error'));
 
-    const result = register({ name, phone, email, password });
+    const submitBtn = document.getElementById('register-submit');
+    const originalText = submitBtn.textContent;
+    submitBtn.disabled = true;
+    submitBtn.textContent = 'Creating Account...';
+
+    const result = await register({ name, phone, email, password });
     if (result.success) {
       showToast(`Welcome, ${result.user.name}! Account created.`, 'success');
       closeAuthModal();
+      if (typeof successCallback === 'function') {
+        successCallback(result.user);
+        successCallback = null; // Clear it
+      }
     } else {
+      submitBtn.disabled = false;
+      submitBtn.textContent = originalText;
       document.getElementById('reg-general-error').textContent = result.error;
     }
   });
 
   // FORGOT PASSWORD
-  forgotForm?.addEventListener('submit', (e) => {
+  forgotForm?.addEventListener('submit', async (e) => {
     e.preventDefault();
     const email = document.getElementById('forgot-email').value;
     const phone = document.getElementById('forgot-phone').value;
@@ -256,7 +280,12 @@ function initFormHandlers() {
       return;
     }
 
-    const result = resetPassword(email, phone, newPassword);
+    const submitBtn = document.getElementById('forgot-submit');
+    const originalText = submitBtn.textContent;
+    submitBtn.disabled = true;
+    submitBtn.textContent = 'Resetting...';
+
+    const result = await resetPassword(email, phone, newPassword);
     if (result.success) {
       showToast('Password reset successfully! You can now login.', 'success');
       // Go back to login view
@@ -269,6 +298,8 @@ function initFormHandlers() {
       document.getElementById('auth-form-container').innerHTML = renderLoginForm();
       initFormHandlers();
     } else {
+      submitBtn.disabled = false;
+      submitBtn.textContent = originalText;
       document.getElementById('forgot-general-error').textContent = result.error;
     }
   });

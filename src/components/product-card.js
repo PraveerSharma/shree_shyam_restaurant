@@ -7,6 +7,8 @@
 import { addToCart, getCart } from '../services/cart.js';
 import { formatPrice } from '../utils/format.js';
 import { showToast } from '../utils/dom.js';
+import { isLoggedIn } from '../services/auth.js';
+import { showAuthModal } from './auth-modal.js';
 
 function getCartQty(productId) {
   const cart = getCart();
@@ -77,6 +79,14 @@ export function renderProductCard(product) {
   if (addBtn) {
     // Initial state: "Add to Cart" button
     addBtn.addEventListener('click', () => {
+      if (!isLoggedIn()) {
+        showAuthModal('login', () => {
+          addToCart(product, 1);
+          showToast(`${product.name} added to cart`, 'success');
+          switchToQtyControls(card, product, 1);
+        });
+        return;
+      }
       addToCart(product, 1);
       showToast(`${product.name} added to cart`, 'success');
       switchToQtyControls(card, product, 1);
@@ -116,6 +126,14 @@ function switchToAddButton(card, product) {
   `;
   const addBtn = actionsDiv.querySelector('.add-to-cart-btn');
   addBtn.addEventListener('click', () => {
+    if (!isLoggedIn()) {
+      showAuthModal('login', () => {
+        addToCart(product, 1);
+        showToast(`${product.name} added to cart`, 'success');
+        switchToQtyControls(card, product, 1);
+      });
+      return;
+    }
     addToCart(product, 1);
     showToast(`${product.name} added to cart`, 'success');
     switchToQtyControls(card, product, 1);
