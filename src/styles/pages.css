@@ -468,17 +468,22 @@
 }
 .admin-toggle {
   position: relative;
-  width: 44px;
-  height: 24px;
+  width: 48px;
+  height: 26px;
   cursor: pointer;
+  display: inline-block;
+  vertical-align: middle;
 }
 .admin-toggle input {
-  display: none;
+  opacity: 0;
+  width: 0;
+  height: 0;
 }
 .admin-toggle .slider {
   position: absolute;
   inset: 0;
-  background: var(--clr-gray-300);
+  background-color: var(--clr-gray-400);
+  border: 2px solid var(--clr-gray-300);
   border-radius: var(--radius-full);
   transition: all var(--dur-normal);
 }
@@ -487,17 +492,19 @@
   position: absolute;
   top: 2px;
   left: 2px;
-  width: 20px;
-  height: 20px;
+  width: 18px;
+  height: 18px;
   background: white;
   border-radius: 50%;
-  transition: all var(--dur-normal) var(--ease-smooth);
+  transition: all var(--dur-normal) var(--ease-bounce);
+  box-shadow: var(--shadow-sm);
 }
 .admin-toggle input:checked + .slider {
-  background: var(--clr-success);
+  background-color: var(--clr-success);
+  border-color: var(--clr-veg);
 }
 .admin-toggle input:checked + .slider::after {
-  transform: translateX(20px);
+  transform: translateX(22px);
 }
 
 /* Admin Add Item Modal */
