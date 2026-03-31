@@ -4,6 +4,7 @@
 // ============================================
 
 import { sanitizeInput } from '../utils/dom.js';
+import { refreshCartUI } from './cart.js';
 
 const USERS_KEY = 'ssr_users';
 const SESSION_KEY = 'ssr_session';
@@ -129,7 +130,7 @@ export async function register({ name, phone, email, password }) {
   delete session.passwordHash;
   delete session.salt;
   localStorage.setItem(SESSION_KEY, JSON.stringify(session));
-
+  refreshCartUI();
   window.dispatchEvent(new CustomEvent('auth-changed', { detail: session }));
   return { success: true, user: session };
 }
@@ -166,7 +167,8 @@ export async function login(email, password) {
   delete session.passwordHash;
   delete session.salt;
   localStorage.setItem(SESSION_KEY, JSON.stringify(session));
-
+  
+  refreshCartUI();
   window.dispatchEvent(new CustomEvent('auth-changed', { detail: session }));
   return { success: true, user: session };
 }
@@ -202,6 +204,7 @@ export function updateUserPhone(phone) {
 
 export function logout() {
   localStorage.removeItem(SESSION_KEY);
+  refreshCartUI();
   window.dispatchEvent(new CustomEvent('auth-changed', { detail: null }));
 }
 

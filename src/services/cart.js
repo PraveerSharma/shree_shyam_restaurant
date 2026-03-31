@@ -1,20 +1,25 @@
-// ============================================
-// CART SERVICE
-// State management with localStorage + events
-// ============================================
+import { getCurrentUser } from './auth.js';
 
-const CART_KEY = 'ssr_cart';
+function getCartKey() {
+  const user = getCurrentUser();
+  if (!user) return null;
+  return `ssr_cart_${user.id}`;
+}
 
 function getCartData() {
+  const key = getCartKey();
+  if (!key) return [];
   try {
-    return JSON.parse(localStorage.getItem(CART_KEY) || '[]');
+    return JSON.parse(localStorage.getItem(key) || '[]');
   } catch {
     return [];
   }
 }
 
 function saveCart(cart) {
-  localStorage.setItem(CART_KEY, JSON.stringify(cart));
+  const key = getCartKey();
+  if (!key) return;
+  localStorage.setItem(key, JSON.stringify(cart));
   window.dispatchEvent(new CustomEvent('cart-updated', { detail: { cart, count: getCartCount(), total: getCartTotal() } }));
 }
 
@@ -23,6 +28,7 @@ export function getCart() {
 }
 
 export function addToCart(product, qty = 1) {
+  if (!getCurrentUser()) return [];
   if (qty < 1 || qty > 10) qty = 1;
   const cart = getCartData();
   const existing = cart.find(item => item.id === product.id);
@@ -75,8 +81,14 @@ export function getCartTotal() {
 }
 
 export function clearCart() {
-  localStorage.removeItem(CART_KEY);
+  const key = getCartKey();
+  if (key) localStorage.removeItem(key);
   window.dispatchEvent(new CustomEvent('cart-updated', { detail: { cart: [], count: 0, total: 0 } }));
+}
+
+export function refreshCartUI() {
+  const cart = getCartData();
+  window.dispatchEvent(new CustomEvent('cart-updated', { detail: { cart, count: getCartCount(), total: getCartTotal() } }));
 }
 
 export function isInCart(productId) {

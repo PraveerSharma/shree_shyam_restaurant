@@ -4,7 +4,7 @@
 // Shows "Add to Cart" first, then qty controls
 // ============================================
 
-import { addToCart, getCart } from '../services/cart.js';
+import { addToCart, getCart, removeFromCart, updateQuantity } from '../services/cart.js';
 import { formatPrice } from '../utils/format.js';
 import { showToast } from '../utils/dom.js';
 import { isLoggedIn } from '../services/auth.js';
@@ -152,14 +152,12 @@ function bindQtyControls(card, product, currentQty) {
     qty--;
     if (qty <= 0) {
       // Remove from cart and revert to "Add to Cart" button
-      const { removeFromCart } = getCartModule();
       removeFromCart(product.id);
       showToast(`${product.name} removed from cart`, 'info');
       switchToAddButton(card, product);
       return;
     }
     qtyDisplay.textContent = qty;
-    const { updateQuantity } = getCartModule();
     updateQuantity(product.id, qty);
   });
 
@@ -169,32 +167,6 @@ function bindQtyControls(card, product, currentQty) {
     qtyDisplay.textContent = qty;
     addToCart(product, 1);
   });
-}
-
-// Lazy import to avoid circular dependency
-function getCartModule() {
-  // These are already loaded; use dynamic re-import
-  return { 
-    removeFromCart: (id) => {
-      const cart = JSON.parse(localStorage.getItem('ssr_cart') || '[]');
-      const filtered = cart.filter(item => item.id !== id);
-      localStorage.setItem('ssr_cart', JSON.stringify(filtered));
-      const count = filtered.reduce((s, i) => s + i.quantity, 0);
-      const total = filtered.reduce((s, i) => s + (i.price * i.quantity), 0);
-      window.dispatchEvent(new CustomEvent('cart-updated', { detail: { cart: filtered, count, total } }));
-    },
-    updateQuantity: (id, qty) => {
-      const cart = JSON.parse(localStorage.getItem('ssr_cart') || '[]');
-      const item = cart.find(i => i.id === id);
-      if (item) {
-        item.quantity = Math.min(Math.max(qty, 1), 10);
-        localStorage.setItem('ssr_cart', JSON.stringify(cart));
-        const count = cart.reduce((s, i) => s + i.quantity, 0);
-        const total = cart.reduce((s, i) => s + (i.price * i.quantity), 0);
-        window.dispatchEvent(new CustomEvent('cart-updated', { detail: { cart, count, total } }));
-      }
-    }
-  };
 }
 
 export function renderProductsGrid(products, containerId) {
