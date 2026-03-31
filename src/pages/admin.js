@@ -8,7 +8,7 @@ import {
   getSweetsItems, getRestaurantItems, 
   updateItem, addItem, deleteItem, resetToDefaults 
 } from '../services/admin.js';
-import { formatPrice } from '../utils/format.js';
+import { formatPrice, getTodayDate } from '../utils/format.js';
 import { 
   showToast, unescapeForText, showConfirm
 } from '../utils/dom.js';
@@ -691,10 +691,12 @@ export function initAdminPage() {
       }
       const name = document.getElementById('offline-customer-name').value;
       const phone = document.getElementById('offline-customer-phone').value;
+      const pickupDate = document.getElementById('offline-pickup-date').value;
+      const pickupTime = document.getElementById('offline-pickup-time').value;
       const notes = document.getElementById('offline-order-notes').value;
       
       const { createOfflineOrder } = import.meta.glob('../services/orders.js', { eager: true })['../services/orders.js'];
-      const result = createOfflineOrder(offlineCart, { name, phone, notes });
+      const result = createOfflineOrder(offlineCart, { name, phone, pickupDate, pickupTime, notes });
       if (result.success) {
         showToast('Offline order created!', 'success');
         offlineCart = [];
@@ -764,6 +766,20 @@ function renderOfflineOrderForm() {
           <div class="form-group">
             <label class="form-label">Customer Phone (Optional)</label>
             <input type="tel" class="form-input" id="offline-customer-phone" placeholder="98XXXXXXXX">
+          </div>
+          <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
+            <div class="form-group">
+              <label class="form-label">📅 Pickup Date</label>
+              <input type="date" class="form-input" id="offline-pickup-date" min="${getTodayDate()}" value="${getTodayDate()}">
+            </div>
+            <div class="form-group">
+              <label class="form-label">⏰ Time Slot</label>
+              <select class="form-input" id="offline-pickup-time">
+                <option value="10:00 AM - 02:00 PM">10:00 AM - 02:00 PM</option>
+                <option value="02:00 PM - 06:00 PM">02:00 PM - 06:00 PM</option>
+                <option value="06:00 PM - 10:00 PM">06:00 PM - 10:00 PM</option>
+              </select>
+            </div>
           </div>
           <div class="form-group">
             <label class="form-label">Internal Notes</label>

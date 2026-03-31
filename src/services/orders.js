@@ -90,8 +90,8 @@ export function createOfflineOrder(items, customerInfo) {
     isOffline: true,
     customerName,
     customerPhone: customerPhone || 'N/A',
-    pickupDate: new Date().toLocaleDateString('en-GB'), // Today
-    pickupTime: 'Immediate',
+    pickupDate: sanitizeInput(customerInfo.pickupDate || new Date().toLocaleDateString('en-GB')),
+    pickupTime: sanitizeInput(customerInfo.pickupTime || 'Immediate'),
     notes: notes.slice(0, 500),
     items: items.map(item => ({
       name: item.name,
