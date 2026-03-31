@@ -86,9 +86,19 @@ export function showToast(message, type = 'info', duration = 3000) {
     info: 'ℹ',
   };
   
+  const iconSpan = createElement('span', { className: 'toast-icon' }, [icons[type] || 'ℹ']);
+  const contentSpan = createElement('span', { className: 'toast-message' });
+  
+  // SUPPORT HTML CONTENT FOR ADVANCED TOASTS
+  if (message.trim().startsWith('<') && message.trim().endsWith('>')) {
+    contentSpan.innerHTML = message;
+  } else {
+    contentSpan.textContent = message;
+  }
+  
   const toast = createElement('div', { className: `toast ${type}` }, [
-    createElement('span', {}, [icons[type] || 'ℹ']),
-    createElement('span', {}, [message]),
+    iconSpan,
+    contentSpan
   ]);
   
   toastContainer.appendChild(toast);
