@@ -101,7 +101,7 @@ export function createOfflineOrder(items, customerInfo) {
     })),
     total: items.reduce((sum, item) => sum + (item.price * item.quantity), 0),
     paymentMethod: 'Cash (Offline)',
-    status: 'delivered', // Assume offline orders are usually fulfilled immediately
+    status: 'accepted', // Initial status for offline orders
     createdAt: new Date().toISOString(),
     timestamp: new Date().toLocaleString('en-IN', { timeZone: 'Asia/Kolkata' }),
   };
