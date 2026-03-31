@@ -72,6 +72,9 @@ export function createOrder(cart, customerInfo) {
   orders.push(order);
   localStorage.setItem(ORDERS_KEY, JSON.stringify(orders));
 
+  // Clear cart after successful order creation
+  clearCart();
+
   return { success: true, order };
 }
 
