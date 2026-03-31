@@ -136,12 +136,15 @@ export function getOrderHistory() {
   
   return getOrders()
     .filter(o => o.userId === user.id)
+    .map(o => ({ ...o, pickupTime: o.pickupTime || '10:00 AM - 02:00 PM' }))
     .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
 }
 
 // ── Admin Order Management ──
 export function getAllOrders() {
-  return getOrders().sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+  return getOrders()
+    .map(o => ({ ...o, pickupTime: o.pickupTime || '10:00 AM - 02:00 PM' }))
+    .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
 }
 
 export function updateOrderStatus(orderId, status) {

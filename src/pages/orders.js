@@ -81,13 +81,25 @@ export function renderOrdersPage() {
                       </div>
                       <div>
                         <div style="font-size: 0.85rem; color: var(--clr-gray-500); margin-bottom: 0.25rem;">Pickup Time Slot</div>
-                        <div style="display: flex; align-items: center; gap: 0.5rem;">
-                          <div style="font-weight: 600; color: var(--clr-saffron);">⏰ ${order.pickupTime}</div>
-                          ${order.status === 'pending' ? `
-                            <button class="edit-time-btn" data-id="${order.orderId}" style="font-size: 0.75rem; color: var(--clr-info); text-decoration: underline; padding: 0; background: none; border: none; cursor: pointer;">
-                              Edit
-                            </button>
-                          ` : ''}
+                        <div class="time-slot-container" data-id="${order.orderId}">
+                          <div style="display: flex; align-items: center; gap: 0.5rem;" class="time-display-wrapper">
+                            <div style="font-weight: 600; color: var(--clr-saffron);" class="current-time-slot">⏰ ${order.pickupTime || '10:00 AM - 02:00 PM'}</div>
+                            ${order.status === 'pending' ? `
+                              <button class="edit-time-btn" data-id="${order.orderId}" style="font-size: 0.75rem; color: var(--clr-info); text-decoration: underline; padding: 0; background: none; border: none; cursor: pointer;">
+                                Edit
+                              </button>
+                            ` : ''}
+                          </div>
+                          
+                          <div style="display: none; align-items: center; gap: 0.5rem;" class="time-edit-wrapper">
+                            <select class="form-input slot-select" style="font-size: 0.8rem; padding: 2px 4px; height: auto; width: auto;">
+                              <option value="10:00 AM - 02:00 PM" ${order.pickupTime === '10:00 AM - 02:00 PM' ? 'selected' : ''}>10-2 PM</option>
+                              <option value="02:00 PM - 06:00 PM" ${order.pickupTime === '02:00 PM - 06:00 PM' ? 'selected' : ''}>2-6 PM</option>
+                              <option value="06:00 PM - 10:00 PM" ${order.pickupTime === '06:00 PM - 10:00 PM' ? 'selected' : ''}>6-10 PM</option>
+                            </select>
+                            <button class="save-time-btn" data-id="${order.orderId}" style="background: var(--clr-veg); color: white; border: none; padding: 2px 8px; border-radius: 4px; font-size: 0.75rem; cursor: pointer;">Save</button>
+                            <button class="cancel-time-btn" style="background: var(--clr-gray-200); color: var(--clr-gray-700); border: none; padding: 2px 8px; border-radius: 4px; font-size: 0.75rem; cursor: pointer;">✕</button>
+                          </div>
                         </div>
                       </div>
                       <div>
@@ -146,24 +158,36 @@ export function initOrdersPage() {
     window.dispatchEvent(new CustomEvent('show-auth-modal', { detail: 'login' }));
   });
 
-  // Edit Time Handler
-  document.querySelectorAll('.edit-time-btn').forEach(btn => {
-    btn.addEventListener('click', (e) => {
-      const orderId = btn.dataset.id;
-      const newTime = prompt('Enter new pickup time slot:\n1. 10:00 AM - 02:00 PM\n2. 02:00 PM - 06:00 PM\n3. 06:00 PM - 10:00 PM');
-      
-      let slot = '';
-      if (newTime === '1') slot = '10:00 AM - 02:00 PM';
-      else if (newTime === '2') slot = '02:00 PM - 06:00 PM';
-      else if (newTime === '3') slot = '06:00 PM - 10:00 PM';
-      else if (newTime && !['1','2','3'].includes(newTime)) slot = newTime;
+  // Edit Time Handlers (delegated)
+  const ordersList = document.querySelector('.orders-list');
+  if (ordersList) {
+    ordersList.addEventListener('click', (e) => {
+      const target = e.target;
+      const container = target.closest('.time-slot-container');
+      if (!container) return;
 
-      if (slot) {
-        if (updateOrderPickupTime(orderId, slot)) {
+      const displayWrapper = container.querySelector('.time-display-wrapper');
+      const editWrapper = container.querySelector('.time-edit-wrapper');
+
+      if (target.classList.contains('edit-time-btn')) {
+        displayWrapper.style.display = 'none';
+        editWrapper.style.display = 'flex';
+      } 
+      else if (target.classList.contains('cancel-time-btn')) {
+        displayWrapper.style.display = 'flex';
+        editWrapper.style.display = 'none';
+      }
+      else if (target.classList.contains('save-time-btn')) {
+        const orderId = target.dataset.id;
+        const newSlot = container.querySelector('.slot-select').value;
+        
+        if (updateOrderPickupTime(orderId, newSlot)) {
           showToast('Pickup time updated!', 'success');
-          window.dispatchEvent(new HashChangeEvent('hashchange'));
+          container.querySelector('.current-time-slot').textContent = `⏰ ${newSlot}`;
+          displayWrapper.style.display = 'flex';
+          editWrapper.style.display = 'none';
         }
       }
     });
-  });
+  }
 }
