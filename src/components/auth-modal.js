@@ -217,10 +217,12 @@ function initFormHandlers() {
     if (result.success) {
       showToast(`Welcome back, ${result.user.name}!`, 'success');
       closeAuthModal();
-      window.location.hash = '#/'; // Redirect to home page
       if (typeof successCallback === 'function') {
         successCallback(result.user);
-        successCallback = null; // Clear it
+        successCallback = null;
+      } else {
+        // Only redirect to home if no callback wants to keep the user on current page
+        window.location.hash = '#/';
       }
     } else {
       submitBtn.disabled = false;
@@ -255,10 +257,11 @@ function initFormHandlers() {
     if (result.success) {
       showToast(`Welcome, ${result.user.name}! Account created.`, 'success');
       closeAuthModal();
-      window.location.hash = '#/'; // Redirect to home page
       if (typeof successCallback === 'function') {
         successCallback(result.user);
-        successCallback = null; // Clear it
+        successCallback = null;
+      } else {
+        window.location.hash = '#/';
       }
     } else {
       submitBtn.disabled = false;

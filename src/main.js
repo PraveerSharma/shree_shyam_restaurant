@@ -17,7 +17,7 @@ import { initScrollReveal } from './utils/animations.js';
 import { renderHomePage } from './pages/home.js';
 import { renderSweetsPage, initSweetsPage, cleanupSweetsPage } from './pages/sweets.js';
 import { renderRestaurantPage, initRestaurantPage, cleanupRestaurantPage } from './pages/restaurant.js';
-import { renderCartPage, initCartPage, resetCartPageState } from './pages/cart.js';
+import { renderCartPage, initCartPage } from './pages/cart.js';
 import { renderAdminPage, initAdminPage } from './pages/admin.js';
 import { renderOrdersPage, initOrdersPage } from './pages/orders.js';
 import { renderPrivacyPage } from './pages/privacy.js';

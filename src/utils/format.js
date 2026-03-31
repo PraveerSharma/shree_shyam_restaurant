@@ -6,7 +6,9 @@
 import { SITE_CONFIG } from '../config/site.js';
 
 export function formatPrice(amount) {
-  return `${SITE_CONFIG.currency.symbol}${Number(amount).toLocaleString('en-IN')}`;
+  const num = Number(amount);
+  if (isNaN(num)) return `${SITE_CONFIG.currency.symbol}0`;
+  return `${SITE_CONFIG.currency.symbol}${num.toLocaleString('en-IN')}`;
 }
 
 export function formatDate(dateStr) {
@@ -127,12 +129,16 @@ export function getPickupTimeStatus(dateStr, timeStr = '') {
 
   if (diffMs < 0) return 'Passed';
 
-  const diffHrs = Math.floor(diffMs / (1000 * 60 * 60));
-  const days = Math.floor(diffHrs / 24);
-  const hours = diffHrs % 24;
+  const diffMins = Math.floor(diffMs / (1000 * 60));
+  const days = Math.floor(diffMins / (60 * 24));
+  const hours = Math.floor((diffMins % (60 * 24)) / 60);
+  const mins = diffMins % 60;
 
   if (days > 0) {
     return `${days}d ${hours}h left`;
   }
-  return `${hours}h left`;
+  if (hours > 0) {
+    return `${hours}h ${mins}m left`;
+  }
+  return `${mins}m left`;
 }

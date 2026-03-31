@@ -89,12 +89,7 @@ export function showToast(message, type = 'info', duration = 3000) {
   const iconSpan = createElement('span', { className: 'toast-icon' }, [icons[type] || 'ℹ']);
   const contentSpan = createElement('span', { className: 'toast-message' });
   
-  // SUPPORT HTML CONTENT FOR ADVANCED TOASTS
-  if (message.trim().startsWith('<') && message.trim().endsWith('>')) {
-    contentSpan.innerHTML = message;
-  } else {
-    contentSpan.textContent = message;
-  }
+  contentSpan.textContent = message;
   
   const toast = createElement('div', { className: `toast ${type}` }, [
     iconSpan,
@@ -121,7 +116,7 @@ export function debounce(fn, delay = 300) {
 }
 
 // Custom UI Confirm Modal
-export function showConfirm(message, onConfirm) {
+export function showConfirm(message, onConfirm, confirmLabel = 'Yes, Confirm') {
   const overlay = createElement('div', { className: 'modal-overlay', style: { zIndex: '9999' } });
   
   const closeBtn = createElement('button', { className: 'modal-close', textContent: '×' });
@@ -133,7 +128,7 @@ export function showConfirm(message, onConfirm) {
   const cancelBtn = createElement('button', { className: 'btn btn-ghost', textContent: 'Cancel' });
   cancelBtn.addEventListener('click', () => overlay.remove());
 
-  const confirmBtn = createElement('button', { className: 'btn btn-primary', textContent: 'Yes, Delete', style: { backgroundColor: 'var(--clr-error)' } });
+  const confirmBtn = createElement('button', { className: 'btn btn-primary', textContent: confirmLabel, style: { backgroundColor: 'var(--clr-error)' } });
   confirmBtn.addEventListener('click', () => {
     overlay.remove();
     if (typeof onConfirm === 'function') onConfirm();

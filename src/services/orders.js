@@ -8,7 +8,7 @@ import { formatPrice } from '../utils/format.js';
 import { sanitizeInput } from '../utils/dom.js';
 import { clearCart } from './cart.js';
 import { getCurrentUser } from './auth.js';
-import { addOrderToBill, isSubscriber } from './subscription.js';
+import { addOrderToBill, isSubscriber, updateSubscriberOrderTotal } from './subscription.js';
 
 const ORDERS_KEY = 'ssr_orders';
 
@@ -258,19 +258,9 @@ export function updateOrderItems(orderId, newItems, adminComment = '') {
   const oldTotal = orders[orderIndex].total;
   const newTotal = newItems.reduce((sum, item) => sum + (item.price * item.quantity), 0);
 
-  // Calculate difference if it's a monthly billing order
-  if (orders[orderIndex].paymentMethod === 'Monthly Billing') {
-    const { getSubscribers, saveSubscribers } = import.meta.glob('./subscription.js', { eager: true })['./subscription.js'];
-    const subs = getSubscribers();
-    const sub = subs.find(s => s.userId === orders[orderIndex].userId);
-    if (sub) {
-      sub.outstandingBalance = (sub.outstandingBalance - oldTotal) + newTotal;
-      const historyItem = sub.billingHistory.find(h => h.orderId === orderId);
-      if (historyItem) {
-        historyItem.amount = newTotal;
-      }
-      saveSubscribers(subs);
-    }
+  // Update subscriber balance if monthly billing order
+  if (orders[orderIndex].paymentMethod === 'Monthly Billing' && oldTotal !== newTotal) {
+    updateSubscriberOrderTotal(orders[orderIndex].userId, orderId, oldTotal, newTotal);
   }
 
   orders[orderIndex].items = newItems.map(item => ({
@@ -282,9 +272,8 @@ export function updateOrderItems(orderId, newItems, adminComment = '') {
   }));
   orders[orderIndex].total = newTotal;
 
-  if (adminComment) {
-    orders[orderIndex].adminComment = adminComment;
-  }
+  // Allow clearing admin comment by passing empty string
+  orders[orderIndex].adminComment = adminComment;
 
   localStorage.setItem(ORDERS_KEY, JSON.stringify(orders));
   window.dispatchEvent(new CustomEvent('orders-updated', { detail: { orderId } }));

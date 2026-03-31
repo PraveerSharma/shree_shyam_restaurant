@@ -319,7 +319,7 @@ export function initOrdersPage() {
 
         if (updateOrderPickupTime(orderId, newSlot)) {
           showToast('Pickup time updated!', 'success');
-          container.querySelector('.current-time-slot').textContent = `⏰ ${newSlot}`;
+          container.querySelector('.current-time-slot').textContent = newSlot;
           displayWrapper.style.display = 'flex';
           editWrapper.style.display = 'none';
         }

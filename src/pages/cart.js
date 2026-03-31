@@ -3,29 +3,17 @@
 // ============================================
 
 import { getCart, removeFromCart, updateQuantity, getCartTotal } from '../services/cart.js';
-import { createOrder, sendToWhatsApp } from '../services/orders.js';
+import { createOrder } from '../services/orders.js';
 import { formatPrice, getTodayDate } from '../utils/format.js';
 import { showToast, sanitizeInput } from '../utils/dom.js';
 import { SITE_CONFIG } from '../config/site.js';
-import { getCurrentUser, updateUserPhone } from '../services/auth.js';
-import { isSubscriber } from '../services/subscription.js';
-
-let orderSuccess = false;
-let phoneVerified = true; // DEFAULT TO TRUE TO BYPASS OTP
-let resendTimer = 0;
-let resendInterval = null;
+import { getCurrentUser } from '../services/auth.js';
+import { isSubscriber, subscribeUser } from '../services/subscription.js';
 
 export function renderCartPage() {
-  if (orderSuccess) return renderSuccessScreen();
-
   const cart = getCart();
   const total = getCartTotal();
   const user = getCurrentUser();
-
-  // Auto-fill and auto-verify if already verified in DB
-  if (user && user.phoneVerified && !phoneVerified) {
-    phoneVerified = true;
-  }
 
   if (cart.length === 0) {
     return `
@@ -284,7 +272,6 @@ export function initCartPage() {
     const user = getCurrentUser();
     // Auto-enroll non-subscribers if they choose monthly billing
     if (paymentMethod === 'Monthly Billing' && user && !isSubscriber(user.id)) {
-      const subscribeUser = import.meta.glob('../services/subscription.js', { eager: true })['../services/subscription.js'].subscribeUser;
       subscribeUser(user.id, {
         name: user.name,
         phone: phone,
@@ -297,15 +284,10 @@ export function initCartPage() {
     const result = createOrder(cart, { phone, pickupDate, pickupTime, notes, paymentMethod });
 
     if (result.success) {
-      orderSuccess = true;
       window.location.hash = '#/orders';
       showToast('Order placed successfully!', 'success', 5000);
     } else {
       showToast(result.error, 'error');
     }
   });
-}
-
-export function resetCartPageState() {
-  orderSuccess = false;
 }

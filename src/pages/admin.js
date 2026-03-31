@@ -13,7 +13,7 @@ import {
   showToast, unescapeForText, showConfirm
 } from '../utils/dom.js';
 import { compressImageToDataURL } from '../utils/image.js';
-import { getAllOrders, updateOrderStatus, updateOrderItems } from '../services/orders.js';
+import { getAllOrders, updateOrderStatus, updateOrderItems, createOfflineOrder } from '../services/orders.js';
 import { getAllUsersCount, getCurrentUser } from '../services/auth.js';
 import {
   getSubscribers, clearOutstandingBill, createAdminSubscriber, generateBillSummary, addManualBill,
@@ -190,7 +190,15 @@ function renderOrdersDashboard() {
     filteredOrders = filteredOrders.filter(o => o.status === orderFilter);
   }
 
-  const getStatusClass = (status) => `status-badge ${status || ''}`;
+  const getSelectStatusStyle = (status) => {
+    switch (status) {
+      case 'pending': return 'background:#FFF3CD; color:#856404; border-color:#FFEEBA;';
+      case 'accepted': return 'background:#D1ECF1; color:#0C5460; border-color:#BEE5EB;';
+      case 'delivered': return 'background:#D4EDDA; color:#155724; border-color:#C3E6CB;';
+      case 'cancelled': return 'background:#F8D7DA; color:#721C24; border-color:#F5C6CB;';
+      default: return '';
+    }
+  };
 
   return `
     <div class="orders-dashboard page-enter">
@@ -259,7 +267,7 @@ function renderOrdersDashboard() {
                     <span class="badge badge-error" style="animation: pulse 1.5s infinite;">DUE SOON</span>
                   ` : ''}
                 </div>
-                <select class="form-input status-select ${getStatusClass(order.status)}" data-id="${order.orderId}" style="font-weight: 600; text-transform: capitalize; padding: 4px 8px; font-size: 0.8rem; width: auto; min-width: 120px;">
+                <select class="form-input status-select" data-id="${order.orderId}" style="font-weight: 600; text-transform: capitalize; padding: 4px 8px; font-size: 0.8rem; width: auto; min-width: 120px; ${getSelectStatusStyle(order.status)}">
                   ${['pending', 'accepted', 'delivered', 'cancelled'].map(opt => `
                     <option value="${opt}" ${order.status === opt ? 'selected' : ''}>${opt}</option>
                   `).join('')}
@@ -732,7 +740,6 @@ export function initAdminPage() {
       const pickupDate = document.getElementById('offline-pickup-date').value;
       const pickupTime = document.getElementById('offline-pickup-time').value;
 
-      const { createOfflineOrder } = import.meta.glob('../services/orders.js', { eager: true })['../services/orders.js'];
       const result = createOfflineOrder(offlineCart, { name, phone, pickupDate, pickupTime });
       if (result.success) {
         showToast('Manual order created successfully!', 'success');

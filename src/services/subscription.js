@@ -147,6 +147,20 @@ export function clearPartialAmount(userId, amount) {
   return { success: true };
 }
 
+export function updateSubscriberOrderTotal(userId, orderId, oldTotal, newTotal) {
+  const subs = getSubscribers();
+  const sub = subs.find(s => s.userId === userId);
+  if (!sub) return { success: false };
+
+  sub.outstandingBalance = (sub.outstandingBalance - oldTotal) + newTotal;
+  const historyItem = sub.billingHistory.find(h => h.orderId === orderId);
+  if (historyItem) {
+    historyItem.amount = newTotal;
+  }
+  saveSubscribers(subs);
+  return { success: true };
+}
+
 export function createAdminSubscriber(data) {
   const userId = `sub_${Date.now()}`;
   return subscribeUser(userId, data);
