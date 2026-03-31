@@ -146,7 +146,7 @@ function switchToAddButton(card, product) {
 
 function bindQtyControls(card, product, currentQty) {
   let qty = currentQty;
-  const qtyDisplay = card.querySelector('.qty-input');
+  const qtyInput = card.querySelector('.qty-input');
   
   card.querySelector('.qty-minus').addEventListener('click', () => {
     qty--;
@@ -157,7 +157,7 @@ function bindQtyControls(card, product, currentQty) {
       switchToAddButton(card, product);
       return;
     }
-    if (qtyDisplay) qtyDisplay.value = qty;
+    if (qtyInput) qtyInput.value = qty;
     updateQuantity(product.id, qty);
   });
 

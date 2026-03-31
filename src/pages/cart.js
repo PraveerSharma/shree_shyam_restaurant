@@ -8,6 +8,7 @@ import { formatPrice, getTodayDate } from '../utils/format.js';
 import { showToast, sanitizeInput } from '../utils/dom.js';
 import { SITE_CONFIG } from '../config/site.js';
 import { getCurrentUser, updateUserPhone } from '../services/auth.js';
+import { isSubscriber } from '../services/subscription.js';
 
 let orderSuccess = false;
 let phoneVerified = true; // DEFAULT TO TRUE TO BYPASS OTP
@@ -97,12 +98,29 @@ export function renderCartPage() {
                 <span>${formatPrice(total)}</span>
               </div>
 
-              <div class="pickup-note">
+              <div class="pickup-note" style="margin-bottom: 2rem;">
                 📦 <strong>Pickup Order:</strong> Please pick up your order from our store at the selected date. We'll have it ready for you!
               </div>
 
-              <div class="cod-badge">
-                💵 Cash on Delivery — Pay when you pick up
+              <div class="payment-method-section" style="margin-bottom: 2rem;">
+                <label class="form-label">💳 Payment Method</label>
+                <div style="display: flex; flex-direction: column; gap: 0.75rem;">
+                  <label class="method-option" style="display: flex; align-items: center; gap: 0.75rem; padding: 1rem; border: 2px solid var(--clr-primary); border-radius: var(--radius-md); background: #FFF9F2; cursor: pointer;">
+                    <input type="radio" name="payment-method" value="Cash on Delivery" checked style="accent-color: var(--clr-primary); width: 1.25rem; height: 1.25rem;">
+                    <div>
+                      <div style="font-weight: 700;">Cash on Delivery</div>
+                      <div style="font-size: 0.8rem; color: var(--clr-gray-600);">Pay when you pick up at the store</div>
+                    </div>
+                  </label>
+
+                  <label class="method-option" id="method-monthly-billing" style="display: flex; align-items: center; gap: 0.75rem; padding: 1rem; border: 1px solid var(--clr-gray-200); border-radius: var(--radius-md); cursor: pointer; transition: all 0.2s;">
+                    <input type="radio" name="payment-method" value="Monthly Billing" style="accent-color: var(--clr-primary); width: 1.25rem; height: 1.25rem;">
+                    <div>
+                      <div style="font-weight: 700;">Add to Monthly Bill</div>
+                      <div style="font-size: 0.8rem; color: var(--clr-gray-600);">Pay collectively at the end of the month</div>
+                    </div>
+                  </label>
+                </div>
               </div>
 
               <form id="checkout-form" novalidate>
@@ -119,6 +137,7 @@ export function renderCartPage() {
                   <label class="form-label" for="pickup-time">⏰ Pickup Time Slot *</label>
                   <select class="form-input" id="pickup-time" required aria-label="Select pickup time slot">
                     <option value="" disabled selected>Select a time slot</option>
+                    <option value="10:00 AM - 12:00 PM">10:00 AM - 12:00 PM</option>
                     <option value="10:00 AM - 02:00 PM">10:00 AM - 02:00 PM</option>
                     <option value="02:00 PM - 06:00 PM">02:00 PM - 06:00 PM</option>
                     <option value="06:00 PM - 10:00 PM">06:00 PM - 10:00 PM</option>
@@ -211,6 +230,30 @@ export function initCartPage() {
     });
   });
 
+  // Handle payment method change for auto-fill
+  document.querySelectorAll('input[name="payment-method"]').forEach(radio => {
+    radio.addEventListener('change', (e) => {
+      // Styling update
+      document.querySelectorAll('.method-option').forEach(opt => {
+        opt.style.border = '1px solid var(--clr-gray-200)';
+        opt.style.background = 'white';
+      });
+      const parent = e.target.closest('.method-option');
+      if (parent) {
+        parent.style.border = '2px solid var(--clr-primary)';
+        parent.style.background = '#FFF9F2';
+      }
+
+      if (e.target.value === 'Monthly Billing') {
+        const dateInput = document.getElementById('pickup-date');
+        const timeSelect = document.getElementById('pickup-time');
+        if (dateInput) dateInput.value = getTodayDate();
+        if (timeSelect) timeSelect.value = '10:00 AM - 12:00 PM';
+        showToast('Auto-set to today 10-12 time slot', 'info');
+      }
+    });
+  });
+
   // Checkout form
   document.getElementById('checkout-form')?.addEventListener('submit', (e) => {
     e.preventDefault();
@@ -220,6 +263,7 @@ export function initCartPage() {
     const pickupDate = document.getElementById('pickup-date').value;
     const pickupTime = document.getElementById('pickup-time').value;
     const notes = document.getElementById('order-notes').value.trim();
+    const paymentMethod = document.querySelector('input[name="payment-method"]:checked')?.value || 'Cash on Delivery';
 
     // Clear errors
     document.querySelectorAll('.form-error').forEach(el => el.textContent = '');
@@ -240,8 +284,20 @@ export function initCartPage() {
     }
     if (hasError) return;
 
+    const user = getCurrentUser();
+    // Auto-enroll non-subscribers if they choose monthly billing
+    if (paymentMethod === 'Monthly Billing' && user && !isSubscriber(user.id)) {
+      const subscribeUser = import.meta.glob('../services/subscription.js', { eager: true })['../services/subscription.js'].subscribeUser;
+      subscribeUser(user.id, {
+        name: user.name,
+        phone: phone,
+        address: 'Auto-enrolled via checkout'
+      });
+      showToast('You have been enrolled as a subscriber!', 'success');
+    }
+
     const cart = getCart();
-    const result = createOrder(cart, { phone, pickupDate, pickupTime, notes });
+    const result = createOrder(cart, { phone, pickupDate, pickupTime, notes, paymentMethod });
     
     if (result.success) {
       orderSuccess = true;

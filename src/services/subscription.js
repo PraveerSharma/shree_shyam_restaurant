@@ -1,0 +1,167 @@
+// ============================================
+// SUBSCRIPTION SERVICE
+// Manages regular customers and billing history
+// ============================================
+
+const SUBS_KEY = 'ssr_subscribers';
+
+export function getSubscribers() {
+  try {
+    return JSON.parse(localStorage.getItem(SUBS_KEY) || '[]');
+  } catch {
+    return [];
+  }
+}
+
+function saveSubscribers(subs) {
+  localStorage.setItem(SUBS_KEY, JSON.stringify(subs));
+}
+
+export function isSubscriber(userId) {
+  if (!userId) return false;
+  return getSubscribers().some(s => s.userId === userId);
+}
+
+export function getSubscription(userId) {
+  return getSubscribers().find(s => s.userId === userId);
+}
+
+export function subscribeUser(userId, data) {
+  const subs = getSubscribers();
+  if (subs.some(s => s.userId === userId)) return { success: false, error: 'User is already a subscriber' };
+  
+  const newSub = {
+    userId,
+    name: data.name,
+    phone: data.phone,
+    address: data.address || '',
+    outstandingBalance: 0,
+    joinedAt: new Date().toISOString(),
+    billingHistory: [] // { orderId, amount, date, description, status: 'pending' | 'cleared' }
+  };
+  
+  subs.push(newSub);
+  saveSubscribers(subs);
+  return { success: true, subscriber: newSub };
+}
+
+export function addOrderToBill(userId, orderId, amount, description = '', status = 'pending') {
+  const subs = getSubscribers();
+  const sub = subs.find(s => s.userId === userId);
+  if (!sub) return { success: false, error: 'Subscriber not found' };
+  
+  sub.outstandingBalance += amount;
+  sub.billingHistory.unshift({
+    orderId,
+    amount,
+    description: description || `Online Order #${orderId.split('-').pop()}`,
+    date: new Date().toISOString(),
+    status: status
+  });
+  
+  saveSubscribers(subs);
+  return { success: true };
+}
+
+export function approveQuickOrder(userId, orderId, amount) {
+  const subs = getSubscribers();
+  const sub = subs.find(s => s.userId === userId);
+  if (!sub) return { success: false, error: 'Subscriber not found' };
+  
+  const historyItem = sub.billingHistory.find(h => h.orderId === orderId);
+  if (!historyItem) return { success: false, error: 'Order not found in history' };
+  
+  if (historyItem.status !== 'pending_price') return { success: false, error: 'Order is already priced or cleared' };
+  
+  historyItem.amount = amount;
+  historyItem.status = 'pending';
+  sub.outstandingBalance += amount;
+  
+  saveSubscribers(subs);
+  return { success: true };
+}
+
+export function addManualBill(userId, amount, description) {
+  const subs = getSubscribers();
+  const sub = subs.find(s => s.userId === userId);
+  if (!sub) return { success: false, error: 'Subscriber not found' };
+  
+  sub.outstandingBalance += amount;
+  sub.billingHistory.unshift({
+    orderId: 'BILL-' + Math.random().toString(36).substr(2, 6).toUpperCase(),
+    amount,
+    description: description || 'Manual Charge',
+    date: new Date().toISOString(),
+    status: 'pending'
+  });
+  
+  saveSubscribers(subs);
+  return { success: true };
+}
+
+export function clearOutstandingBill(userId) {
+  const subs = getSubscribers();
+  const sub = subs.find(s => s.userId === userId);
+  if (!sub) return { success: false, error: 'Subscriber not found' };
+  
+  sub.outstandingBalance = 0;
+  sub.billingHistory.forEach(h => {
+    if (h.status === 'pending') h.status = 'cleared';
+  });
+  
+  saveSubscribers(subs);
+  return { success: true };
+}
+
+export function clearPartialAmount(userId, amount) {
+  const subs = getSubscribers();
+  const sub = subs.find(s => s.userId === userId);
+  if (!sub) return { success: false, error: 'Subscriber not found' };
+  
+  const clearAmount = parseFloat(amount);
+  if (isNaN(clearAmount) || clearAmount <= 0) return { success: false, error: 'Invalid amount' };
+  
+  sub.outstandingBalance = Math.max(0, sub.outstandingBalance - clearAmount);
+  
+  // Clear items using FIFO
+  let remainingPayment = clearAmount;
+  // Use reverse copy of history to find oldest pending items
+  const history = [...sub.billingHistory].reverse();
+  
+  for (const item of history) {
+    if (item.status === 'pending' && item.amount > 0) {
+      if (remainingPayment >= item.amount) {
+        remainingPayment -= item.amount;
+        // Find original reference and clear it
+        const original = sub.billingHistory.find(h => h.orderId === item.orderId);
+        if (original) original.status = 'cleared';
+      } else {
+        // Partial payment doesn't clear the individual item in this simple model,
+        // but the overall balance is already reduced.
+        break;
+      }
+    }
+  }
+  
+  saveSubscribers(subs);
+  return { success: true };
+}
+
+export function createAdminSubscriber(data) {
+  const userId = `sub_${Date.now()}`;
+  return subscribeUser(userId, data);
+}
+
+export function generateBillSummary(sub) {
+  const lines = [
+    `📊 *BILL SUMMARY - Shree Shyam Restaurant*`,
+    `----------------------------------`,
+    `👤 *Customer:* ${sub.name}`,
+    `📱 *Phone:* ${sub.phone}`,
+    `💰 *Outstanding Balance:* ₹${sub.outstandingBalance}`,
+    `📅 *As of:* ${new Date().toLocaleDateString('en-IN')}`,
+    `----------------------------------`,
+    `Please clear the outstanding amount at your earliest convenience. Thank you for being a regular guest! 🙏`
+  ];
+  return lines.join('\n');
+}

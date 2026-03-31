@@ -8,6 +8,7 @@ import { formatPrice } from '../utils/format.js';
 import { sanitizeInput } from '../utils/dom.js';
 import { clearCart } from './cart.js';
 import { getCurrentUser } from './auth.js';
+import { addOrderToBill, isSubscriber } from './subscription.js';
 
 const ORDERS_KEY = 'ssr_orders';
 
@@ -61,11 +62,17 @@ export function createOrder(cart, customerInfo) {
       subtotal: item.price * item.quantity,
     })),
     total: cart.reduce((sum, item) => sum + (item.price * item.quantity), 0),
-    paymentMethod: 'Cash on Delivery',
+    paymentMethod: customerInfo.paymentMethod || 'Cash on Delivery',
     status: 'pending',
     createdAt: new Date().toISOString(),
     timestamp: new Date().toLocaleString('en-IN', { timeZone: 'Asia/Kolkata' }),
   };
+
+  // If monthly bill selected, add to their balance
+  if (order.paymentMethod === 'Monthly Billing' && isSubscriber(user.id)) {
+    addOrderToBill(user.id, order.orderId, order.total);
+    order.status = 'accepted'; // Auto-accept credit orders from subscribers
+  }
 
   // Save order
   const orders = getOrders();
@@ -110,6 +117,39 @@ export function createOfflineOrder(items, customerInfo) {
   const orders = getOrders();
   orders.push(order);
   localStorage.setItem(ORDERS_KEY, JSON.stringify(orders));
+
+  return { success: true, order };
+}
+
+export function createQuickOrder(userId, description) {
+  const ordersHistory = getOrders();
+  const order = {
+    orderId: generateOrderId(),
+    userId,
+    customerName: 'Subscriber Quick Order',
+    customerPhone: 'N/A',
+    pickupDate: new Date().toLocaleDateString('en-GB'),
+    pickupTime: 'Quick Order',
+    notes: `Quick Order: ${description}`,
+    items: [{
+      name: `Quick Order Description: ${description}`,
+      quantity: 1,
+      price: 0,
+      subtotal: 0
+    }],
+    total: 0,
+    paymentMethod: 'Monthly Billing',
+    status: 'accepted',
+    createdAt: new Date().toISOString(),
+    timestamp: new Date().toLocaleString('en-IN', { timeZone: 'Asia/Kolkata' }),
+  };
+
+  // Add to bill history with the description (status: pending_price, amount: 0)
+  // Admin will fill the price later.
+  addOrderToBill(userId, order.orderId, 0, `Quick Order Request: ${description}`, 'pending_price');
+
+  ordersHistory.push(order);
+  localStorage.setItem(ORDERS_KEY, JSON.stringify(ordersHistory));
 
   return { success: true, order };
 }

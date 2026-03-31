@@ -43,3 +43,37 @@ export function truncateText(text, maxLength = 100) {
   if (text.length <= maxLength) return text;
   return text.slice(0, maxLength).trim() + '...';
 }
+
+export function isDueSoon(dateStr) {
+  if (!dateStr) return false;
+  // Parse date from DD/MM/YYYY or YYYY-MM-DD
+  let parts;
+  if (dateStr.includes('/')) {
+    parts = dateStr.split('/');
+    // Check if it's DD/MM/YYYY
+    if (parts[0].length <= 2) {
+      const d = parseInt(parts[0], 10);
+      const m = parseInt(parts[1], 10) - 1;
+      const y = parseInt(parts[2], 10);
+      const pickupDate = new Date(y, m, d);
+      return checkDateDiff(pickupDate);
+    }
+  }
+  
+  const pickupDate = new Date(dateStr);
+  return checkDateDiff(pickupDate);
+}
+
+function checkDateDiff(pickupDate) {
+  if (isNaN(pickupDate.getTime())) return false;
+  
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  pickupDate.setHours(0, 0, 0, 0);
+  
+  const diffTime = pickupDate - today;
+  const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+  
+  // Tag if today, tomorrow, or day after (diffDays 0, 1, 2)
+  return diffDays >= 0 && diffDays <= 2;
+}

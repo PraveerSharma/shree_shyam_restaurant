@@ -8,21 +8,28 @@ import {
   getSweetsItems, getRestaurantItems, 
   updateItem, addItem, deleteItem, resetToDefaults 
 } from '../services/admin.js';
-import { formatPrice, getTodayDate } from '../utils/format.js';
+import { formatPrice, getTodayDate, isDueSoon } from '../utils/format.js';
 import { 
   showToast, unescapeForText, showConfirm
 } from '../utils/dom.js';
 import { compressImageToDataURL } from '../utils/image.js';
 import { getAllOrders, updateOrderStatus } from '../services/orders.js';
 import { getAllUsersCount } from '../services/auth.js';
+import { 
+  getSubscribers, clearOutstandingBill, createAdminSubscriber, generateBillSummary, addManualBill,
+  approveQuickOrder, clearPartialAmount
+} from '../services/subscription.js';
 
-let mainTab = 'menu'; // 'menu' or 'orders'
+let mainTab = 'menu'; // 'menu', 'orders', 'offline', 'subscribers'
 let activeTab = 'sweets';
 let orderFilter = 'all'; // 'all', 'pending', 'delivered', 'cancelled'
 let showAddForm = false;
 let editingItemId = null;
 let offlineCart = [];
 let offlineSearchQuery = '';
+let selectedSubscriberId = null; // for detail view
+let subSearchQuery = '';
+let showAddSubForm = false;
 
 export function renderAdminPage() {
   if (!isAdminLoggedIn()) {
@@ -93,12 +100,16 @@ function renderAdminDashboard() {
             <button class="badge-tab ${mainTab === 'offline' ? 'active' : ''}" data-main-tab="offline" style="${mainTab === 'offline' ? 'background: var(--clr-saffron); color: white;' : 'background: transparent; color: var(--clr-gray-600);'} border: none; font-size: 1.1rem; padding: 0.5rem 1rem; border-radius: var(--radius-md); font-weight: 600; cursor: pointer; transition: all 0.2s;">
               ➕ Offline Order
             </button>
+            <button class="badge-tab ${mainTab === 'subscribers' ? 'active' : ''}" data-main-tab="subscribers" style="${mainTab === 'subscribers' ? 'background: var(--clr-saffron); color: white;' : 'background: transparent; color: var(--clr-gray-600);'} border: none; font-size: 1.1rem; padding: 0.5rem 1rem; border-radius: var(--radius-md); font-weight: 600; cursor: pointer; transition: all 0.2s;">
+              👥 Subscribers
+            </button>
           </div>
 
           ${(() => {
             if (mainTab === 'menu') return renderMenuManagement();
             if (mainTab === 'orders') return renderOrdersDashboard();
             if (mainTab === 'offline') return renderOfflineOrderForm();
+            if (mainTab === 'subscribers') return renderSubscribersDashboard();
           })()}
         </div>
       </section>
@@ -174,9 +185,9 @@ function renderOrdersDashboard() {
   const totalRevenue = deliveredOrders.reduce((sum, o) => sum + o.total, 0);
   const activeOrdersCount = allOrders.filter(o => o.status === 'pending' || o.status === 'accepted').length;
 
-  let filteredOrders = allOrders;
+  let filteredOrders = allOrders.filter(o => o.paymentMethod !== 'Monthly Billing'); // Monthly billing managed in Subscribers
   if (orderFilter !== 'all') {
-    filteredOrders = allOrders.filter(o => o.status === orderFilter);
+    filteredOrders = filteredOrders.filter(o => o.status === orderFilter);
   }
 
   const getStatusColor = (status) => {
@@ -247,6 +258,9 @@ function renderOrdersDashboard() {
                     <span style="background: var(--clr-gray-200); color: var(--clr-gray-700); font-size: 0.65rem; padding: 2px 6px; border-radius: 4px; text-transform: uppercase; letter-spacing: 0.05em; font-family: sans-serif; font-weight: 700;">
                       🏪 Offline
                     </span>
+                  ` : ''}
+                  ${isDueSoon(order.pickupDate) && order.status !== 'delivered' && order.status !== 'cancelled' ? `
+                    <span class="badge badge-error" style="font-size: 0.65rem; padding: 2px 6px; animation: pulse 2s infinite;">⏰ DUE SOON</span>
                   ` : ''}
                 </div>
                 <div style="font-size: 0.8rem; color: var(--clr-gray-500);">${new Date(order.createdAt).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', hour:'2-digit', minute:'2-digit' })}</div>
@@ -718,6 +732,135 @@ export function initAdminPage() {
       }
     });
   }
+
+  // Subscribers Tab Handlers
+  if (mainTab === 'subscribers') {
+    document.getElementById('sub-search')?.addEventListener('input', (e) => {
+      subSearchQuery = e.target.value.toLowerCase().trim();
+      window.dispatchEvent(new HashChangeEvent('hashchange'));
+    });
+
+    document.getElementById('add-sub-btn')?.addEventListener('click', () => {
+      showAddSubForm = true;
+      window.dispatchEvent(new HashChangeEvent('hashchange'));
+    });
+
+    document.getElementById('cancel-sub-btn')?.addEventListener('click', () => {
+      showAddSubForm = false;
+      window.dispatchEvent(new HashChangeEvent('hashchange'));
+    });
+
+    document.getElementById('new-sub-form')?.addEventListener('submit', (e) => {
+      e.preventDefault();
+      const data = {
+        name: document.getElementById('new-sub-name').value,
+        phone: document.getElementById('new-sub-phone').value,
+        address: document.getElementById('new-sub-address').value
+      };
+      const res = createAdminSubscriber(data);
+      if (res.success) {
+        showToast('New subscriber added successfully!', 'success');
+        showAddSubForm = false;
+        window.dispatchEvent(new HashChangeEvent('hashchange'));
+      }
+    });
+
+    document.getElementById('back-to-subs-btn')?.addEventListener('click', () => {
+      selectedSubscriberId = null;
+      window.dispatchEvent(new HashChangeEvent('hashchange'));
+    });
+
+    // Delegated actions for subscriber list
+    document.querySelector('.subscribers-dashboard')?.addEventListener('click', (e) => {
+      const btn = e.target;
+      const id = btn.dataset.id;
+      if (!id) return;
+
+      if (btn.classList.contains('view-sub-btn')) {
+        selectedSubscriberId = id;
+        window.dispatchEvent(new HashChangeEvent('hashchange'));
+      }
+
+      if (btn.classList.contains('clear-sub-btn')) {
+        showConfirm('Clear all outstanding bills for this subscriber?', () => {
+          if (clearOutstandingBill(id).success) {
+            showToast('Account balance cleared', 'success');
+            window.dispatchEvent(new HashChangeEvent('hashchange'));
+          }
+        });
+      }
+
+      if (btn.classList.contains('share-sub-btn')) {
+        const sub = getSubscribers().find(s => s.userId === id);
+        if (sub) {
+          const text = generateBillSummary(sub);
+          const url = `https://wa.me/${sub.phone.replace(/[\s\-\+]/g, '').replace(/^91/, '91')}?text=${encodeURIComponent(text)}`;
+          window.open(url, '_blank');
+        }
+      }
+    });
+
+    // Handle manual bill form
+    document.getElementById('add-manual-bill-form')?.addEventListener('submit', (e) => {
+      e.preventDefault();
+      const userId = e.target.dataset.id;
+      const description = document.getElementById('manual-bill-desc').value;
+      const amount = parseFloat(document.getElementById('manual-bill-amount').value);
+
+      if (!description || isNaN(amount) || amount <= 0) {
+        showToast('Please enter a valid description and amount', 'error');
+        return;
+      }
+
+      const res = addManualBill(userId, amount, description);
+      if (res.success) {
+        showToast(`Bill of ${formatPrice(amount)} added successfully!`, 'success');
+        window.dispatchEvent(new HashChangeEvent('hashchange'));
+      }
+    });
+
+    // Handle Quick Order Approval
+    document.querySelectorAll('.approve-bill-btn').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const userId = btn.dataset.userId;
+        const orderId = btn.dataset.orderId;
+        const input = document.querySelector(`.price-input[data-order-id="${orderId}"]`);
+        const amount = parseFloat(input.value);
+
+        if (isNaN(amount) || amount <= 0) {
+          showToast('Please enter a valid price', 'error');
+          return;
+        }
+
+        const res = approveQuickOrder(userId, orderId, amount);
+        if (res.success) {
+          showToast('Order priced and approved!', 'success');
+          window.dispatchEvent(new HashChangeEvent('hashchange'));
+        }
+      });
+    });
+
+    // Handle Partial Clear
+    document.querySelectorAll('.clear-partial-btn').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const id = btn.dataset.id;
+        const container = btn.closest('div');
+        const input = container.querySelector('.clear-amount-input');
+        const amount = parseFloat(input.value);
+
+        if (isNaN(amount) || amount <= 0) {
+          showToast('Please enter a valid amount to clear', 'error');
+          return;
+        }
+
+        const res = clearPartialAmount(id, amount);
+        if (res.success) {
+          showToast(`Cleared ${formatPrice(amount)} from balance.`, 'success');
+          window.dispatchEvent(new HashChangeEvent('hashchange'));
+        }
+      });
+    });
+  }
 }
 
 function renderOfflineOrderForm() {
@@ -806,6 +949,200 @@ function renderOfflineOrderForm() {
     </div>
   `;
 }
+
+function renderSubscribersDashboard() {
+  if (selectedSubscriberId) return renderSubscriberDetail();
+
+  const subs = getSubscribers();
+  const filtered = subs.filter(s => 
+    s.name.toLowerCase().includes(subSearchQuery.toLowerCase()) || 
+    s.phone.includes(subSearchQuery)
+  );
+
+  return `
+    <div class="subscribers-dashboard page-enter">
+      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 2rem;">
+        <div style="position: relative; flex: 1; max-width: 400px;">
+          <span style="position: absolute; left: 1rem; top: 50%; transform: translateY(-50%); color: var(--clr-gray-400);">🔍</span>
+          <input type="text" id="sub-search" class="form-input" placeholder="Search by name or phone..." value="${subSearchQuery}" style="padding-left: 2.5rem;">
+        </div>
+        <button class="btn btn-primary" id="add-sub-btn">➕ New Subscriber</button>
+      </div>
+
+      ${showAddSubForm ? `
+        <div style="background: white; padding: 2rem; border: 1px solid var(--clr-gray-200); border-radius: var(--radius-lg); margin-bottom: 2rem; box-shadow: var(--shadow-md);">
+          <h3 style="margin-bottom: 1.5rem;">Add New Subscriber</h3>
+          <form id="new-sub-form" style="display: grid; grid-template-columns: 1fr 1fr 1fr auto; gap: 1rem; align-items: flex-end;">
+            <div class="form-group" style="margin: 0;">
+              <label class="form-label">Full Name</label>
+              <input type="text" class="form-input" id="new-sub-name" required placeholder="E.g. Rajesh Kumar">
+            </div>
+            <div class="form-group" style="margin: 0;">
+              <label class="form-label">Phone Number</label>
+              <input type="tel" class="form-input" id="new-sub-phone" required placeholder="98XXXXXXXX">
+            </div>
+            <div class="form-group" style="margin: 0;">
+              <label class="form-label">Address</label>
+              <input type="text" class="form-input" id="new-sub-address" placeholder="E.g. Vaishali Nagar">
+            </div>
+            <div style="display: flex; gap: 0.5rem;">
+              <button type="submit" class="btn btn-primary">Save Subscriber</button>
+              <button type="button" class="btn btn-ghost" id="cancel-sub-btn">Cancel</button>
+            </div>
+          </form>
+        </div>
+      ` : ''}
+
+      <div class="admin-table-container">
+        <table class="admin-table">
+          <thead>
+            <tr>
+              <th>Subscriber Details</th>
+              <th>Contact Info</th>
+              <th>Outstanding Balance</th>
+              <th>Actions</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${filtered.length === 0 ? `
+              <tr><td colspan="4" style="text-align: center; padding: 3rem;">No subscribers found.</td></tr>
+            ` : filtered.map(sub => `
+              <tr>
+                <td>
+                  <div style="font-weight: 700; font-size: 1.1rem; color: var(--clr-primary);">${sub.name}</div>
+                  <div style="font-size: 0.8rem; color: var(--clr-gray-500);">Joined: ${new Date(sub.joinedAt).toLocaleDateString()}</div>
+                </td>
+                <td>
+                  <div style="margin-bottom: 4px;">📞 ${sub.phone}</div>
+                  <div style="font-size: 0.85rem; color: var(--clr-gray-500);">📍 ${sub.address || 'No address'}</div>
+                </td>
+                <td>
+                  <div style="font-size: 1.25rem; font-weight: 800; color: ${sub.outstandingBalance > 0 ? 'var(--clr-error)' : 'var(--clr-veg)'};">
+                    ${formatPrice(sub.outstandingBalance)}
+                  </div>
+                </td>
+                <td>
+                  <div style="display: flex; gap: 0.5rem; flex-wrap: wrap;">
+                    <button class="btn btn-sm btn-outline view-sub-btn" data-id="${sub.userId}">📜 View Bills</button>
+                    <button class="btn btn-sm share-sub-btn" data-id="${sub.userId}" style="background: #E6F4EA; color: #1E7E34; border: 1px solid #C2E7CB;">📤 Share</button>
+                    ${sub.outstandingBalance > 0 ? `
+                      <div style="display: flex; align-items: center; gap: 4px; background: white; padding: 2px; border-radius: 4px; border: 1px solid var(--clr-gray-200);">
+                        <input type="number" class="clear-amount-input" placeholder="Amount" style="width: 70px; border: none; font-size: 0.8rem; padding: 4px;">
+                        <button class="btn btn-sm clear-partial-btn" data-id="${sub.userId}" style="background: #E3F2FD; color: #1976D2; padding: 4px 8px;">Clear Partial</button>
+                      </div>
+                      <button class="btn btn-sm clear-sub-btn" data-id="${sub.userId}" style="background: #1976D2; color: white;">Full Clear</button>
+                    ` : ''}
+                  </div>
+                </td>
+              </tr>
+            `).join('')}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  `;
+}
+
+function renderSubscriberDetail() {
+  const sub = getSubscribers().find(s => s.userId === selectedSubscriberId);
+  if (!sub) {
+    selectedSubscriberId = null;
+    return renderSubscribersDashboard();
+  }
+
+  return `
+    <div class="subscriber-detail page-enter">
+      <div style="margin-bottom: 2rem;">
+        <button class="btn btn-ghost btn-sm" id="back-to-subs-btn" style="margin-bottom: 1rem;">← Back to All Subscribers</button>
+        <div style="display: flex; justify-content: space-between; align-items: flex-end;">
+          <div>
+            <h2 style="margin-bottom: 0.5rem; font-size: 2rem; color: var(--clr-primary);">${sub.name}</h2>
+            <div style="display: flex; gap: 1.5rem; color: var(--clr-gray-600);">
+              <span>📞 ${sub.phone}</span>
+              <span>📍 ${sub.address}</span>
+            </div>
+          </div>
+          <div style="text-align: right;">
+            <div style="font-size: 0.9rem; color: var(--clr-gray-500); text-transform: uppercase;">Total Outstanding</div>
+            <div style="font-size: 2.5rem; font-weight: 800; color: var(--clr-error); line-height: 1;">${formatPrice(sub.outstandingBalance)}</div>
+          </div>
+        </div>
+      </div>
+
+      </div>
+
+      <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 2rem; margin-bottom: 2rem;">
+        <!-- Left: Quick Bill Form -->
+        <div style="background: white; padding: 1.5rem; border-radius: var(--radius-lg); border: 1px solid var(--clr-gray-200); box-shadow: var(--shadow-sm);">
+          <h3 style="margin-bottom: 1rem; color: var(--clr-primary); font-size: 1.1rem;">➕ Add New Bill Item</h3>
+          <form id="add-manual-bill-form" data-id="${sub.userId}" style="display: flex; flex-direction: column; gap: 1rem;">
+            <div class="form-group">
+              <label class="form-label">Description</label>
+              <input type="text" class="form-input" id="manual-bill-desc" placeholder="e.g. Monthly Service Charge, Event Catering" required>
+            </div>
+            <div class="form-group">
+              <label class="form-label">Amount (₹)</label>
+              <input type="number" class="form-input" id="manual-bill-amount" placeholder="0.00" step="0.01" required>
+            </div>
+            <button type="submit" class="btn btn-primary" style="width: 100%;">Add to Account Balance</button>
+          </form>
+        </div>
+
+        <!-- Right: Current Summary -->
+        <div style="background: var(--clr-gray-50); padding: 1.5rem; border-radius: var(--radius-lg); border: 1px solid var(--clr-gray-200); display: flex; flex-direction: column; justify-content: center; text-align: center;">
+          <div style="font-weight: 700; color: var(--clr-gray-500); text-transform: uppercase; font-size: 0.8rem; letter-spacing: 0.05em; margin-bottom: 0.5rem;">Quick Share</div>
+          <p style="font-size: 0.9rem; color: var(--clr-gray-600); margin-bottom: 1rem;">Send the current balance summary to the subscriber's WhatsApp.</p>
+          <button class="btn share-sub-btn" data-id="${sub.userId}" style="background: #E6F4EA; color: #1E7E34; border: 1px solid #C2E7CB;">📤 Share Bill on WhatsApp</button>
+        </div>
+      </div>
+
+      <div class="admin-table-container">
+        <h3 style="margin-bottom: 1rem; color: var(--clr-secondary);">Order & Credit History</h3>
+        <table class="admin-table">
+          <thead>
+            <tr>
+              <th>Date</th>
+              <th>Description / Order ID</th>
+              <th>Amount</th>
+              <th>Status</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${sub.billingHistory.length === 0 ? `
+              <tr><td colspan="4" style="text-align: center; padding: 2rem; color: var(--clr-gray-400);">No history available.</td></tr>
+            ` : sub.billingHistory.map(h => `
+              <tr>
+                <td>${new Date(h.date).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })}</td>
+                <td>
+                  <div style="font-weight: 600;">${h.description || 'Manual Entry'}</div>
+                  <div style="font-size: 0.75rem; color: var(--clr-gray-400); font-family: var(--ff-accent);">${h.orderId}</div>
+                  ${h.status === 'pending_price' ? `
+                    <div style="margin-top: 8px; display: flex; gap: 4px; align-items: center;">
+                      <input type="number" class="price-input" data-order-id="${h.orderId}" placeholder="Price" style="width: 80px; font-size: 0.85rem; padding: 4px; border: 1px solid var(--clr-primary); border-radius: 4px;">
+                      <button class="btn btn-sm btn-primary approve-bill-btn" data-user-id="${sub.userId}" data-order-id="${h.orderId}" style="padding: 4px 8px; font-size: 0.8rem;">Approve</button>
+                    </div>
+                  ` : ''}
+                </td>
+                <td style="font-weight: 800; color: ${h.status === 'pending' || h.status === 'pending_price' ? 'var(--clr-error)' : 'var(--clr-veg)'};">
+                  ${h.status === 'pending_price' ? '---' : formatPrice(h.amount)}
+                </td>
+                <td>
+                  <span class="badge ${h.status === 'pending' || h.status === 'pending_price' ? 'badge-warning' : 'badge-success'}">
+                    ${h.status === 'pending_price' ? 'Pricing Needed' : (h.status === 'pending' ? 'Outstanding' : 'Cleared')}
+                  </span>
+                </td>
+              </tr>
+            `).join('')}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  `;
+}
+
+// ============================================
+// OFFLINE ORDER HELPERS
+// ============================================
 
 function renderOfflineSearchResultsHTML() {
   if (!offlineSearchQuery) return `<div style="text-align: center; color: var(--clr-gray-400); padding: 1rem;">Start typing to search items...</div>`;
