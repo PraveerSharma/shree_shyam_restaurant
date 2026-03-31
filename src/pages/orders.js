@@ -5,11 +5,13 @@
 
 import { getOrderHistory, updateOrderPickupTime, createQuickOrder } from '../services/orders.js';
 import { getCurrentUser } from '../services/auth.js';
-import { formatPrice, isDueSoon } from '../utils/format.js';
+import { formatPrice, isDueSoon, formatPhoneNumber } from '../utils/format.js';
 import { showToast } from '../utils/dom.js';
 import { isSubscriber, getSubscription, subscribeUser } from '../services/subscription.js';
+import { getMessages, sendMessage } from '../services/chat.js';
 
 let activeOrdersTab = 'history'; // 'history' or 'subscription'
+let activeOrderIdChat = null;
 
 export function renderOrdersPage() {
   const user = getCurrentUser();
@@ -56,6 +58,8 @@ export function renderOrdersPage() {
           <div id="orders-tab-content">
             ${activeOrdersTab === 'history' ? renderOrderHistory(orders) : renderSubscriptionTab(user)}
           </div>
+          
+          ${activeOrderIdChat ? renderUserChatWindow(activeOrderIdChat) : ''}
         </div>
       </section>
     </main>
@@ -86,7 +90,7 @@ function renderOrderHistory(orders) {
               <div style="font-weight: 700; font-family: var(--ff-accent); color: var(--clr-primary); display: flex; align-items: center; gap: 8px;">
                 ${order.orderId}
                 ${isDueSoon(order.pickupDate) && order.status !== 'delivered' && order.status !== 'cancelled' ? `
-                  <span class="badge badge-error" style="font-size: 0.65rem; padding: 2px 6px; animation: pulse 2s infinite;">⏰ DUE SOON</span>
+                  <span class="badge badge-error" style="font-size: 0.65rem; padding: 2px 6px; animation: pulse 2s infinite;">⚠️ DUE SOON</span>
                 ` : ''}
               </div>
             </div>
@@ -138,9 +142,11 @@ function renderOrderHistory(orders) {
                   ${order.status}
                 </div>
               </div>
-              <div style="text-align: right;">
-                <div style="font-size: 0.85rem; color: var(--clr-gray-500); margin-bottom: 0.25rem;">Total Amount</div>
-                <div style="font-size: 1.25rem; font-weight: 800; color: var(--clr-gray-900);">${formatPrice(order.total)}</div>
+                <div style="text-align: right;">
+                  <div style="font-size: 0.85rem; color: var(--clr-gray-500); margin-bottom: 0.25rem;">Total Amount</div>
+                  <div style="font-size: 1.25rem; font-weight: 800; color: var(--clr-gray-900);">${formatPrice(order.total)}</div>
+                  <button class="btn btn-sm btn-outline chat-support-btn" data-id="${order.orderId}" style="margin-top: 0.75rem; font-size: 0.75rem; border-radius: 20px; padding: 4px 12px; font-weight: 700;">💬 Chat with Us</button>
+                </div>
               </div>
             </div>
           </div>
@@ -171,7 +177,7 @@ function renderSubscriptionTab(user) {
             </div>
             <div class="form-group">
               <label class="form-label">Mobile Number</label>
-              <input type="tel" class="form-input" id="sub-phone" value="${user.phone}" required>
+              <input type="tel" class="form-input" id="sub-phone" value="${formatPhoneNumber(user.phone)}" required>
             </div>
             <div class="form-group">
               <label class="form-label">Residential Address</label>
@@ -202,7 +208,7 @@ function renderSubscriptionTab(user) {
         </div>
 
         <div style="background: var(--clr-gray-50); padding: 1rem; border-radius: var(--radius-md); font-size: 0.9rem; color: var(--clr-gray-600);">
-          <div style="margin-bottom: 0.5rem;">📞 ${sub.phone}</div>
+          <div style="margin-bottom: 0.5rem;">📞 ${formatPhoneNumber(sub.phone)}</div>
           <div>📍 ${sub.address}</div>
         </div>
       </div>
@@ -335,4 +341,68 @@ export function initOrdersPage() {
       window.dispatchEvent(new HashChangeEvent('hashchange'));
     }
   });
+
+  // Chat Button Handlers
+  document.querySelectorAll('.chat-support-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      activeOrderIdChat = btn.dataset.id;
+      window.dispatchEvent(new HashChangeEvent('hashchange'));
+    });
+  });
+
+  if (activeOrderIdChat) {
+    document.getElementById('close-chat')?.addEventListener('click', () => {
+      activeOrderIdChat = null;
+      window.dispatchEvent(new HashChangeEvent('hashchange'));
+    });
+
+    const sendUserMsg = () => {
+      const input = document.getElementById('chat-input');
+      const text = input.value;
+      if (sendMessage(activeOrderIdChat, text, 'user').success) {
+        input.value = '';
+        window.dispatchEvent(new HashChangeEvent('hashchange'));
+        // Scroll to bottom
+        const msgCont = document.getElementById('chat-messages');
+        if (msgCont) msgCont.scrollTop = msgCont.scrollHeight;
+      }
+    };
+
+    document.getElementById('send-msg')?.addEventListener('click', sendUserMsg);
+    document.getElementById('chat-input')?.addEventListener('keypress', (e) => {
+      if (e.key === 'Enter') sendUserMsg();
+    });
+  }
+}
+
+function renderUserChatWindow(orderId) {
+  const messages = getMessages(orderId);
+  return `
+    <div style="position: fixed; bottom: 1.5rem; right: 1.5rem; width: 320px; height: 450px; background: white; border-radius: var(--radius-lg); box-shadow: 0 10px 30px rgba(0,0,0,0.15); z-index: 1000; display: flex; flex-direction: column; border: 1px solid var(--clr-gray-200); overflow: hidden;">
+      <div style="background: var(--clr-primary); color: white; padding: 0.85rem 1rem; display: flex; justify-content: space-between; align-items: center;">
+        <div style="font-weight: 700; font-size: 0.9rem;">Chat with Support [${orderId.split('-').pop()}]</div>
+        <button id="close-chat" style="background: none; border: none; color: white; font-size: 1.25rem; cursor: pointer;">✕</button>
+      </div>
+      
+      <div id="chat-messages" style="flex: 1; padding: 1rem; overflow-y: auto; background: #f8f9fa; display: flex; flex-direction: column; gap: 0.75rem;">
+        ${messages.length === 0 ? `
+          <div style="text-align: center; color: var(--clr-gray-400); margin-top: 2rem; font-size: 0.85rem; padding: 0 1rem;">
+            <div style="font-size: 1.5rem; margin-bottom: 0.5rem;">👋</div>
+            How can we help you with your order?
+          </div>
+        ` : messages.map(msg => `
+          <div style="align-self: ${msg.sender === 'user' ? 'flex-end' : 'flex-start'}; max-width: 85%;">
+            <div style="background: ${msg.sender === 'user' ? 'var(--clr-primary)' : 'white'}; color: ${msg.sender === 'user' ? 'white' : 'var(--clr-gray-800)'}; padding: 0.65rem 0.85rem; border-radius: 12px; border-bottom-${msg.sender === 'user' ? 'right' : 'left'}-radius: 2px; font-size: 0.9rem; box-shadow: var(--shadow-sm); border: ${msg.sender === 'user' ? 'none' : '1px solid var(--clr-gray-200)'};">
+              ${msg.text}
+            </div>
+          </div>
+        `).join('')}
+      </div>
+      
+      <div style="padding: 0.75rem; border-top: 1px solid var(--clr-gray-200); display: flex; gap: 8px;">
+        <input type="text" id="chat-input" class="form-input" placeholder="Your message..." style="height: 36px; border-radius: 18px; font-size: 0.9rem; padding: 0 1rem;">
+        <button id="send-msg" class="btn btn-primary" style="width: 36px; height: 36px; border-radius: 50%; padding: 0; display: flex; align-items: center; justify-content:center;">➤</button>
+      </div>
+    </div>
+  `;
 }

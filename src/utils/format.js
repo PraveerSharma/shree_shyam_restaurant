@@ -77,3 +77,13 @@ function checkDateDiff(pickupDate) {
   // Tag if today, tomorrow, or day after (diffDays 0, 1, 2)
   return diffDays >= 0 && diffDays <= 2;
 }
+
+export function formatPhoneNumber(phone) {
+  if (!phone || phone === 'N/A') return 'N/A';
+  const clean = phone.toString().replace(/[\s\-+]/g, '');
+  if (clean.length === 10) return '+91 ' + clean;
+  if (clean.length === 12 && clean.startsWith('91')) {
+    return '+91 ' + clean.substring(2);
+  }
+  return phone.startsWith('+') ? phone : '+91 ' + phone;
+}

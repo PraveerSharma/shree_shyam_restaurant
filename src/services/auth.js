@@ -4,6 +4,7 @@
 // ============================================
 
 import { sanitizeInput } from '../utils/dom.js';
+import { formatPhoneNumber } from '../utils/format.js';
 import { refreshCartUI } from './cart.js';
 
 const USERS_KEY = 'ssr_users';
@@ -89,7 +90,7 @@ function validatePassword(password) {
 export async function register({ name, phone, email, password }) {
   // Sanitize inputs
   name = sanitizeInput(name).trim();
-  phone = sanitizeInput(phone).trim();
+  phone = formatPhoneNumber(sanitizeInput(phone).trim()).replace(/\s/g, ''); // Ensure '+91' prefix
   email = sanitizeInput(email).trim().toLowerCase();
 
   // Validate
@@ -182,17 +183,20 @@ export function updateUserPhone(phone) {
   const currentUser = getCurrentUser();
   if (!currentUser) return { success: false, error: 'User not logged in' };
 
+  // Standardize phone format
+  const formattedPhone = formatPhoneNumber(phone).replace(/\s/g, '');
+
   // Update in Users database
   const users = getUsers();
   const index = users.findIndex(u => u.id === currentUser.id);
   
   if (index !== -1) {
-    users[index].phone = phone;
+    users[index].phone = formattedPhone;
     users[index].phoneVerified = true;
     saveUsers(users);
     
     // Update active session
-    const updatedUser = { ...currentUser, phone, phoneVerified: true };
+    const updatedUser = { ...currentUser, phone: formattedPhone, phoneVerified: true };
     localStorage.setItem(SESSION_KEY, JSON.stringify(updatedUser));
     
     window.dispatchEvent(new CustomEvent('auth-changed', { detail: updatedUser }));

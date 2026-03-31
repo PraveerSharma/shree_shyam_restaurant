@@ -217,6 +217,7 @@ function initFormHandlers() {
     if (result.success) {
       showToast(`Welcome back, ${result.user.name}!`, 'success');
       closeAuthModal();
+      window.location.hash = '#/'; // Redirect to home page
       if (typeof successCallback === 'function') {
         successCallback(result.user);
         successCallback = null; // Clear it
@@ -254,6 +255,7 @@ function initFormHandlers() {
     if (result.success) {
       showToast(`Welcome, ${result.user.name}! Account created.`, 'success');
       closeAuthModal();
+      window.location.hash = '#/'; // Redirect to home page
       if (typeof successCallback === 'function') {
         successCallback(result.user);
         successCallback = null; // Clear it

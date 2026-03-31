@@ -165,3 +165,17 @@ export function generateBillSummary(sub) {
   ];
   return lines.join('\n');
 }
+
+export function getTotalClearedRevenue() {
+  const subs = getSubscribers();
+  return subs.reduce((total, sub) => {
+    // Total Billed = All items, excluding ones with no price set yet
+    const billed = sub.billingHistory
+      .filter(h => h.status !== 'pending_price')
+      .reduce((sum, h) => sum + (h.amount || 0), 0);
+    
+    // Revenue = Billed amount that is NO LONGER outstanding
+    const paid = billed - (sub.outstandingBalance || 0);
+    return total + Math.max(0, paid);
+  }, 0);
+}

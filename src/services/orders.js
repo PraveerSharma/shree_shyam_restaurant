@@ -250,3 +250,39 @@ export function updateOrderPickupTime(orderId, pickupTime) {
   window.dispatchEvent(new CustomEvent('orders-updated', { detail: { orderId, pickupTime } }));
   return true;
 }
+export function updateOrderItems(orderId, newItems) {
+  const orders = getOrders();
+  const orderIndex = orders.findIndex(o => o.orderId === orderId);
+  if (orderIndex === -1) return { success: false, error: 'Order not found' };
+
+  const oldTotal = orders[orderIndex].total;
+  const newTotal = newItems.reduce((sum, item) => sum + (item.price * item.quantity), 0);
+  
+  // Calculate difference if it's a monthly billing order
+  if (orders[orderIndex].paymentMethod === 'Monthly Billing') {
+    const { getSubscribers, saveSubscribers } = import.meta.glob('./subscription.js', { eager: true })['./subscription.js'];
+    const subs = getSubscribers();
+    const sub = subs.find(s => s.userId === orders[orderIndex].userId);
+    if (sub) {
+      sub.outstandingBalance = (sub.outstandingBalance - oldTotal) + newTotal;
+      const historyItem = sub.billingHistory.find(h => h.orderId === orderId);
+      if (historyItem) {
+        historyItem.amount = newTotal;
+      }
+      saveSubscribers(subs);
+    }
+  }
+
+  orders[orderIndex].items = newItems.map(item => ({
+    name: item.name,
+    quantity: item.quantity,
+    price: item.price,
+    subtotal: item.price * item.quantity,
+  }));
+  orders[orderIndex].total = newTotal;
+  
+  localStorage.setItem(ORDERS_KEY, JSON.stringify(orders));
+  window.dispatchEvent(new CustomEvent('orders-updated', { detail: { orderId } }));
+  
+  return { success: true, order: orders[orderIndex] };
+}
