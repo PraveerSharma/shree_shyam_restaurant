@@ -31,7 +31,7 @@ export function renderProductCard(product) {
            width="300" 
            height="225">
       <div class="product-card-veg">
-        <span class="veg-dot"></span>
+        <span class="veg-dot" aria-hidden="true"></span>
         Pure Veg
       </div>
     </div>
@@ -44,12 +44,12 @@ export function renderProductCard(product) {
       </div>
       <div class="product-card-actions">
         ${!product.isAvailable ? `
-          <button disabled style="width:100%; cursor:not-allowed; background:var(--clr-gray-200); color:var(--clr-gray-500); border:none; padding:10px 16px; border-radius:var(--radius-full); font-weight:600; font-size: 0.9rem;">Out of Stock</button>
+          <button disabled style="width:100%; cursor:not-allowed; background:var(--clr-gray-200); color:var(--clr-gray-500); border:none; padding:10px 16px; border-radius:var(--radius-full); font-weight:600; font-size: 0.9rem;" aria-label="Out of stock: ${product.name}">Out of Stock</button>
         ` : (existingQty > 0 ? `
           <div class="qty-selector active" data-id="${product.id}">
-            <button class="qty-btn qty-minus" data-id="${product.id}" aria-label="Decrease quantity">−</button>
-            <input type="number" class="qty-input" value="${existingQty}" min="1" max="999" data-id="${product.id}" style="width: 50px; text-align: center; border: none; background: transparent; font-weight: 700; color: var(--clr-primary); font-size: 1rem;">
-            <button class="qty-btn qty-plus" data-id="${product.id}" aria-label="Increase quantity">+</button>
+            <button class="qty-btn qty-minus" data-id="${product.id}" aria-label="Decrease quantity of ${product.name}">−</button>
+            <input type="number" class="qty-input" value="${existingQty}" min="1" max="999" data-id="${product.id}" aria-label="Quantity for ${product.name}" style="width: 50px; text-align: center; border: none; background: transparent; font-weight: 700; color: var(--clr-primary); font-size: 1rem;">
+            <button class="qty-btn qty-plus" data-id="${product.id}" aria-label="Increase quantity of ${product.name}">+</button>
           </div>
         ` : `
           <button class="add-to-cart-btn" data-id="${product.id}" aria-label="Add ${product.name} to cart">

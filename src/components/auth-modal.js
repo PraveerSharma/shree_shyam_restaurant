@@ -22,12 +22,12 @@ export function showAuthModal(tab = 'login', onSuccess = null) {
   overlay.id = 'auth-modal-overlay';
   
   overlay.innerHTML = `
-    <div class="modal" id="auth-modal">
-      <button class="modal-close" id="auth-modal-close" aria-label="Close">&times;</button>
-      
-      <div class="auth-tabs" id="auth-tabs-bar">
-        <button class="auth-tab ${tab === 'login' ? 'active' : ''}" data-tab="login">Login</button>
-        <button class="auth-tab ${tab === 'register' ? 'active' : ''}" data-tab="register">Register</button>
+    <div class="modal" id="auth-modal" role="dialog" aria-modal="true" aria-labelledby="auth-modal-heading">
+      <button class="modal-close" id="auth-modal-close" aria-label="Close dialog">&times;</button>
+
+      <div class="auth-tabs" id="auth-tabs-bar" role="tablist" aria-label="Authentication">
+        <button class="auth-tab ${tab === 'login' ? 'active' : ''}" data-tab="login" role="tab" aria-selected="${tab === 'login'}">Login</button>
+        <button class="auth-tab ${tab === 'register' ? 'active' : ''}" data-tab="register" role="tab" aria-selected="${tab === 'register'}">Register</button>
       </div>
 
       <div id="auth-form-container">
@@ -36,24 +36,38 @@ export function showAuthModal(tab = 'login', onSuccess = null) {
     </div>
   `;
 
+  // Store trigger element for focus restoration
+  const triggerElement = document.activeElement;
+
   document.body.appendChild(overlay);
   document.body.style.overflow = 'hidden';
 
+  // Hide background content from screen readers
+  const appRoot = document.getElementById('app');
+  if (appRoot) appRoot.setAttribute('aria-hidden', 'true');
+
+  // Focus the close button on open
+  setTimeout(() => document.getElementById('auth-modal-close')?.focus(), 50);
+
   // Events
   overlay.addEventListener('click', (e) => {
-    if (e.target === overlay) closeAuthModal();
+    if (e.target === overlay) closeAuthModal(triggerElement);
   });
 
-  document.getElementById('auth-modal-close').addEventListener('click', closeAuthModal);
+  document.getElementById('auth-modal-close').addEventListener('click', () => closeAuthModal(triggerElement));
 
   // Tab switching
   overlay.querySelectorAll('.auth-tab').forEach(tabBtn => {
     tabBtn.addEventListener('click', () => {
       currentTab = tabBtn.dataset.tab;
-      overlay.querySelectorAll('.auth-tab').forEach(t => t.classList.remove('active'));
+      overlay.querySelectorAll('.auth-tab').forEach(t => {
+        t.classList.remove('active');
+        t.setAttribute('aria-selected', 'false');
+      });
       tabBtn.classList.add('active');
+      tabBtn.setAttribute('aria-selected', 'true');
       document.getElementById('auth-tabs-bar').style.display = '';
-      document.getElementById('auth-form-container').innerHTML = 
+      document.getElementById('auth-form-container').innerHTML =
         currentTab === 'login' ? renderLoginForm() : renderRegisterForm();
       initFormHandlers();
     });
@@ -61,33 +75,50 @@ export function showAuthModal(tab = 'login', onSuccess = null) {
 
   initFormHandlers();
 
-  // Escape key
-  const escHandler = (e) => {
+  // Focus trap + Escape key
+  const keyHandler = (e) => {
     if (e.key === 'Escape') {
-      closeAuthModal();
-      document.removeEventListener('keydown', escHandler);
+      closeAuthModal(triggerElement);
+      document.removeEventListener('keydown', keyHandler);
+      return;
+    }
+    // Focus trap: cycle focus within modal
+    if (e.key === 'Tab') {
+      const modal = document.getElementById('auth-modal');
+      if (!modal) return;
+      const focusable = modal.querySelectorAll('button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])');
+      if (focusable.length === 0) return;
+      const first = focusable[0];
+      const last = focusable[focusable.length - 1];
+      if (e.shiftKey && document.activeElement === first) {
+        e.preventDefault();
+        last.focus();
+      } else if (!e.shiftKey && document.activeElement === last) {
+        e.preventDefault();
+        first.focus();
+      }
     }
   };
-  document.addEventListener('keydown', escHandler);
+  document.addEventListener('keydown', keyHandler);
 }
 
 function renderLoginForm() {
   return `
     <form id="login-form" novalidate>
-      <h2 class="modal-title">Welcome Back</h2>
+      <h2 class="modal-title" id="auth-modal-heading">Welcome Back</h2>
       <p class="modal-subtitle">Login to your account to continue</p>
-      
+
       <div class="form-group">
         <label class="form-label" for="login-email">Email Address</label>
-        <input class="form-input" type="email" id="login-email" placeholder="your@gmail.com" required autocomplete="email">
+        <input class="form-input" type="email" id="login-email" placeholder="your@gmail.com" required autocomplete="email" aria-describedby="login-email-error">
         <div class="form-hint">Only Gmail addresses accepted</div>
-        <div class="form-error" id="login-email-error"></div>
+        <div class="form-error" id="login-email-error" aria-live="polite"></div>
       </div>
-      
+
       <div class="form-group">
         <label class="form-label" for="login-password">Password</label>
-        <input class="form-input" type="password" id="login-password" placeholder="Enter your password" required autocomplete="current-password">
-        <div class="form-error" id="login-password-error"></div>
+        <input class="form-input" type="password" id="login-password" placeholder="Enter your password" required autocomplete="current-password" aria-describedby="login-password-error">
+        <div class="form-error" id="login-password-error" aria-live="polite"></div>
       </div>
       
       <div class="form-error" id="login-general-error" style="margin-bottom:1rem;"></div>
@@ -326,13 +357,18 @@ function initFormHandlers() {
   });
 }
 
-export function closeAuthModal() {
+export function closeAuthModal(triggerElement = null) {
   const overlay = document.getElementById('auth-modal-overlay');
   if (overlay) {
     overlay.style.opacity = '0';
     setTimeout(() => {
       overlay.remove();
       document.body.style.overflow = '';
+      // Restore background visibility for screen readers
+      const appRoot = document.getElementById('app');
+      if (appRoot) appRoot.removeAttribute('aria-hidden');
+      // Restore focus to trigger element
+      if (triggerElement && typeof triggerElement.focus === 'function') triggerElement.focus();
     }, 200);
   }
 }

@@ -11,11 +11,11 @@ export function renderHomePage() {
       <!-- HERO SECTION -->
       <section class="hero" id="hero-section">
         <div class="hero-bg">
-          <img src="/images/hero-bg.png" alt="Indian Thali Spread" width="1920" height="1080" loading="eager">
+          <img src="/images/hero-bg.png" alt="" width="1920" height="1080" loading="eager" aria-hidden="true">
         </div>
-        <div class="hero-overlay"></div>
+        <div class="hero-overlay" aria-hidden="true"></div>
         <div class="hero-content">
-          <img src="/images/logo.png" alt="${SITE_CONFIG.name}" class="hero-logo">
+          <img src="/images/logo.png" alt="" class="hero-logo" aria-hidden="true">
           <div class="hero-badge" style="margin-bottom: var(--sp-md);">✦ Since 2005 ✦</div>
           <h1 class="hero-title">
             Shree Shyam Restaurant

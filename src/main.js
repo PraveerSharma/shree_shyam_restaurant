@@ -11,6 +11,7 @@ import './styles/responsive.css';
 
 import { renderHeader, initHeader, updateActiveLink, updateCartBadge } from './components/header.js';
 import { renderFooter } from './components/footer.js';
+import { trackPageView } from './services/analytics.js';
 import { showAuthModal } from './components/auth-modal.js';
 import { initScrollReveal } from './utils/animations.js';
 
@@ -110,6 +111,10 @@ function renderPage(route) {
     ${renderFooter()}
   `;
 
+  // Add main-content id for skip link
+  const mainEl = app.querySelector('main');
+  if (mainEl) mainEl.id = 'main-content';
+
   // Initialize header
   initHeader();
   
@@ -126,7 +131,7 @@ function renderPage(route) {
   window.scrollTo(0, 0);
 
   // Analytics: track page view
-  import('./services/analytics.js').then(({ trackPageView }) => trackPageView(route)).catch(() => {});
+  trackPageView(route);
 
   // Init scroll reveals
   setTimeout(() => initScrollReveal(), 100);

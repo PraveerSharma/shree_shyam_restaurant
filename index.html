@@ -80,11 +80,14 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 </head>
 <body>
+  <!-- Skip to content (accessibility) -->
+  <a href="#main-content" class="skip-link">Skip to main content</a>
+
   <!-- App Root -->
   <div id="app">
     <!-- Loading State -->
-    <div style="display:flex;align-items:center;justify-content:center;min-height:100vh;flex-direction:column;gap:1rem;">
-      <div class="spinner" style="width:40px;height:40px;border:3px solid #e2e2ea;border-top-color:#D4731A;border-radius:50%;animation:spin 0.8s linear infinite;"></div>
+    <div role="status" aria-label="Loading" style="display:flex;align-items:center;justify-content:center;min-height:100vh;flex-direction:column;gap:1rem;">
+      <div class="spinner" aria-hidden="true" style="width:40px;height:40px;border:3px solid #e2e2ea;border-top-color:#D4731A;border-radius:50%;animation:spin 0.8s linear infinite;"></div>
       <p style="font-family:sans-serif;color:#72728A;font-size:0.9rem;">Loading Shree Shyam Restaurant...</p>
     </div>
   </div>

@@ -25,7 +25,7 @@ export function renderHeader() {
           </div>
         </a>
 
-        <nav class="header-nav">
+        <nav class="header-nav" aria-label="Main navigation">
           <div class="nav-links" id="nav-links">
             ${isAdminPage ? `
               <a href="#/" class="nav-link">⬅️ Back to Website</a>
@@ -41,20 +41,20 @@ export function renderHeader() {
 
         <div class="header-actions">
           ${!isAdminPage ? `
-            <a href="#/cart" class="cart-btn" id="cart-btn" aria-label="View Cart">
-              <svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M6 2L3 6v14a2 2 0 002 2h14a2 2 0 002-2V6l-3-4z"/><line x1="3" y1="6" x2="21" y2="6"/><path d="M16 10a4 4 0 01-8 0"/></svg>
+            <a href="#/cart" class="cart-btn" id="cart-btn" aria-label="View Cart, ${cartCount || 0} items">
+              <svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 2L3 6v14a2 2 0 002 2h14a2 2 0 002-2V6l-3-4z"/><line x1="3" y1="6" x2="21" y2="6"/><path d="M16 10a4 4 0 01-8 0"/></svg>
               Cart
-              <span class="cart-badge" id="cart-badge">${cartCount || 0}</span>
+              <span class="cart-badge" id="cart-badge" aria-hidden="true">${cartCount || 0}</span>
             </a>
           ` : ''}
 
           ${user ? `
-            <button class="btn btn-ghost btn-sm" id="user-menu-btn" title="${user.name}">
-              <svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+            <button class="btn btn-ghost btn-sm" id="user-menu-btn" aria-label="${user.name}">
+              <svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" aria-hidden="true"><path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
               ${user.name.split(' ')[0]}
             </button>
-            <button class="btn btn-ghost btn-sm" id="logout-btn" title="Logout">
-              <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
+            <button class="btn btn-ghost btn-sm" id="logout-btn" aria-label="Logout">
+              <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" aria-hidden="true"><path d="M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
             </button>
           ` : adminActive ? `
             <span style="font-size: 0.85rem; font-weight: 600; color: var(--clr-saffron); display:flex; align-items:center; gap:4px; padding: 4px 12px; background: rgba(212, 115, 26, 0.1); border-radius: 100px;">
@@ -66,14 +66,14 @@ export function renderHeader() {
             <button class="btn btn-primary btn-sm" id="register-btn">Register</button>
           `}
 
-          <div class="hamburger" id="hamburger" aria-label="Menu">
+          <button class="hamburger" id="hamburger" aria-label="Open menu" aria-expanded="false" aria-controls="mobile-nav">
             <span></span><span></span><span></span>
-          </div>
+          </button>
         </div>
       </div>
     </header>
 
-    <div class="mobile-nav" id="mobile-nav">
+    <div class="mobile-nav" id="mobile-nav" role="navigation" aria-label="Mobile navigation" aria-hidden="true">
       ${isAdminPage ? `
         <a href="#/" class="nav-link">🏠 Exit Admin & Back to Site</a>
         <div style="padding: 1rem; color: var(--clr-saffron); font-weight: 700; border-top: 1px solid var(--clr-gray-200); margin-top: 1rem;">
@@ -120,16 +120,22 @@ export function initHeader() {
 
   // Hamburger toggle
   hamburger?.addEventListener('click', () => {
+    const isOpen = mobileNav.classList.toggle('open');
     hamburger.classList.toggle('active');
-    mobileNav.classList.toggle('open');
-    document.body.style.overflow = mobileNav.classList.contains('open') ? 'hidden' : '';
+    hamburger.setAttribute('aria-expanded', isOpen);
+    hamburger.setAttribute('aria-label', isOpen ? 'Close menu' : 'Open menu');
+    mobileNav.setAttribute('aria-hidden', !isOpen);
+    document.body.style.overflow = isOpen ? 'hidden' : '';
   });
 
   // Close mobile nav on link click
   mobileNav?.querySelectorAll('.nav-link').forEach(link => {
     link.addEventListener('click', () => {
       hamburger.classList.remove('active');
+      hamburger.setAttribute('aria-expanded', 'false');
+      hamburger.setAttribute('aria-label', 'Open menu');
       mobileNav.classList.remove('open');
+      mobileNav.setAttribute('aria-hidden', 'true');
       document.body.style.overflow = '';
     });
   });
