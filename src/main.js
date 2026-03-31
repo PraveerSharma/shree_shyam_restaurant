@@ -162,6 +162,15 @@ document.addEventListener('securitypolicyviolation', (e) => {
 // ── Initial render ──
 handleRoute();
 
+// ── Supabase Sync (background — doesn't block initial render) ──
+import { syncAll } from './services/db.js';
+syncAll().then(ok => {
+  if (ok) {
+    console.log('[DB] Synced with Supabase');
+    handleRoute(); // Re-render with server data
+  }
+}).catch(err => console.warn('[DB] Sync failed, using local data:', err));
+
 // ── Service Worker Registration (for PWA-ready) ──
 if ('serviceWorker' in navigator && import.meta.env.PROD) {
   window.addEventListener('load', () => {

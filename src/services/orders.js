@@ -9,6 +9,7 @@ import { sanitizeInput } from '../utils/dom.js';
 import { clearCart } from './cart.js';
 import { getCurrentUser } from './auth.js';
 import { addOrderToBill, isSubscriber, updateSubscriberOrderTotal } from './subscription.js';
+import { dbSaveOrder, dbUpdateOrderStatus, dbUpdateOrderItems, dbUpdateOrderPickupTime } from './db.js';
 
 const ORDERS_KEY = 'ssr_orders';
 
@@ -79,6 +80,9 @@ export function createOrder(cart, customerInfo) {
   orders.push(order);
   localStorage.setItem(ORDERS_KEY, JSON.stringify(orders));
 
+  // Sync to Supabase (background)
+  dbSaveOrder(order).catch(err => console.warn('[DB] order save failed:', err));
+
   // Clear cart after successful order creation
   clearCart();
 
@@ -117,6 +121,9 @@ export function createOfflineOrder(items, customerInfo) {
   const orders = getOrders();
   orders.push(order);
   localStorage.setItem(ORDERS_KEY, JSON.stringify(orders));
+
+  // Sync to Supabase
+  dbSaveOrder(order).catch(err => console.warn('[DB] offline order save failed:', err));
 
   return { success: true, order };
 }
@@ -234,7 +241,7 @@ export function updateOrderStatus(orderId, status) {
   orders[orderIndex].status = status;
   localStorage.setItem(ORDERS_KEY, JSON.stringify(orders));
 
-  // Optional real-time event dispatch
+  dbUpdateOrderStatus(orderId, status).catch(err => console.warn('[DB] status update failed:', err));
   window.dispatchEvent(new CustomEvent('orders-updated', { detail: { orderId, status } }));
   return true;
 }
@@ -247,6 +254,7 @@ export function updateOrderPickupTime(orderId, pickupTime) {
   orders[orderIndex].pickupTime = pickupTime;
   localStorage.setItem(ORDERS_KEY, JSON.stringify(orders));
 
+  dbUpdateOrderPickupTime(orderId, pickupTime).catch(err => console.warn('[DB] pickup time update failed:', err));
   window.dispatchEvent(new CustomEvent('orders-updated', { detail: { orderId, pickupTime } }));
   return true;
 }
@@ -276,7 +284,10 @@ export function updateOrderItems(orderId, newItems, adminComment = '') {
   orders[orderIndex].adminComment = adminComment;
 
   localStorage.setItem(ORDERS_KEY, JSON.stringify(orders));
-  window.dispatchEvent(new CustomEvent('orders-updated', { detail: { orderId } }));
 
+  dbUpdateOrderItems(orderId, orders[orderIndex].items, newTotal, adminComment)
+    .catch(err => console.warn('[DB] order items update failed:', err));
+
+  window.dispatchEvent(new CustomEvent('orders-updated', { detail: { orderId } }));
   return { success: true, order: orders[orderIndex] };
 }

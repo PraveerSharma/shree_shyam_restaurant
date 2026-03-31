@@ -7,6 +7,7 @@ import { DEFAULT_SWEETS } from '../config/sweets-data.js';
 import { DEFAULT_RESTAURANT_ITEMS } from '../config/restaurant-data.js';
 import { SITE_CONFIG } from '../config/site.js';
 import { sanitizeInput } from '../utils/dom.js';
+import { dbSaveMenuItem, dbDeleteMenuItem, dbSaveAllMenuItems } from './db.js';
 
 const SWEETS_OVERRIDE_KEY = 'ssr_sweets_custom';
 const RESTAURANT_OVERRIDE_KEY = 'ssr_restaurant_custom';
@@ -78,6 +79,7 @@ export function updateItem(type, itemId, updates) {
   
   items[index] = { ...items[index], ...updates };
   localStorage.setItem(key, JSON.stringify(items));
+  dbSaveMenuItem(items[index], type).catch(err => console.warn('[DB]', err));
   return true;
 }
 
@@ -100,6 +102,7 @@ export function addItem(type, item) {
   
   items.push(newItem);
   localStorage.setItem(key, JSON.stringify(items));
+  dbSaveMenuItem(newItem, type).catch(err => console.warn('[DB]', err));
   return newItem;
 }
 
@@ -110,6 +113,7 @@ export function deleteItem(type, itemId) {
   
   const filtered = items.filter(i => i.id !== itemId);
   localStorage.setItem(key, JSON.stringify(filtered));
+  dbDeleteMenuItem(itemId).catch(err => console.warn('[DB]', err));
   return true;
 }
 
@@ -117,4 +121,6 @@ export function deleteItem(type, itemId) {
 export function resetToDefaults(type) {
   const key = type === 'sweets' ? SWEETS_OVERRIDE_KEY : RESTAURANT_OVERRIDE_KEY;
   localStorage.removeItem(key);
+  const defaults = type === 'sweets' ? DEFAULT_SWEETS : DEFAULT_RESTAURANT_ITEMS;
+  dbSaveAllMenuItems(defaults, type).catch(err => console.warn('[DB]', err));
 }

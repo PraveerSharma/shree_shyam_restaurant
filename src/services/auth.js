@@ -6,6 +6,7 @@
 import { sanitizeInput } from '../utils/dom.js';
 import { formatPhoneNumber } from '../utils/format.js';
 import { refreshCartUI } from './cart.js';
+import { dbSaveUser } from './db.js';
 
 const USERS_KEY = 'ssr_users';
 const SESSION_KEY = 'ssr_session';
@@ -125,6 +126,9 @@ export async function register({ name, phone, email, password }) {
 
   users.push(user);
   saveUsers(users);
+
+  // Sync to Supabase (background)
+  dbSaveUser(user).catch(err => console.warn('[DB] user save failed:', err));
 
   // Auto-login
   const session = { ...user };

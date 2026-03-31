@@ -1,4 +1,5 @@
 import { getCurrentUser } from './auth.js';
+import { dbSyncCart } from './db.js';
 
 function getCartKey() {
   const user = getCurrentUser();
@@ -21,6 +22,10 @@ function saveCart(cart) {
   if (!key) return;
   localStorage.setItem(key, JSON.stringify(cart));
   window.dispatchEvent(new CustomEvent('cart-updated', { detail: { cart, count: getCartCount(), total: getCartTotal() } }));
+
+  // Sync to Supabase (background)
+  const user = getCurrentUser();
+  if (user) dbSyncCart(user.id, cart).catch(err => console.warn('[DB] cart sync failed:', err));
 }
 
 export function getCart() {

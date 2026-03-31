@@ -3,6 +3,8 @@
 // Manages regular customers and billing history
 // ============================================
 
+import { dbSaveSubscriber, dbUpdateSubscriberBalance, dbAddBillingHistory, dbClearSubscriberBills } from './db.js';
+
 const SUBS_KEY = 'ssr_subscribers';
 
 export function getSubscribers() {
@@ -42,6 +44,7 @@ export function subscribeUser(userId, data) {
   
   subs.push(newSub);
   saveSubscribers(subs);
+  dbSaveSubscriber(newSub).catch(err => console.warn('[DB] subscriber save failed:', err));
   return { success: true, subscriber: newSub };
 }
 
@@ -51,15 +54,18 @@ export function addOrderToBill(userId, orderId, amount, description = '', status
   if (!sub) return { success: false, error: 'Subscriber not found' };
   
   sub.outstandingBalance += amount;
-  sub.billingHistory.unshift({
+  const entry = {
     orderId,
     amount,
     description: description || `Online Order #${orderId.split('-').pop()}`,
     date: new Date().toISOString(),
     status: status
-  });
-  
+  };
+  sub.billingHistory.unshift(entry);
+
   saveSubscribers(subs);
+  dbUpdateSubscriberBalance(userId, sub.outstandingBalance).catch(err => console.warn('[DB]', err));
+  dbAddBillingHistory(userId, entry).catch(err => console.warn('[DB]', err));
   return { success: true };
 }
 
@@ -76,8 +82,9 @@ export function approveQuickOrder(userId, orderId, amount) {
   historyItem.amount = amount;
   historyItem.status = 'pending';
   sub.outstandingBalance += amount;
-  
+
   saveSubscribers(subs);
+  dbUpdateSubscriberBalance(userId, sub.outstandingBalance).catch(err => console.warn('[DB]', err));
   return { success: true };
 }
 
@@ -87,15 +94,18 @@ export function addManualBill(userId, amount, description) {
   if (!sub) return { success: false, error: 'Subscriber not found' };
   
   sub.outstandingBalance += amount;
-  sub.billingHistory.unshift({
+  const billEntry = {
     orderId: 'BILL-' + Math.random().toString(36).substr(2, 6).toUpperCase(),
     amount,
     description: description || 'Manual Charge',
     date: new Date().toISOString(),
     status: 'pending'
-  });
-  
+  };
+  sub.billingHistory.unshift(billEntry);
+
   saveSubscribers(subs);
+  dbUpdateSubscriberBalance(userId, sub.outstandingBalance).catch(err => console.warn('[DB]', err));
+  dbAddBillingHistory(userId, billEntry).catch(err => console.warn('[DB]', err));
   return { success: true };
 }
 
@@ -108,8 +118,9 @@ export function clearOutstandingBill(userId) {
   sub.billingHistory.forEach(h => {
     if (h.status === 'pending') h.status = 'cleared';
   });
-  
+
   saveSubscribers(subs);
+  dbClearSubscriberBills(userId).catch(err => console.warn('[DB]', err));
   return { success: true };
 }
 
@@ -144,6 +155,7 @@ export function clearPartialAmount(userId, amount) {
   }
   
   saveSubscribers(subs);
+  dbUpdateSubscriberBalance(userId, sub.outstandingBalance).catch(err => console.warn('[DB]', err));
   return { success: true };
 }
 
@@ -158,6 +170,7 @@ export function updateSubscriberOrderTotal(userId, orderId, oldTotal, newTotal) 
     historyItem.amount = newTotal;
   }
   saveSubscribers(subs);
+  dbUpdateSubscriberBalance(userId, sub.outstandingBalance).catch(err => console.warn('[DB]', err));
   return { success: true };
 }
 
