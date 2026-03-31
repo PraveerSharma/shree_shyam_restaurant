@@ -6,6 +6,7 @@
 import './styles/index.css';
 import './styles/components.css';
 import './styles/pages.css';
+import './services/error-monitor.js'; // Global error capture
 import './styles/responsive.css';
 
 import { renderHeader, initHeader, updateActiveLink, updateCartBadge } from './components/header.js';
