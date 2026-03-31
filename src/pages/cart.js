@@ -68,6 +68,7 @@ export function renderCartPage() {
                         <button class="qty-btn cart-qty-minus" data-id="${item.id}">−</button>
                         <input class="qty-value" type="text" value="${item.quantity}" readonly>
                         <button class="qty-btn cart-qty-plus" data-id="${item.id}">+</button>
+                        <button class="qty-btn cart-qty-plus-10" data-id="${item.id}" style="background:var(--clr-secondary); font-size:0.75rem; width:34px; padding:0; border-radius:4px; margin-left:2px;">+10</button>
                       </div>
                       <span style="color:var(--clr-gray-500);font-size:0.85rem;">
                         = ${formatPrice(item.price * item.quantity)}
@@ -185,8 +186,19 @@ export function initCartPage() {
       const id = btn.dataset.id;
       const input = btn.parentElement.querySelector('.qty-value');
       const val = parseInt(input.value) || 1;
-      updateQuantity(id, Math.min(val + 1, 10));
+      updateQuantity(id, Math.min(val + 1, 999));
       window.dispatchEvent(new HashChangeEvent('hashchange'));
+    });
+  });
+
+  document.querySelectorAll('.cart-qty-plus-10').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const id = btn.dataset.id;
+      const input = btn.parentElement.querySelector('.qty-value');
+      const val = parseInt(input.value) || 1;
+      updateQuantity(id, Math.min(val + 10, 999));
+      window.dispatchEvent(new HashChangeEvent('hashchange'));
+      showToast('Added 10 more units', 'success');
     });
   });
 

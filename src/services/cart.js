@@ -29,12 +29,12 @@ export function getCart() {
 
 export function addToCart(product, qty = 1) {
   if (!getCurrentUser()) return [];
-  if (qty < 1 || qty > 10) qty = 1;
+  if (qty < 1 || qty > 999) qty = 1;
   const cart = getCartData();
   const existing = cart.find(item => item.id === product.id);
   
   if (existing) {
-    existing.quantity = Math.min(existing.quantity + qty, 10);
+    existing.quantity = Math.min(existing.quantity + qty, 999);
   } else {
     cart.push({
       id: product.id,
@@ -43,7 +43,7 @@ export function addToCart(product, qty = 1) {
       unit: product.unit,
       image: product.image,
       category: product.category,
-      quantity: Math.min(qty, 10),
+      quantity: Math.min(qty, 999),
     });
   }
   
@@ -66,7 +66,7 @@ export function updateQuantity(productId, qty) {
     if (qty <= 0) {
       return removeFromCart(productId);
     }
-    item.quantity = Math.min(Math.max(qty, 1), 10);
+    item.quantity = Math.min(Math.max(qty, 1), 999);
     saveCart(cart);
   }
   return cart;

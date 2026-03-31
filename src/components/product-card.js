@@ -50,6 +50,7 @@ export function renderProductCard(product) {
             <button class="qty-btn qty-minus" data-id="${product.id}" aria-label="Decrease quantity">−</button>
             <span class="qty-value">${existingQty}</span>
             <button class="qty-btn qty-plus" data-id="${product.id}" aria-label="Increase quantity">+</button>
+            <button class="qty-btn qty-plus-10" data-id="${product.id}" style="background:var(--clr-secondary); font-size:0.7rem; width:28px;">+10</button>
           </div>
         ` : `
           <button class="add-to-cart-btn" data-id="${product.id}" aria-label="Add ${product.name} to cart">
@@ -112,6 +113,7 @@ function switchToQtyControls(card, product, qty) {
       <button class="qty-btn qty-minus" data-id="${product.id}" aria-label="Decrease quantity">−</button>
       <span class="qty-value">${qty}</span>
       <button class="qty-btn qty-plus" data-id="${product.id}" aria-label="Increase quantity">+</button>
+      <button class="qty-btn qty-plus-10" data-id="${product.id}" style="background:var(--clr-secondary); font-size:0.7rem; width:28px;">+10</button>
     </div>
   `;
   // Trigger entry animation
@@ -162,10 +164,19 @@ function bindQtyControls(card, product, currentQty) {
   });
 
   card.querySelector('.qty-plus').addEventListener('click', () => {
-    if (qty >= 10) return;
+    if (qty >= 999) return;
     qty++;
     qtyDisplay.textContent = qty;
     addToCart(product, 1);
+  });
+
+  card.querySelector('.qty-plus-10').addEventListener('click', () => {
+    if (qty >= 999) return;
+    const addAmt = Math.min(10, 999 - qty);
+    qty += addAmt;
+    qtyDisplay.textContent = qty;
+    addToCart(product, addAmt);
+    showToast(`Added 10 more ${product.name}`, 'success');
   });
 }
 
