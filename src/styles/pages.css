@@ -500,7 +500,7 @@
   box-shadow: 0 2px 5px rgba(0,0,0,0.15);
 }
 .admin-toggle input:checked + .slider {
-  background-color: var(--clr-veg);
+  background-color: var(--clr-saffron);
 }
 .admin-toggle input:checked + .slider::after {
   transform: translateX(22px);
