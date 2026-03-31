@@ -20,7 +20,6 @@ import {
   approveQuickOrder, clearPartialAmount,
   getTotalClearedRevenue
 } from '../services/subscription.js';
-import { getMessages, sendMessage } from '../services/chat.js';
 
 let mainTab = 'menu'; // 'menu', 'orders', 'subscribers'
 let activeTab = 'sweets';
@@ -34,7 +33,6 @@ let subSearchQuery = '';
 let showAddSubForm = false;
 let showManualOrderForm = false; // Toggle for manual order form within orders tab
 let editingOrderId = null;
-let activeChatOrderId = null;
 
 export function renderAdminPage() {
   if (!isAdminLoggedIn()) {
@@ -181,157 +179,144 @@ function renderOrdersDashboard() {
   const allOrders = getAllOrders();
   const totalUsers = getAllUsersCount();
 
-  // Calculate Insights
   const deliveredOrders = allOrders.filter(o => o.status === 'delivered');
   const subscriptionRevenue = getTotalClearedRevenue();
   const totalRevenue = deliveredOrders.reduce((sum, o) => sum + o.total, 0) + subscriptionRevenue;
-  const activeOrdersCount = allOrders.filter(o => o.status === 'pending' || o.status === 'accepted').length;
+  const pendingCount = allOrders.filter(o => o.status === 'pending').length;
+  const activeCount = allOrders.filter(o => o.status === 'pending' || o.status === 'accepted').length;
 
-  let filteredOrders = allOrders.filter(o => o.paymentMethod !== 'Monthly Billing'); // Monthly billing managed in Subscribers
+  let filteredOrders = allOrders.filter(o => o.paymentMethod !== 'Monthly Billing');
   if (orderFilter !== 'all') {
     filteredOrders = filteredOrders.filter(o => o.status === orderFilter);
   }
 
-  const getStatusClass = (status) => {
-    switch (status) {
-      case 'pending': return 'status-badge pending';
-      case 'accepted': return 'status-badge accepted';
-      case 'ready': return 'status-badge ready';
-      case 'delivered': return 'status-badge delivered';
-      case 'cancelled': return 'status-badge cancelled';
-      default: return 'status-badge';
-    }
-  };
+  const getStatusClass = (status) => `status-badge ${status || ''}`;
 
   return `
     <div class="orders-dashboard page-enter">
       ${editingOrderId ? renderEditOrderModal(allOrders.find(o => o.orderId === editingOrderId)) : ''}
-      ${activeChatOrderId ? renderAdminChatWindow(activeChatOrderId) : ''}
 
-      <!-- Insights Row -->
-      <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 1.5rem; margin-bottom: 2rem;">
-      <div style="background: white; border: 1px solid var(--clr-gray-200); border-radius: var(--radius-lg); padding: 1.5rem; box-shadow: var(--shadow-sm); display:flex; align-items:center; gap: 1rem;">
-        <div style="font-size: 2.5rem; background: rgba(46, 204, 113, 0.1); border-radius: var(--radius-md); width: 60px; height: 60px; display:flex; align-items:center; justify-content:center;">💰</div>
-        <div>
-          <div style="font-size: 0.85rem; color: var(--clr-gray-500); text-transform: uppercase; font-weight: 600;">Total Revenue</div>
-          <div style="font-size: 1.5rem; font-weight: 800; color: var(--clr-gray-900);">${formatPrice(totalRevenue)}</div>
+      <!-- Stats -->
+      <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 1rem; margin-bottom: 1.5rem;">
+        <div class="sub-stat-card">
+          <div class="stat-icon" style="background: #D1FAE5; color: #065F46;">💰</div>
+          <div class="stat-label">Revenue</div>
+          <div class="stat-value" style="color: var(--clr-veg);">${formatPrice(totalRevenue)}</div>
+        </div>
+        <div class="sub-stat-card">
+          <div class="stat-icon" style="background: #FEF3C7; color: #92400E;">📦</div>
+          <div class="stat-label">Pending</div>
+          <div class="stat-value" style="color: var(--clr-warning);">${pendingCount}</div>
+        </div>
+        <div class="sub-stat-card">
+          <div class="stat-icon" style="background: #DBEAFE; color: #1E40AF;">🔄</div>
+          <div class="stat-label">Active</div>
+          <div class="stat-value" style="color: var(--clr-info);">${activeCount}</div>
+        </div>
+        <div class="sub-stat-card">
+          <div class="stat-icon" style="background: #F3E8FF; color: #6B21A8;">👥</div>
+          <div class="stat-label">Users</div>
+          <div class="stat-value" style="color: #7C3AED;">${totalUsers}</div>
         </div>
       </div>
-      <div style="background: white; border: 1px solid var(--clr-gray-200); border-radius: var(--radius-lg); padding: 1.5rem; box-shadow: var(--shadow-sm); display:flex; align-items:center; gap: 1rem;">
-        <div style="font-size: 2.5rem; background: rgba(52, 152, 219, 0.1); border-radius: var(--radius-md); width: 60px; height: 60px; display:flex; align-items:center; justify-content:center;">📦</div>
-        <div>
-          <div style="font-size: 0.85rem; color: var(--clr-gray-500); text-transform: uppercase; font-weight: 600;">Active Orders</div>
-          <div style="font-size: 1.5rem; font-weight: 800; color: var(--clr-gray-900);">${activeOrdersCount}</div>
+
+      <!-- Filter + Actions -->
+      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.25rem; flex-wrap: wrap; gap: 0.75rem;">
+        <div style="display: flex; gap: 0.4rem; flex-wrap: wrap;">
+          ${['all', 'pending', 'accepted', 'delivered', 'cancelled'].map(filter => `
+            <button class="order-filter-btn ${orderFilter === filter ? 'active' : ''}" data-filter="${filter}">
+              ${filter === 'all' ? 'All' : filter.charAt(0).toUpperCase() + filter.slice(1)}${filter !== 'all' ? ` (${allOrders.filter(o => o.status === filter && o.paymentMethod !== 'Monthly Billing').length})` : ''}
+            </button>
+          `).join('')}
         </div>
+        <button class="btn ${showManualOrderForm ? 'btn-ghost' : 'btn-primary'} btn-sm" id="admin-manual-order-toggle">
+          ${showManualOrderForm ? '✕ Close' : '+ Manual Order'}
+        </button>
       </div>
-      <div style="background: white; border: 1px solid var(--clr-gray-200); border-radius: var(--radius-lg); padding: 1.5rem; box-shadow: var(--shadow-sm); display:flex; align-items:center; gap: 1rem;">
-        <div style="font-size: 2.5rem; background: rgba(155, 89, 182, 0.1); border-radius: var(--radius-md); width: 60px; height: 60px; display:flex; align-items:center; justify-content:center;">👥</div>
-        <div>
-          <div style="font-size: 0.85rem; color: var(--clr-gray-500); text-transform: uppercase; font-weight: 600;">Total Users</div>
-          <div style="font-size: 1.5rem; font-weight: 800; color: var(--clr-gray-900);">${totalUsers}</div>
+
+      ${showManualOrderForm ? renderManualOrderForm() : ''}
+
+      <!-- Orders List -->
+      ${filteredOrders.length === 0 ? `
+        <div class="empty-state" style="background: white; border-radius: var(--radius-lg); border: 1px solid var(--clr-gray-200);">
+          <div class="empty-icon">📭</div>
+          <h2>No ${orderFilter === 'all' ? '' : orderFilter} orders</h2>
+          <p>Orders matching this filter will appear here.</p>
         </div>
-      </div>
-    </div>
-
-    <!-- Orders Filter -->
-    <div style="display:flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem; flex-wrap: wrap; gap: 1rem;">
-      <div style="display:flex; gap: 0.5rem; flex-wrap: wrap;">
-        ${['all', 'pending', 'accepted', 'delivered', 'cancelled'].map(filter => `
-          <button class="order-filter-btn ${orderFilter === filter ? 'active' : ''}" data-filter="${filter}" style="padding: 0.4rem 1rem; border-radius: var(--radius-full); border: 1px solid var(--clr-gray-300); background: ${orderFilter === filter ? 'var(--clr-saffron)' : 'white'}; color: ${orderFilter === filter ? 'white' : 'var(--clr-gray-700)'}; font-size: 0.85rem; cursor: pointer; font-weight: 500; text-transform: capitalize;">
-            ${filter}
-          </button>
-        `).join('')}
-      </div>
-      <button class="btn ${showManualOrderForm ? 'btn-ghost' : 'btn-primary'} btn-sm" id="admin-manual-order-toggle">
-        ${showManualOrderForm ? '✕ Close Form' : '➕ Manual Order'}
-      </button>
-    </div>
-
-    ${showManualOrderForm ? renderManualOrderForm() : ''}
-
-    <!-- Orders Table -->
-    <div class="admin-table-wrapper">
-      <table class="admin-table">
-        <thead>
-          <tr>
-            <th>Order ID / Date</th>
-            <th>Customer Info</th>
-            <th>Items</th>
-            <th>Total Value</th>
-            <th>Status</th>
-          </tr>
-        </thead>
-        <tbody>
-          ${filteredOrders.length === 0 ? `<tr><td colspan="5" style="text-align:center; padding: 2rem; color: var(--clr-gray-500);">No orders found for this filter.</td></tr>` :
-      filteredOrders.map(order => `
-            <tr>
-              <td>
-                <div style="font-family: var(--ff-accent); font-weight: 700; color: var(--clr-saffron); margin-bottom: 4px; font-size: 0.9rem; display: flex; align-items: center; gap: 8px;">
-                  ${order.orderId}
-                  ${order.isOffline ? `
-                    <span style="background: #E3F2FD; color: #1976D2; font-size: 0.65rem; padding: 2px 6px; border-radius: 4px; text-transform: uppercase; letter-spacing: 0.05em; font-family: sans-serif; font-weight: 700;">
-                      Manual
-                    </span>
-                  ` : ''}
+      ` : `
+        <div style="display: flex; flex-direction: column; gap: 0.75rem;">
+          ${filteredOrders.map(order => {
+            const waLink = order.customerPhone && order.customerPhone !== 'N/A'
+              ? `https://wa.me/${order.customerPhone.replace(/[\s\-\+]/g, '').replace(/^91/, '91')}?text=${encodeURIComponent(`Hi ${order.customerName}, regarding your order ${order.orderId} from Shree Shyam Restaurant...`)}`
+              : '';
+            return `
+            <div class="order-card">
+              <div class="order-card-header">
+                <div style="display: flex; align-items: center; gap: 0.75rem; flex-wrap: wrap;">
+                  <span style="font-family: var(--ff-accent); font-weight: 700; color: var(--clr-saffron); font-size: 0.9rem;">${order.orderId}</span>
+                  ${order.isOffline ? `<span class="badge badge-info">Manual</span>` : ''}
                   ${isDueSoon(order.pickupDate) && order.status !== 'delivered' && order.status !== 'cancelled' ? `
-                    <span class="badge badge-error" style="font-size: 0.7rem; padding: 4px 12px; animation: pulse 1.5s infinite; background: #e74c3c; color: white; border: none; font-weight: 800; box-shadow: 0 0 10px rgba(231, 76, 60, 0.4); border-radius: 50px;">🔥 DUE SOON</span>
+                    <span class="badge badge-error" style="animation: pulse 1.5s infinite;">DUE SOON</span>
                   ` : ''}
                 </div>
-                <div style="font-size: 0.8rem; color: var(--clr-gray-500);">${new Date(order.createdAt).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })}</div>
-              </td>
-              <td>
-                <div style="font-weight: 600; margin-bottom: 3px;">${order.customerName}</div>
-                <div style="display:flex; align-items:center; gap:10px; margin-top: 4px;">
-                  <div style="font-size: 0.85rem; color: var(--clr-gray-600);">📞 <a href="tel:${order.customerPhone}" style="color:var(--clr-info); text-decoration:none;">${formatPhoneNumber(order.customerPhone)}</a></div>
-                  
-                  ${order.customerPhone && order.customerPhone !== 'N/A' ? `
-                    <div style="display: flex; gap: 8px; margin-top: 8px; flex-wrap: wrap;">
-                      
-                      <a href="https://wa.me/${order.customerPhone.replace(/[\s\-\+]/g, '').replace(/^91/, '91')}?text=${encodeURIComponent(`Hello ${order.customerName}, regarding your order ${order.orderId} from Shree Shyam Restaurant...`)}" 
-                         target="_blank" 
-                         class="btn btn-sm" 
-                         style="background:#FFF4E6; color:#D35400; border:1px solid #FFD8A8; padding: 4px 12px; font-size: 0.8rem; display:inline-flex; align-items:center; gap:6px; border-radius:var(--radius-md); text-decoration:none; font-weight:700; transition: all 0.2s;">
-                        <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M.057 24l1.687-6.163c-1.041-1.804-1.588-3.849-1.587-5.946.003-6.556 5.338-11.891 11.893-11.891 3.181.001 6.167 1.24 8.413 3.488 2.246 2.248 3.484 5.232 3.484 8.412-.003 6.557-5.338 11.892-11.893 11.892-1.997-.001-3.951-.5-5.688-1.448l-6.309 1.656zm6.29-4.143c1.552.921 3.13 1.411 4.793 1.412 5.204 0 9.444-4.24 9.446-9.443.002-2.521-.979-4.89-2.762-6.67s-4.149-2.765-6.67-2.765c-5.204 0-9.441 4.239-9.443 9.441-.001 1.742.483 3.339 1.398 4.71l-1.01 3.693 3.791-.994zm11.367-7.4c-.31-.154-1.829-.902-2.107-1.003-.278-.101-.48-.153-.68.154-.201.307-.779 1.003-.955 1.205-.175.202-.351.226-.66.073-.31-.153-1.309-.482-2.493-1.54-.92-.821-1.54-1.835-1.72-2.144-.18-.309-.019-.476.136-.629.139-.138.309-.36.464-.54.154-.18.206-.309.309-.515.103-.206.052-.386-.025-.54-.077-.154-.68-1.644-.932-2.253-.245-.592-.495-.511-.68-.521-.176-.009-.379-.011-.581-.011-.202 0-.531.076-.809.381-.278.305-1.062 1.039-1.062 2.535s1.087 2.941 1.239 3.146c.152.206 2.14 3.268 5.184 4.582 2.534 1.095 3.048.877 3.603.824.555-.053 1.829-.747 2.087-1.468.258-.721.258-1.339.181-1.468-.076-.128-.278-.206-.587-.36z"/></svg>
-                        WhatsApp
-                      </a>
-                    </div>
-                  ` : ''}
-                </div>
-                <div style="font-size: 0.85rem; color: var(--clr-gray-600); margin-top:2px;">
-                  🗓️ Pickup: <strong style="color:var(--clr-veg);">${order.pickupDate}</strong> 
-                  <span style="margin-left: 8px; font-weight: 700; color: var(--clr-saffron);">⏰ ${order.pickupTime || 'No slot'}</span>
-                </div>
-                <div style="font-size: 0.85rem; margin-top: 4px; font-weight: 700; color: #d35400;">
-                  ⏳ Time Left: ${getPickupTimeStatus(order.pickupDate, order.pickupTime)}
-                </div>
-              </td>
-              <td>
-                <div style="max-height: 100px; overflow-y: auto; padding-right: 8px;">
-                  ${order.items.map(i => `<div style="font-size: 0.85rem; margin-bottom: 4px; color:var(--clr-gray-700); border-bottom: 1px solid var(--clr-gray-50); padding-bottom: 2px;">
-                    <span style="font-weight: 700; color: var(--clr-primary);">${i.quantity} ${i.unit || ''}</span> × ${i.name}
-                  </div>`).join('')}
-                </div>
-                ${order.status !== 'delivered' && order.status !== 'cancelled' ? `
-                  <button class="edit-items-btn" data-id="${order.orderId}" style="margin-top: 8px; background: none; border: 1px solid var(--clr-saffron); color: var(--clr-saffron); cursor: pointer; padding: 2px 6px; border-radius: 4px; font-size: 0.8rem; display: flex; align-items: center; gap: 4px; transition: all 0.2s;" title="Edit Order Items">
-                    ✏️ <span style="font-size: 0.7rem; font-weight: 700;">Edit</span>
-                  </button>
-                ` : ''}
-              </td>
-              <td>
-                <div style="font-weight: 700; font-size: 1.05rem;">${formatPrice(order.total)}</div>
-                <div style="font-size: 0.75rem; color: var(--clr-gray-500); margin-top: 3px;">${order.paymentMethod}</div>
-              </td>
-              <td style="min-width: 150px;">
-                <select class="form-input status-select ${getStatusClass(order.status)}" data-id="${order.orderId}" style="font-weight: 600; text-transform: capitalize; padding: 6px 10px;">
+                <select class="form-input status-select ${getStatusClass(order.status)}" data-id="${order.orderId}" style="font-weight: 600; text-transform: capitalize; padding: 4px 8px; font-size: 0.8rem; width: auto; min-width: 120px;">
                   ${['pending', 'accepted', 'delivered', 'cancelled'].map(opt => `
-                    <option value="${opt}" ${order.status === opt ? 'selected' : ''} style="background: white; color: black;">${opt}</option>
+                    <option value="${opt}" ${order.status === opt ? 'selected' : ''}>${opt}</option>
                   `).join('')}
                 </select>
-              </td>
-            </tr>
-          `).join('')}
-        </tbody>
-      </table>
+              </div>
+
+              <div class="order-card-body" style="display: grid; grid-template-columns: 1fr 1fr auto; gap: 1rem; align-items: start;">
+                <!-- Customer -->
+                <div>
+                  <div style="font-weight: 700; margin-bottom: 4px;">${order.customerName}</div>
+                  <div style="font-size: 0.8rem; color: var(--clr-gray-500);">
+                    <a href="tel:${order.customerPhone}" style="color: var(--clr-gray-600); text-decoration: none;">📞 ${formatPhoneNumber(order.customerPhone)}</a>
+                  </div>
+                  <div style="font-size: 0.8rem; color: var(--clr-gray-500); margin-top: 4px;">
+                    🗓 ${order.pickupDate} · <span style="color: var(--clr-saffron); font-weight: 600;">${order.pickupTime || 'No slot'}</span>
+                  </div>
+                  ${isDueSoon(order.pickupDate) && order.status !== 'delivered' && order.status !== 'cancelled' ? `
+                    <div style="font-size: 0.75rem; margin-top: 2px; font-weight: 600; color: var(--clr-error);">
+                      ⏳ ${getPickupTimeStatus(order.pickupDate, order.pickupTime)}
+                    </div>
+                  ` : ''}
+                  <div style="display: flex; gap: 0.5rem; margin-top: 8px; flex-wrap: wrap;">
+                    ${waLink ? `
+                      <a href="${waLink}" target="_blank" rel="noopener" class="btn btn-sm" style="background: #E6F4EA; color: #1E7E34; border: 1px solid #C2E7CB; font-size: 0.75rem; padding: 3px 10px; text-decoration: none; display: inline-flex; align-items: center; gap: 4px;">
+                        <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor"><path d="M.057 24l1.687-6.163c-1.041-1.804-1.588-3.849-1.587-5.946.003-6.556 5.338-11.891 11.893-11.891 3.181.001 6.167 1.24 8.413 3.488 2.246 2.248 3.484 5.232 3.484 8.412-.003 6.557-5.338 11.892-11.893 11.892-1.997-.001-3.951-.5-5.688-1.448l-6.309 1.656zm6.29-4.143c1.552.921 3.13 1.411 4.793 1.412 5.204 0 9.444-4.24 9.446-9.443.002-2.521-.979-4.89-2.762-6.67s-4.149-2.765-6.67-2.765c-5.204 0-9.441 4.239-9.443 9.441-.001 1.742.483 3.339 1.398 4.71l-1.01 3.693 3.791-.994zm11.367-7.4c-.31-.154-1.829-.902-2.107-1.003-.278-.101-.48-.153-.68.154-.201.307-.779 1.003-.955 1.205-.175.202-.351.226-.66.073-.31-.153-1.309-.482-2.493-1.54-.92-.821-1.54-1.835-1.72-2.144-.18-.309-.019-.476.136-.629.139-.138.309-.36.464-.54.154-.18.206-.309.309-.515.103-.206.052-.386-.025-.54-.077-.154-.68-1.644-.932-2.253-.245-.592-.495-.511-.68-.521-.176-.009-.379-.011-.581-.011-.202 0-.531.076-.809.381-.278.305-1.062 1.039-1.062 2.535s1.087 2.941 1.239 3.146c.152.206 2.14 3.268 5.184 4.582 2.534 1.095 3.048.877 3.603.824.555-.053 1.829-.747 2.087-1.468.258-.721.258-1.339.181-1.468-.076-.128-.278-.206-.587-.36z"/></svg>
+                        WhatsApp
+                      </a>
+                    ` : ''}
+                    ${order.status !== 'delivered' && order.status !== 'cancelled' ? `
+                      <button class="btn btn-sm btn-outline edit-items-btn" data-id="${order.orderId}" style="font-size: 0.75rem; padding: 3px 10px;">✏️ Edit</button>
+                    ` : ''}
+                  </div>
+                </div>
+
+                <!-- Items -->
+                <div>
+                  <div style="font-size: 0.8rem; color: var(--clr-gray-500); margin-bottom: 4px; font-weight: 600;">Items</div>
+                  <div style="max-height: 80px; overflow-y: auto;">
+                    ${order.items.map(i => `
+                      <div style="font-size: 0.8rem; color: var(--clr-gray-700); padding: 2px 0;">
+                        <span style="font-weight: 700; color: var(--clr-saffron);">${i.quantity}</span> × ${i.name}
+                      </div>
+                    `).join('')}
+                  </div>
+                </div>
+
+                <!-- Total -->
+                <div style="text-align: right; white-space: nowrap;">
+                  <div style="font-weight: 800; font-size: 1.1rem;">${formatPrice(order.total)}</div>
+                  <div style="font-size: 0.7rem; color: var(--clr-gray-400); margin-top: 2px;">${order.paymentMethod}</div>
+                  <div style="font-size: 0.7rem; color: var(--clr-gray-400); margin-top: 2px;">${new Date(order.createdAt).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' })}</div>
+                </div>
+              </div>
+            </div>
+          `}).join('')}
+        </div>
+      `}
     </div>
   `;
 }
@@ -768,11 +753,6 @@ export function initAdminPage() {
     if (!btn) return;
     const id = btn.dataset.id;
 
-    if (btn.classList.contains('chat-admin-btn')) {
-      activeChatOrderId = id;
-      window.dispatchEvent(new HashChangeEvent('hashchange'));
-    }
-
     if (btn.classList.contains('edit-items-btn')) {
       editingOrderId = id;
       window.dispatchEvent(new HashChangeEvent('hashchange'));
@@ -857,31 +837,6 @@ export function initAdminPage() {
         }
       });
     }
-  }
-
-  // Handle Admin Chat Actions
-  if (activeChatOrderId) {
-    document.getElementById('close-admin-chat')?.addEventListener('click', () => {
-      activeChatOrderId = null;
-      window.dispatchEvent(new HashChangeEvent('hashchange'));
-    });
-
-    const sendMsg = () => {
-      const input = document.getElementById('admin-chat-input');
-      const text = input.value;
-      if (sendMessage(activeChatOrderId, text, 'admin').success) {
-        input.value = '';
-        window.dispatchEvent(new HashChangeEvent('hashchange'));
-        // Scroll to bottom
-        const msgCont = document.getElementById('admin-chat-messages');
-        if (msgCont) msgCont.scrollTop = msgCont.scrollHeight;
-      }
-    };
-
-    document.getElementById('admin-send-msg')?.addEventListener('click', sendMsg);
-    document.getElementById('admin-chat-input')?.addEventListener('keypress', (e) => {
-      if (e.key === 'Enter') sendMsg();
-    });
   }
 
   // Subscribers Tab Handlers
@@ -1475,43 +1430,4 @@ function renderEditOrderModal(order) {
   `;
 }
 
-function renderAdminChatWindow(orderId) {
-  const messages = getMessages(orderId);
-  const order = getAllOrders().find(o => o.orderId === orderId);
-
-  return `
-    <div class="chat-window">
-      <div class="chat-header">
-        <div>
-          <div style="font-weight: 700;">Chat with ${order?.customerName || 'Customer'}</div>
-          <div style="font-size: 0.75rem; opacity: 0.8;">Order: ${orderId}</div>
-        </div>
-        <button id="close-admin-chat" style="background: none; border: none; color: white; font-size: 1.5rem; cursor: pointer;">✕</button>
-      </div>
-
-      <div id="admin-chat-messages" class="chat-messages">
-        ${messages.length === 0 ? `
-          <div style="text-align: center; color: var(--clr-gray-400); margin-top: 2rem;">
-            <div style="font-size: 2rem; margin-bottom: 0.5rem;">💬</div>
-            <div>No messages yet. Start the conversation!</div>
-          </div>
-        ` : messages.map(msg => `
-          <div style="align-self: ${msg.sender === 'admin' ? 'flex-end' : 'flex-start'}; max-width: 80%;">
-            <div style="background: ${msg.sender === 'admin' ? 'var(--clr-saffron)' : 'white'}; color: ${msg.sender === 'admin' ? 'white' : 'var(--clr-gray-800)'}; padding: 0.75rem 1rem; border-radius: 12px; ${msg.sender === 'admin' ? 'border-bottom-right-radius: 2px;' : 'border-bottom-left-radius: 2px; border: 1px solid var(--clr-gray-200);'} box-shadow: var(--shadow-sm);">
-              ${msg.text}
-            </div>
-            <div style="font-size: 0.65rem; color: var(--clr-gray-500); margin-top: 4px; text-align: ${msg.sender === 'admin' ? 'right' : 'left'};">
-              ${new Date(msg.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-            </div>
-          </div>
-        `).join('')}
-      </div>
-
-      <div class="chat-input-bar">
-        <input type="text" id="admin-chat-input" class="form-input" placeholder="Type a message..." style="height: 40px; border-radius: 20px; padding: 0 1.25rem;">
-        <button id="admin-send-msg" class="btn btn-primary" style="width: 40px; height: 40px; border-radius: 50%; padding: 0; display: flex; align-items: center; justify-content:center;">➤</button>
-      </div>
-    </div>
-  `;
-}
 

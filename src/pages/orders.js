@@ -8,10 +8,9 @@ import { getCurrentUser } from '../services/auth.js';
 import { formatPrice, isDueSoon, formatPhoneNumber } from '../utils/format.js';
 import { showToast } from '../utils/dom.js';
 import { isSubscriber, getSubscription, subscribeUser } from '../services/subscription.js';
-import { getMessages, sendMessage } from '../services/chat.js';
+import { SITE_CONFIG } from '../config/site.js';
 
 let activeOrdersTab = 'history'; // 'history' or 'subscription'
-let activeOrderIdChat = null;
 
 export function renderOrdersPage() {
   const user = getCurrentUser();
@@ -53,7 +52,6 @@ export function renderOrdersPage() {
             ${activeOrdersTab === 'history' ? renderOrderHistory(orders) : renderSubscriptionTab(user)}
           </div>
           
-          ${activeOrderIdChat ? renderUserChatWindow(activeOrderIdChat) : ''}
         </div>
       </section>
     </main>
@@ -141,7 +139,12 @@ function renderOrderHistory(orders) {
 
           <div class="order-card-footer">
             <div style="font-size: 1.15rem; font-weight: 800; color: var(--clr-charcoal);">${formatPrice(order.total)}</div>
-            <button class="btn btn-sm btn-outline chat-support-btn" data-id="${order.orderId}" style="font-size: 0.75rem; border-radius: 20px; padding: 4px 12px;">💬 Chat</button>
+            <a href="${SITE_CONFIG.contact.whatsappLink}?text=${encodeURIComponent(`Hi, I have a query about my order ${order.orderId}.`)}"
+               target="_blank" rel="noopener" class="btn btn-sm"
+               style="font-size: 0.75rem; border-radius: 20px; padding: 4px 12px; background: #E6F4EA; color: #1E7E34; border: 1px solid #C2E7CB; text-decoration: none; display: inline-flex; align-items: center; gap: 4px;">
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor"><path d="M.057 24l1.687-6.163c-1.041-1.804-1.588-3.849-1.587-5.946.003-6.556 5.338-11.891 11.893-11.891 3.181.001 6.167 1.24 8.413 3.488 2.246 2.248 3.484 5.232 3.484 8.412-.003 6.557-5.338 11.892-11.893 11.892-1.997-.001-3.951-.5-5.688-1.448l-6.309 1.656zm6.29-4.143c1.552.921 3.13 1.411 4.793 1.412 5.204 0 9.444-4.24 9.446-9.443.002-2.521-.979-4.89-2.762-6.67s-4.149-2.765-6.67-2.765c-5.204 0-9.441 4.239-9.443 9.441-.001 1.742.483 3.339 1.398 4.71l-1.01 3.693 3.791-.994zm11.367-7.4c-.31-.154-1.829-.902-2.107-1.003-.278-.101-.48-.153-.68.154-.201.307-.779 1.003-.955 1.205-.175.202-.351.226-.66.073-.31-.153-1.309-.482-2.493-1.54-.92-.821-1.54-1.835-1.72-2.144-.18-.309-.019-.476.136-.629.139-.138.309-.36.464-.54.154-.18.206-.309.309-.515.103-.206.052-.386-.025-.54-.077-.154-.68-1.644-.932-2.253-.245-.592-.495-.511-.68-.521-.176-.009-.379-.011-.581-.011-.202 0-.531.076-.809.381-.278.305-1.062 1.039-1.062 2.535s1.087 2.941 1.239 3.146c.152.206 2.14 3.268 5.184 4.582 2.534 1.095 3.048.877 3.603.824.555-.053 1.829-.747 2.087-1.468.258-.721.258-1.339.181-1.468-.076-.128-.278-.206-.587-.36z"/></svg>
+              WhatsApp
+            </a>
           </div>
         </div>
       `).join('')}
@@ -335,67 +338,4 @@ export function initOrdersPage() {
     }
   });
 
-  // Chat Button Handlers
-  document.querySelectorAll('.chat-support-btn').forEach(btn => {
-    btn.addEventListener('click', () => {
-      activeOrderIdChat = btn.dataset.id;
-      window.dispatchEvent(new HashChangeEvent('hashchange'));
-    });
-  });
-
-  if (activeOrderIdChat) {
-    document.getElementById('close-chat')?.addEventListener('click', () => {
-      activeOrderIdChat = null;
-      window.dispatchEvent(new HashChangeEvent('hashchange'));
-    });
-
-    const sendUserMsg = () => {
-      const input = document.getElementById('chat-input');
-      const text = input.value;
-      if (sendMessage(activeOrderIdChat, text, 'user').success) {
-        input.value = '';
-        window.dispatchEvent(new HashChangeEvent('hashchange'));
-        // Scroll to bottom
-        const msgCont = document.getElementById('chat-messages');
-        if (msgCont) msgCont.scrollTop = msgCont.scrollHeight;
-      }
-    };
-
-    document.getElementById('send-msg')?.addEventListener('click', sendUserMsg);
-    document.getElementById('chat-input')?.addEventListener('keypress', (e) => {
-      if (e.key === 'Enter') sendUserMsg();
-    });
-  }
-}
-
-function renderUserChatWindow(orderId) {
-  const messages = getMessages(orderId);
-  return `
-    <div class="chat-window">
-      <div class="chat-header">
-        <div style="font-weight: 700; font-size: 0.9rem;">Chat with Support [${orderId.split('-').pop()}]</div>
-        <button id="close-chat" style="background: none; border: none; color: white; font-size: 1.25rem; cursor: pointer;">✕</button>
-      </div>
-
-      <div id="chat-messages" class="chat-messages">
-        ${messages.length === 0 ? `
-          <div style="text-align: center; color: var(--clr-gray-400); margin-top: 2rem; font-size: 0.85rem; padding: 0 1rem;">
-            <div style="font-size: 1.5rem; margin-bottom: 0.5rem;">👋</div>
-            How can we help you with your order?
-          </div>
-        ` : messages.map(msg => `
-          <div style="align-self: ${msg.sender === 'user' ? 'flex-end' : 'flex-start'}; max-width: 85%;">
-            <div style="background: ${msg.sender === 'user' ? 'var(--clr-saffron)' : 'white'}; color: ${msg.sender === 'user' ? 'white' : 'var(--clr-gray-800)'}; padding: 0.65rem 0.85rem; border-radius: 12px; ${msg.sender === 'user' ? 'border-bottom-right-radius: 2px;' : 'border-bottom-left-radius: 2px; border: 1px solid var(--clr-gray-200);'} font-size: 0.9rem; box-shadow: var(--shadow-sm);">
-              ${msg.text}
-            </div>
-          </div>
-        `).join('')}
-      </div>
-
-      <div class="chat-input-bar">
-        <input type="text" id="chat-input" class="form-input" placeholder="Your message..." style="height: 36px; border-radius: 18px; font-size: 0.9rem; padding: 0 1rem;">
-        <button id="send-msg" class="btn btn-primary" style="width: 36px; height: 36px; border-radius: 50%; padding: 0; display: flex; align-items: center; justify-content:center;">➤</button>
-      </div>
-    </div>
-  `;
 }
