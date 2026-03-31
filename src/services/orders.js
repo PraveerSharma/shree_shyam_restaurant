@@ -134,3 +134,21 @@ export function getOrderHistory() {
     .filter(o => o.userId === user.id)
     .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
 }
+
+// ── Admin Order Management ──
+export function getAllOrders() {
+  return getOrders().sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+}
+
+export function updateOrderStatus(orderId, status) {
+  const orders = getOrders();
+  const orderIndex = orders.findIndex(o => o.orderId === orderId);
+  if (orderIndex === -1) return false;
+  
+  orders[orderIndex].status = status;
+  localStorage.setItem(ORDERS_KEY, JSON.stringify(orders));
+  
+  // Optional real-time event dispatch
+  window.dispatchEvent(new CustomEvent('orders-updated', { detail: { orderId, status } }));
+  return true;
+}

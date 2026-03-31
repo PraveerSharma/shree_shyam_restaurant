@@ -224,3 +224,9 @@ export async function resetPassword(email, phone, newPassword) {
 
   return { success: true };
 }
+
+// Admin Metrics
+export function getAllUsersCount() {
+  const users = getUsers();
+  return users.length;
+}

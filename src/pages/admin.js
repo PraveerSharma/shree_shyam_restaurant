@@ -13,8 +13,12 @@ import {
   showToast, unescapeForText, showConfirm
 } from '../utils/dom.js';
 import { compressImageToDataURL } from '../utils/image.js';
+import { getAllOrders, updateOrderStatus } from '../services/orders.js';
+import { getAllUsersCount } from '../services/auth.js';
 
+let mainTab = 'menu'; // 'menu' or 'orders'
 let activeTab = 'sweets';
+let orderFilter = 'all'; // 'all', 'pending', 'delivered', 'cancelled'
 let showAddForm = false;
 let editingItemId = null;
 
@@ -53,11 +57,52 @@ function renderAdminLogin() {
 }
 
 function renderAdminDashboard() {
-  const items = activeTab === 'sweets' ? getSweetsItems() : getRestaurantItems();
-
   return `
     <main class="page-content page-enter">
       <section class="section admin-page">
+        <div class="container">
+          <div class="admin-header" style="margin-bottom: 2rem;">
+            <div>
+              <h1 style="font-size:var(--fs-h2);">⚙️ Admin Dashboard</h1>
+              <p style="color:var(--clr-gray-500);">Manage your business, orders, and restaurant menu</p>
+            </div>
+            <div style="display:flex;gap:0.5rem;flex-wrap:wrap;">
+              ${mainTab === 'menu' ? `
+                <button class="btn btn-outline btn-sm" id="admin-add-btn">
+                  ➕ Add Item
+                </button>
+                <button class="btn btn-ghost btn-sm" id="admin-reset-btn">
+                  🔄 Reset to Defaults
+                </button>
+              ` : ''}
+              <button class="btn btn-ghost btn-sm" id="admin-logout-btn" style="color:var(--clr-error);">
+                🚪 Logout
+              </button>
+            </div>
+          </div>
+
+          <!-- Main Dashboard Switcher -->
+          <div style="display: flex; gap: 1rem; margin-bottom: 2rem; border-bottom: 1px solid var(--clr-gray-200); padding-bottom: 1rem;">
+            <button class="badge-tab ${mainTab === 'menu' ? 'active' : ''}" data-main-tab="menu" style="${mainTab === 'menu' ? 'background: var(--clr-saffron); color: white;' : 'background: transparent; color: var(--clr-gray-600);'} border: none; font-size: 1.1rem; padding: 0.5rem 1rem; border-radius: var(--radius-md); font-weight: 600; cursor: pointer; transition: all 0.2s;">
+              📋 Menu Management
+            </button>
+            <button class="badge-tab ${mainTab === 'orders' ? 'active' : ''}" data-main-tab="orders" style="${mainTab === 'orders' ? 'background: var(--clr-saffron); color: white;' : 'background: transparent; color: var(--clr-gray-600);'} border: none; font-size: 1.1rem; padding: 0.5rem 1rem; border-radius: var(--radius-md); font-weight: 600; cursor: pointer; transition: all 0.2s;">
+              📦 Order Tracking
+            </button>
+          </div>
+
+          ${mainTab === 'menu' ? renderMenuManagement() : renderOrdersDashboard()}
+        </div>
+      </section>
+    </main>
+  `;
+}
+
+function renderMenuManagement() {
+  const items = activeTab === 'sweets' ? getSweetsItems() : getRestaurantItems();
+
+  return `
+          <!-- Category Switcher -->
         <div class="container">
           <div class="admin-header">
             <div>
@@ -129,9 +174,114 @@ function renderAdminDashboard() {
               </tbody>
             </table>
           </div>
+  `;
+}
+
+function renderOrdersDashboard() {
+  const allOrders = getAllOrders();
+  const totalUsers = getAllUsersCount();
+  
+  // Calculate Insights
+  const deliveredOrders = allOrders.filter(o => o.status === 'delivered');
+  const totalRevenue = deliveredOrders.reduce((sum, o) => sum + o.total, 0);
+  const activeOrdersCount = allOrders.filter(o => o.status === 'pending' || o.status === 'accepted').length;
+
+  let filteredOrders = allOrders;
+  if (orderFilter !== 'all') {
+    filteredOrders = allOrders.filter(o => o.status === orderFilter);
+  }
+
+  const getStatusColor = (status) => {
+    switch(status) {
+      case 'pending': return 'background:#FFF3CD; color:#856404; border:1px solid #FFEEBA;';
+      case 'accepted': return 'background:#D1ECF1; color:#0C5460; border:1px solid #BEE5EB;';
+      case 'delivered': return 'background:#D4EDDA; color:#155724; border:1px solid #C3E6CB;';
+      case 'cancelled': return 'background:#F8D7DA; color:#721C24; border:1px solid #F5C6CB;';
+      default: return 'background:#E2E3E5; color:#383D41; border:1px solid #D6D8DB;';
+    }
+  };
+
+  return `
+    <!-- Insights Row -->
+    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 1.5rem; margin-bottom: 2rem;">
+      <div style="background: white; border: 1px solid var(--clr-gray-200); border-radius: var(--radius-lg); padding: 1.5rem; box-shadow: var(--shadow-sm); display:flex; align-items:center; gap: 1rem;">
+        <div style="font-size: 2.5rem; background: rgba(46, 204, 113, 0.1); border-radius: var(--radius-md); width: 60px; height: 60px; display:flex; align-items:center; justify-content:center;">💰</div>
+        <div>
+          <div style="font-size: 0.85rem; color: var(--clr-gray-500); text-transform: uppercase; font-weight: 600;">Total Revenue</div>
+          <div style="font-size: 1.5rem; font-weight: 800; color: var(--clr-gray-900);">${formatPrice(totalRevenue)}</div>
         </div>
-      </section>
-    </main>
+      </div>
+      <div style="background: white; border: 1px solid var(--clr-gray-200); border-radius: var(--radius-lg); padding: 1.5rem; box-shadow: var(--shadow-sm); display:flex; align-items:center; gap: 1rem;">
+        <div style="font-size: 2.5rem; background: rgba(52, 152, 219, 0.1); border-radius: var(--radius-md); width: 60px; height: 60px; display:flex; align-items:center; justify-content:center;">📦</div>
+        <div>
+          <div style="font-size: 0.85rem; color: var(--clr-gray-500); text-transform: uppercase; font-weight: 600;">Active Orders</div>
+          <div style="font-size: 1.5rem; font-weight: 800; color: var(--clr-gray-900);">${activeOrdersCount}</div>
+        </div>
+      </div>
+      <div style="background: white; border: 1px solid var(--clr-gray-200); border-radius: var(--radius-lg); padding: 1.5rem; box-shadow: var(--shadow-sm); display:flex; align-items:center; gap: 1rem;">
+        <div style="font-size: 2.5rem; background: rgba(155, 89, 182, 0.1); border-radius: var(--radius-md); width: 60px; height: 60px; display:flex; align-items:center; justify-content:center;">👥</div>
+        <div>
+          <div style="font-size: 0.85rem; color: var(--clr-gray-500); text-transform: uppercase; font-weight: 600;">Total Users</div>
+          <div style="font-size: 1.5rem; font-weight: 800; color: var(--clr-gray-900);">${totalUsers}</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Orders Filter -->
+    <div style="display:flex; gap: 0.5rem; margin-bottom: 1.5rem; flex-wrap: wrap;">
+      ${['all', 'pending', 'accepted', 'delivered', 'cancelled'].map(filter => `
+        <button class="order-filter-btn ${orderFilter === filter ? 'active' : ''}" data-filter="${filter}" style="padding: 0.4rem 1rem; border-radius: var(--radius-full); border: 1px solid var(--clr-gray-300); background: ${orderFilter === filter ? 'var(--clr-saffron)' : 'white'}; color: ${orderFilter === filter ? 'white' : 'var(--clr-gray-700)'}; font-size: 0.85rem; cursor: pointer; font-weight: 500; text-transform: capitalize;">
+          ${filter}
+        </button>
+      `).join('')}
+    </div>
+
+    <!-- Orders Table -->
+    <div class="admin-table-wrapper">
+      <table class="admin-table">
+        <thead>
+          <tr>
+            <th>Order ID / Date</th>
+            <th>Customer Info</th>
+            <th>Items</th>
+            <th>Total Value</th>
+            <th>Status</th>
+          </tr>
+        </thead>
+        <tbody>
+          ${filteredOrders.length === 0 ? `<tr><td colspan="5" style="text-align:center; padding: 2rem; color: var(--clr-gray-500);">No orders found for this filter.</td></tr>` : 
+            filteredOrders.map(order => `
+            <tr>
+              <td>
+                <div style="font-family: var(--ff-accent); font-weight: 700; color: var(--clr-saffron); margin-bottom: 4px; font-size: 0.9rem;">${order.orderId}</div>
+                <div style="font-size: 0.8rem; color: var(--clr-gray-500);">${new Date(order.createdAt).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', hour:'2-digit', minute:'2-digit' })}</div>
+              </td>
+              <td>
+                <div style="font-weight: 600; margin-bottom: 3px;">${order.customerName}</div>
+                <div style="font-size: 0.85rem; color: var(--clr-gray-600);">📞 <a href="tel:${order.customerPhone}" style="color:var(--clr-info); text-decoration:none;">${order.customerPhone}</a></div>
+                <div style="font-size: 0.85rem; color: var(--clr-gray-600); margin-top:2px;">🗓️ Pickup: <strong style="color:var(--clr-veg);">${order.pickupDate}</strong></div>
+              </td>
+              <td>
+                <div style="max-height: 80px; overflow-y: auto; padding-right: 8px;">
+                  ${order.items.map(i => `<div style="font-size: 0.85rem; margin-bottom: 2px; color:var(--clr-gray-700); white-space:nowrap; text-overflow:ellipsis; overflow:hidden;">${i.quantity}× ${i.name}</div>`).join('')}
+                </div>
+              </td>
+              <td>
+                <div style="font-weight: 700; font-size: 1.05rem;">${formatPrice(order.total)}</div>
+                <div style="font-size: 0.75rem; color: var(--clr-gray-500); margin-top: 3px;">${order.paymentMethod}</div>
+              </td>
+              <td style="min-width: 150px;">
+                <select class="form-input status-select" data-id="${order.orderId}" style="${getStatusColor(order.status)}; font-weight: 600; text-transform: capitalize; padding: 6px 10px;">
+                  ${['pending', 'accepted', 'delivered', 'cancelled'].map(opt => `
+                    <option value="${opt}" ${order.status === opt ? 'selected' : ''} style="background: white; color: black;">${opt}</option>
+                  `).join('')}
+                </select>
+              </td>
+            </tr>
+          `).join('')}
+        </tbody>
+      </table>
+    </div>
   `;
 }
 
@@ -291,11 +441,39 @@ export function initAdminPage() {
     return;
   }
 
-  // Tab switching
+  // Main Tab switching (Menu vs Orders)
+  document.querySelectorAll('.badge-tab[data-main-tab]').forEach(tab => {
+    tab.addEventListener('click', () => {
+      mainTab = tab.dataset.mainTab;
+      window.dispatchEvent(new HashChangeEvent('hashchange'));
+    });
+  });
+
+  // Category Tab switching (Sweets vs Restaurant)
   document.querySelectorAll('.category-tab[data-tab]').forEach(tab => {
     tab.addEventListener('click', () => {
       activeTab = tab.dataset.tab;
       window.dispatchEvent(new HashChangeEvent('hashchange'));
+    });
+  });
+
+  // Order Filters switching
+  document.querySelectorAll('.order-filter-btn[data-filter]').forEach(btn => {
+    btn.addEventListener('click', () => {
+      orderFilter = btn.dataset.filter;
+      window.dispatchEvent(new HashChangeEvent('hashchange'));
+    });
+  });
+
+  // Order Status update
+  document.querySelectorAll('.status-select').forEach(select => {
+    select.addEventListener('change', (e) => {
+      const orderId = e.target.dataset.id;
+      const newStatus = e.target.value;
+      if (updateOrderStatus(orderId, newStatus)) {
+        showToast('Order status updated', 'success');
+        window.dispatchEvent(new HashChangeEvent('hashchange'));
+      }
     });
   });
 
