@@ -762,130 +762,135 @@ export function initAdminPage() {
       }
     });
   }
+  
+  // ============================================
+  // ORDER ACTIONS & MODALS (Works across tabs)
+  // ============================================
+
+  // Handle Orders Dashboard Actions (Tracking & Subscribers)
+  document.querySelector('.orders-dashboard')?.addEventListener('click', (e) => {
+    const btn = e.target.closest('button');
+    if (!btn) return;
+    const id = btn.dataset.id;
+
+    if (btn.classList.contains('chat-admin-btn')) {
+      activeChatOrderId = id;
+      window.dispatchEvent(new HashChangeEvent('hashchange'));
+    }
+
+    if (btn.classList.contains('edit-items-btn')) {
+      editingOrderId = id;
+      window.dispatchEvent(new HashChangeEvent('hashchange'));
+    }
+  });
+
+  // Handle Edit Modal Actions
+  if (editingOrderId) {
+    document.getElementById('close-edit-items')?.addEventListener('click', () => {
+      editingOrderId = null;
+      window.dispatchEvent(new HashChangeEvent('hashchange'));
+    });
+    document.getElementById('cancel-edit-items')?.addEventListener('click', () => {
+      editingOrderId = null;
+      window.dispatchEvent(new HashChangeEvent('hashchange'));
+    });
+
+    const order = getAllOrders().find(o => o.orderId === editingOrderId);
+    if (order) {
+      // Quantity Buttons
+      document.getElementById('edit-order-items-list')?.addEventListener('click', (e) => {
+        const btn = e.target.closest('button');
+        if (!btn) return;
+        const index = parseInt(btn.dataset.index);
+        const newItems = [...order.items];
+
+        if (btn.classList.contains('plus-edit-item')) {
+          newItems[index].quantity++;
+        } else if (btn.classList.contains('minus-edit-item')) {
+          newItems[index].quantity = Math.max(1, newItems[index].quantity - 1);
+        } else if (btn.classList.contains('remove-edit-item')) {
+          newItems.splice(index, 1);
+        }
+
+        updateOrderItems(editingOrderId, newItems);
+        window.dispatchEvent(new HashChangeEvent('hashchange'));
+      });
+
+      // Search & Add
+      document.getElementById('edit-item-search')?.addEventListener('input', (e) => {
+        const query = e.target.value.toLowerCase();
+        const allProducts = [...getSweetsItems(), ...getRestaurantItems()];
+        const filtered = allProducts.filter(p => p.name.toLowerCase().includes(query)).slice(0, 5);
+        const resultsCont = document.getElementById('edit-item-search-results');
+        if (resultsCont) {
+          resultsCont.innerHTML = filtered.map(p => `
+            <div style="display: flex; justify-content: space-between; align-items: center; padding: 0.5rem; border: 1px solid var(--clr-gray-100); border-radius: 6px; font-size: 0.9rem;">
+              <div>
+                <div style="font-weight: 600;">${p.name}</div>
+                <div style="font-size: 0.8rem; color: var(--clr-gray-500);">${formatPrice(p.price)} / ${p.unit || ''}</div>
+              </div>
+              <button class="btn btn-sm btn-outline add-suggested-item" data-item="${encodeURIComponent(JSON.stringify(p))}" style="padding: 2px 8px; height: auto;">Add</button>
+            </div>
+          `).join('');
+        }
+      });
+
+      document.getElementById('edit-item-search-results')?.addEventListener('click', (e) => {
+        const btn = e.target.closest('.add-suggested-item');
+        if (btn) {
+          const product = JSON.parse(decodeURIComponent(btn.dataset.item));
+          const newItems = [...order.items];
+          const existing = newItems.find(i => i.name === product.name);
+          if (existing) {
+            existing.quantity++;
+          } else {
+            newItems.push({ name: product.name, quantity: 1, price: product.price, unit: product.unit || '' });
+          }
+          updateOrderItems(editingOrderId, newItems);
+          window.dispatchEvent(new HashChangeEvent('hashchange'));
+        }
+      });
+
+      document.getElementById('save-edit-items')?.addEventListener('click', () => {
+        const adminComment = document.getElementById('edit-order-comment')?.value || '';
+        const currentOrder = getAllOrders().find(o => o.orderId === editingOrderId);
+        if (currentOrder) {
+          updateOrderItems(editingOrderId, currentOrder.items, adminComment);
+          showToast('Changes saved successfully', 'success');
+          editingOrderId = null;
+          window.dispatchEvent(new HashChangeEvent('hashchange'));
+        }
+      });
+    }
+  }
+
+  // Handle Admin Chat Actions
+  if (activeChatOrderId) {
+    document.getElementById('close-admin-chat')?.addEventListener('click', () => {
+      activeChatOrderId = null;
+      window.dispatchEvent(new HashChangeEvent('hashchange'));
+    });
+
+    const sendMsg = () => {
+      const input = document.getElementById('admin-chat-input');
+      const text = input.value;
+      if (sendMessage(activeChatOrderId, text, 'admin').success) {
+        input.value = '';
+        window.dispatchEvent(new HashChangeEvent('hashchange'));
+        // Scroll to bottom
+        const msgCont = document.getElementById('admin-chat-messages');
+        if (msgCont) msgCont.scrollTop = msgCont.scrollHeight;
+      }
+    };
+
+    document.getElementById('admin-send-msg')?.addEventListener('click', sendMsg);
+    document.getElementById('admin-chat-input')?.addEventListener('keypress', (e) => {
+      if (e.key === 'Enter') sendMsg();
+    });
+  }
 
   // Subscribers Tab Handlers
   if (mainTab === 'subscribers') {
-    // Handle Orders Dashboard Actions
-    document.querySelector('.orders-dashboard')?.addEventListener('click', (e) => {
-      const btn = e.target.closest('button');
-      if (!btn) return;
-      const id = btn.dataset.id;
-
-      if (btn.classList.contains('chat-admin-btn')) {
-        activeChatOrderId = id;
-        window.dispatchEvent(new HashChangeEvent('hashchange'));
-      }
-
-      if (btn.classList.contains('edit-items-btn')) {
-        editingOrderId = id;
-        window.dispatchEvent(new HashChangeEvent('hashchange'));
-      }
-    });
-
-    // Handle Edit Modal Actions
-    if (editingOrderId) {
-      document.getElementById('close-edit-items')?.addEventListener('click', () => {
-        editingOrderId = null;
-        window.dispatchEvent(new HashChangeEvent('hashchange'));
-      });
-      document.getElementById('cancel-edit-items')?.addEventListener('click', () => {
-        editingOrderId = null;
-        window.dispatchEvent(new HashChangeEvent('hashchange'));
-      });
-
-      const order = getAllOrders().find(o => o.orderId === editingOrderId);
-      if (order) {
-        // Quantity Buttons
-        document.getElementById('edit-order-items-list')?.addEventListener('click', (e) => {
-          const btn = e.target.closest('button');
-          if (!btn) return;
-          const index = parseInt(btn.dataset.index);
-          const newItems = [...order.items];
-
-          if (btn.classList.contains('plus-edit-item')) {
-            newItems[index].quantity++;
-          } else if (btn.classList.contains('minus-edit-item')) {
-            newItems[index].quantity = Math.max(1, newItems[index].quantity - 1);
-          } else if (btn.classList.contains('remove-edit-item')) {
-            newItems.splice(index, 1);
-          }
-
-          updateOrderItems(editingOrderId, newItems);
-          window.dispatchEvent(new HashChangeEvent('hashchange'));
-        });
-
-        // Search & Add
-        document.getElementById('edit-item-search')?.addEventListener('input', (e) => {
-          const query = e.target.value.toLowerCase();
-          const allProducts = [...getSweetsItems(), ...getRestaurantItems()];
-          const filtered = allProducts.filter(p => p.name.toLowerCase().includes(query)).slice(0, 5);
-          const resultsCont = document.getElementById('edit-item-search-results');
-          if (resultsCont) {
-            resultsCont.innerHTML = filtered.map(p => `
-              <div style="display: flex; justify-content: space-between; align-items: center; padding: 0.5rem; border: 1px solid var(--clr-gray-100); border-radius: 6px; font-size: 0.9rem;">
-                <div>
-                  <div style="font-weight: 600;">${p.name}</div>
-                  <div style="font-size: 0.8rem; color: var(--clr-gray-500);">${formatPrice(p.price)}</div>
-                </div>
-                <button class="btn btn-sm btn-outline add-suggested-item" data-item="${encodeURIComponent(JSON.stringify(p))}" style="padding: 2px 8px; height: auto;">Add</button>
-              </div>
-            `).join('');
-          }
-        });
-
-        document.getElementById('edit-item-search-results')?.addEventListener('click', (e) => {
-          const btn = e.target.closest('.add-suggested-item');
-          if (btn) {
-            const product = JSON.parse(decodeURIComponent(btn.dataset.item));
-            const newItems = [...order.items];
-            const existing = newItems.find(i => i.name === product.name);
-            if (existing) {
-              existing.quantity++;
-            } else {
-              newItems.push({ name: product.name, quantity: 1, price: product.price });
-            }
-            updateOrderItems(editingOrderId, newItems);
-            window.dispatchEvent(new HashChangeEvent('hashchange'));
-          }
-        });
-
-        document.getElementById('save-edit-items')?.addEventListener('click', () => {
-          const adminComment = document.getElementById('edit-order-comment')?.value || '';
-          const currentOrder = getAllOrders().find(o => o.orderId === editingOrderId);
-          if (currentOrder) {
-            updateOrderItems(editingOrderId, currentOrder.items, adminComment);
-            showToast('Changes saved successfully', 'success');
-            editingOrderId = null;
-            window.dispatchEvent(new HashChangeEvent('hashchange'));
-          }
-        });
-      }
-    }
-
-    // Handle Admin Chat Actions
-    if (activeChatOrderId) {
-      document.getElementById('close-admin-chat')?.addEventListener('click', () => {
-        activeChatOrderId = null;
-        window.dispatchEvent(new HashChangeEvent('hashchange'));
-      });
-
-      const sendMsg = () => {
-        const input = document.getElementById('admin-chat-input');
-        const text = input.value;
-        if (sendMessage(activeChatOrderId, text, 'admin').success) {
-          input.value = '';
-          window.dispatchEvent(new HashChangeEvent('hashchange'));
-          // Scroll to bottom
-          const msgCont = document.getElementById('admin-chat-messages');
-          if (msgCont) msgCont.scrollTop = msgCont.scrollHeight;
-        }
-      };
-
-      document.getElementById('admin-send-msg')?.addEventListener('click', sendMsg);
-      document.getElementById('admin-chat-input')?.addEventListener('keypress', (e) => {
-        if (e.key === 'Enter') sendMsg();
-      });
-    }
 
     document.getElementById('sub-search')?.addEventListener('input', (e) => {
       subSearchQuery = e.target.value.toLowerCase().trim();
