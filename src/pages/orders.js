@@ -113,6 +113,13 @@ function renderOrderHistory(orders) {
               </div>
             </div>
 
+            ${order.adminComment ? `
+              <div style="background: #FFF9F2; border-left: 4px solid var(--clr-saffron); padding: 1rem; margin-bottom: 1.5rem; border-radius: 4px;">
+                <div style="font-size: 0.75rem; color: #D35400; font-weight: 800; text-transform: uppercase; margin-bottom: 4px;">📝 Note from Admin</div>
+                <div style="font-size: 0.95rem; color: #873600; line-height: 1.4;">${order.adminComment}</div>
+              </div>
+            ` : ''}
+
             <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1.5rem; padding-top: 1.5rem; border-top: 1px dashed var(--clr-gray-200);">
               <div>
                 <div style="font-size: 0.85rem; color: var(--clr-gray-500); margin-bottom: 0.25rem;">Pickup Schedule</div>
@@ -312,7 +319,7 @@ export function initOrdersPage() {
       if (target.classList.contains('edit-time-btn')) {
         displayWrapper.style.display = 'none';
         editWrapper.style.display = 'flex';
-      } 
+      }
       else if (target.classList.contains('cancel-time-btn')) {
         displayWrapper.style.display = 'flex';
         editWrapper.style.display = 'none';
@@ -320,7 +327,7 @@ export function initOrdersPage() {
       else if (target.classList.contains('save-time-btn')) {
         const orderId = target.dataset.id;
         const newSlot = container.querySelector('.slot-select').value;
-        
+
         if (updateOrderPickupTime(orderId, newSlot)) {
           showToast('Pickup time updated!', 'success');
           container.querySelector('.current-time-slot').textContent = `⏰ ${newSlot}`;

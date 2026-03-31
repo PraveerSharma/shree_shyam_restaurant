@@ -199,20 +199,20 @@ export function sendToWhatsApp(order) {
   const message = generateWhatsAppMessage(order);
   const encoded = encodeURIComponent(message);
   const url = `https://wa.me/${SITE_CONFIG.contact.whatsapp}?text=${encoded}`;
-  
+
   // Clear cart after successful order
   clearCart();
-  
+
   // Open WhatsApp
   window.open(url, '_blank');
-  
+
   return url;
 }
 
 export function getOrderHistory() {
   const user = getCurrentUser();
   if (!user) return [];
-  
+
   return getOrders()
     .filter(o => o.userId === user.id)
     .map(o => ({ ...o, pickupTime: o.pickupTime || '10:00 AM - 02:00 PM' }))
@@ -230,10 +230,10 @@ export function updateOrderStatus(orderId, status) {
   const orders = getOrders();
   const orderIndex = orders.findIndex(o => o.orderId === orderId);
   if (orderIndex === -1) return false;
-  
+
   orders[orderIndex].status = status;
   localStorage.setItem(ORDERS_KEY, JSON.stringify(orders));
-  
+
   // Optional real-time event dispatch
   window.dispatchEvent(new CustomEvent('orders-updated', { detail: { orderId, status } }));
   return true;
@@ -243,21 +243,21 @@ export function updateOrderPickupTime(orderId, pickupTime) {
   const orders = getOrders();
   const orderIndex = orders.findIndex(o => o.orderId === orderId);
   if (orderIndex === -1) return false;
-  
+
   orders[orderIndex].pickupTime = pickupTime;
   localStorage.setItem(ORDERS_KEY, JSON.stringify(orders));
-  
+
   window.dispatchEvent(new CustomEvent('orders-updated', { detail: { orderId, pickupTime } }));
   return true;
 }
-export function updateOrderItems(orderId, newItems) {
+export function updateOrderItems(orderId, newItems, adminComment = '') {
   const orders = getOrders();
   const orderIndex = orders.findIndex(o => o.orderId === orderId);
   if (orderIndex === -1) return { success: false, error: 'Order not found' };
 
   const oldTotal = orders[orderIndex].total;
   const newTotal = newItems.reduce((sum, item) => sum + (item.price * item.quantity), 0);
-  
+
   // Calculate difference if it's a monthly billing order
   if (orders[orderIndex].paymentMethod === 'Monthly Billing') {
     const { getSubscribers, saveSubscribers } = import.meta.glob('./subscription.js', { eager: true })['./subscription.js'];
@@ -277,12 +277,17 @@ export function updateOrderItems(orderId, newItems) {
     name: item.name,
     quantity: item.quantity,
     price: item.price,
+    unit: item.unit || '',
     subtotal: item.price * item.quantity,
   }));
   orders[orderIndex].total = newTotal;
-  
+
+  if (adminComment) {
+    orders[orderIndex].adminComment = adminComment;
+  }
+
   localStorage.setItem(ORDERS_KEY, JSON.stringify(orders));
   window.dispatchEvent(new CustomEvent('orders-updated', { detail: { orderId } }));
-  
+
   return { success: true, order: orders[orderIndex] };
 }

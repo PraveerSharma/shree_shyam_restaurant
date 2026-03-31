@@ -3,19 +3,19 @@
 // Item/price management dashboard
 // ============================================
 
-import { 
-  adminLogin, isAdminLoggedIn, adminLogout, 
-  getSweetsItems, getRestaurantItems, 
-  updateItem, addItem, deleteItem, resetToDefaults 
+import {
+  adminLogin, isAdminLoggedIn, adminLogout,
+  getSweetsItems, getRestaurantItems,
+  updateItem, addItem, deleteItem, resetToDefaults
 } from '../services/admin.js';
-import { formatPrice, getTodayDate, isDueSoon, formatPhoneNumber } from '../utils/format.js';
-import { 
+import { formatPrice, getTodayDate, isDueSoon, formatPhoneNumber, getPickupTimeStatus } from '../utils/format.js';
+import {
   showToast, unescapeForText, showConfirm
 } from '../utils/dom.js';
 import { compressImageToDataURL } from '../utils/image.js';
 import { getAllOrders, updateOrderStatus, updateOrderItems } from '../services/orders.js';
 import { getAllUsersCount, getCurrentUser } from '../services/auth.js';
-import { 
+import {
   getSubscribers, clearOutstandingBill, createAdminSubscriber, generateBillSummary, addManualBill,
   approveQuickOrder, clearPartialAmount,
   getTotalClearedRevenue, saveSubscribers
@@ -108,10 +108,10 @@ function renderAdminDashboard() {
           </div>
 
           ${(() => {
-            if (mainTab === 'menu') return renderMenuManagement();
-            if (mainTab === 'orders') return renderOrdersDashboard();
-            if (mainTab === 'subscribers') return renderSubscribersDashboard();
-          })()}
+      if (mainTab === 'menu') return renderMenuManagement();
+      if (mainTab === 'orders') return renderOrdersDashboard();
+      if (mainTab === 'subscribers') return renderSubscribersDashboard();
+    })()}
         </div>
       </section>
     </main>
@@ -180,7 +180,7 @@ function renderMenuManagement() {
 function renderOrdersDashboard() {
   const allOrders = getAllOrders();
   const totalUsers = getAllUsersCount();
-  
+
   // Calculate Insights
   const deliveredOrders = allOrders.filter(o => o.status === 'delivered');
   const subscriptionRevenue = getTotalClearedRevenue();
@@ -193,7 +193,7 @@ function renderOrdersDashboard() {
   }
 
   const getStatusColor = (status) => {
-    switch(status) {
+    switch (status) {
       case 'pending': return 'background:#FFF3CD; color:#856404; border:1px solid #FFEEBA;';
       case 'accepted': return 'background:#D1ECF1; color:#0C5460; border:1px solid #BEE5EB;';
       case 'delivered': return 'background:#D4EDDA; color:#155724; border:1px solid #C3E6CB;';
@@ -261,8 +261,8 @@ function renderOrdersDashboard() {
           </tr>
         </thead>
         <tbody>
-          ${filteredOrders.length === 0 ? `<tr><td colspan="5" style="text-align:center; padding: 2rem; color: var(--clr-gray-500);">No orders found for this filter.</td></tr>` : 
-            filteredOrders.map(order => `
+          ${filteredOrders.length === 0 ? `<tr><td colspan="5" style="text-align:center; padding: 2rem; color: var(--clr-gray-500);">No orders found for this filter.</td></tr>` :
+      filteredOrders.map(order => `
             <tr>
               <td>
                 <div style="font-family: var(--ff-accent); font-weight: 700; color: var(--clr-saffron); margin-bottom: 4px; font-size: 0.9rem; display: flex; align-items: center; gap: 8px;">
@@ -273,10 +273,10 @@ function renderOrdersDashboard() {
                     </span>
                   ` : ''}
                   ${isDueSoon(order.pickupDate) && order.status !== 'delivered' && order.status !== 'cancelled' ? `
-                    <span class="badge badge-error" style="font-size: 0.65rem; padding: 2px 6px; animation: pulse 2s infinite;">⚠️ DUE SOON</span>
+                    <span class="badge badge-error" style="font-size: 0.7rem; padding: 4px 8px; animation: pulse 1.5s infinite; background: #e74c3c; color: white; border: none; font-weight: 800; box-shadow: 0 0 10px rgba(231, 76, 60, 0.4);">🔥 DUE SOON</span>
                   ` : ''}
                 </div>
-                <div style="font-size: 0.8rem; color: var(--clr-gray-500);">${new Date(order.createdAt).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', hour:'2-digit', minute:'2-digit' })}</div>
+                <div style="font-size: 0.8rem; color: var(--clr-gray-500);">${new Date(order.createdAt).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })}</div>
               </td>
               <td>
                 <div style="font-weight: 600; margin-bottom: 3px;">${order.customerName}</div>
@@ -287,10 +287,6 @@ function renderOrdersDashboard() {
                     <div style="display: flex; gap: 8px; margin-top: 8px; flex-wrap: wrap;">
                       <button class="btn btn-sm chat-admin-btn" data-id="${order.orderId}" style="background: #E3F2FD; color: #1976D2; border: 1px solid #BBDEFB; padding: 4px 10px; font-size: 0.8rem; font-weight: 700; border-radius: var(--radius-md);">💬 Chat</button>
                       
-                      ${order.status !== 'delivered' && order.status !== 'cancelled' ? `
-                        <button class="btn btn-sm btn-outline edit-items-btn" data-id="${order.orderId}" style="padding: 4px 10px; font-size: 0.8rem; font-weight: 700; border-radius: var(--radius-md);">✏️ Edit Items</button>
-                      ` : ''}
-
                       <a href="https://wa.me/${order.customerPhone.replace(/[\s\-\+]/g, '').replace(/^91/, '91')}?text=${encodeURIComponent(`Hello ${order.customerName}, regarding your order ${order.orderId} from Shree Shyam Restaurant...`)}" 
                          target="_blank" 
                          class="btn btn-sm" 
@@ -305,11 +301,19 @@ function renderOrdersDashboard() {
                   🗓️ Pickup: <strong style="color:var(--clr-veg);">${order.pickupDate}</strong> 
                   <span style="margin-left: 8px; font-weight: 700; color: var(--clr-saffron);">⏰ ${order.pickupTime || 'No slot'}</span>
                 </div>
+                <div style="font-size: 0.85rem; margin-top: 4px; font-weight: 700; color: #d35400;">
+                  ⏳ Time Left: ${getPickupTimeStatus(order.pickupDate, order.pickupTime)}
+                </div>
               </td>
               <td>
-                <div style="max-height: 80px; overflow-y: auto; padding-right: 8px;">
-                  ${order.items.map(i => `<div style="font-size: 0.85rem; margin-bottom: 2px; color:var(--clr-gray-700); white-space:nowrap; text-overflow:ellipsis; overflow:hidden;">${i.quantity}× ${i.name}</div>`).join('')}
+                <div style="max-height: 100px; overflow-y: auto; padding-right: 8px;">
+                  ${order.items.map(i => `<div style="font-size: 0.85rem; margin-bottom: 4px; color:var(--clr-gray-700); border-bottom: 1px solid var(--clr-gray-50); padding-bottom: 2px;">
+                    <span style="font-weight: 700; color: var(--clr-primary);">${i.quantity}</span> ${i.unit ? `<span style="font-size: 0.7rem; color: var(--clr-gray-500);">(${i.unit})</span>` : ''} × ${i.name}
+                  </div>`).join('')}
                 </div>
+                ${order.status !== 'delivered' && order.status !== 'cancelled' ? `
+                  <button class="btn btn-sm btn-outline edit-items-btn" data-id="${order.orderId}" style="margin-top: 8px; padding: 2px 10px; font-size: 0.75rem; font-weight: 700; border-radius: var(--radius-sm); border-color: var(--clr-saffron); color: var(--clr-saffron);">⚡ Change Items</button>
+                ` : ''}
               </td>
               <td>
                 <div style="font-weight: 700; font-size: 1.05rem;">${formatPrice(order.total)}</div>
@@ -331,8 +335,8 @@ function renderOrdersDashboard() {
 }
 
 function renderAddForm() {
-  const categories = activeTab === 'sweets' 
-    ? ['sweets', 'snacks'] 
+  const categories = activeTab === 'sweets'
+    ? ['sweets', 'snacks']
     : ['starters', 'sabzi', 'roti', 'thali'];
 
   return `
@@ -403,8 +407,8 @@ function renderEditForm(itemId) {
   const item = items.find(i => i.id === itemId);
   if (!item) return '';
 
-  const categories = activeTab === 'sweets' 
-    ? ['sweets', 'snacks'] 
+  const categories = activeTab === 'sweets'
+    ? ['sweets', 'snacks']
     : ['starters', 'sabzi', 'roti', 'thali'];
 
   return `
@@ -569,7 +573,7 @@ export function initAdminPage() {
       editingItemId = btn.dataset.id;
       showAddForm = false; // Close add form if open
       window.dispatchEvent(new HashChangeEvent('hashchange'));
-      
+
       // Scroll to edit form
       setTimeout(() => {
         document.getElementById('admin-edit-form')?.scrollIntoView({ behavior: 'smooth', block: 'center' });
@@ -640,12 +644,12 @@ export function initAdminPage() {
       image: document.getElementById('edit-item-image').value,
       isAvailable: document.getElementById('edit-item-available').checked
     };
-    
+
     if (!updates.name || isNaN(updates.price)) {
       showToast('Name and valid price are required', 'error');
       return;
     }
-    
+
     updateItem(activeTab, id, updates);
     editingItemId = null;
     showToast('Item updated successfully', 'success');
@@ -748,7 +752,7 @@ export function initAdminPage() {
       const phone = document.getElementById('offline-customer-phone').value;
       const pickupDate = document.getElementById('offline-pickup-date').value;
       const pickupTime = document.getElementById('offline-pickup-time').value;
-      
+
       const { createOfflineOrder } = import.meta.glob('../services/orders.js', { eager: true })['../services/orders.js'];
       const result = createOfflineOrder(offlineCart, { name, phone, pickupDate, pickupTime });
       if (result.success) {
@@ -806,7 +810,7 @@ export function initAdminPage() {
           } else if (btn.classList.contains('remove-edit-item')) {
             newItems.splice(index, 1);
           }
-          
+
           updateOrderItems(editingOrderId, newItems);
           window.dispatchEvent(new HashChangeEvent('hashchange'));
         });
@@ -847,9 +851,14 @@ export function initAdminPage() {
         });
 
         document.getElementById('save-edit-items')?.addEventListener('click', () => {
-          showToast('Changes saved successfully', 'success');
-          editingOrderId = null;
-          window.dispatchEvent(new HashChangeEvent('hashchange'));
+          const adminComment = document.getElementById('edit-order-comment')?.value || '';
+          const currentOrder = getAllOrders().find(o => o.orderId === editingOrderId);
+          if (currentOrder) {
+            updateOrderItems(editingOrderId, currentOrder.items, adminComment);
+            showToast('Changes saved successfully', 'success');
+            editingOrderId = null;
+            window.dispatchEvent(new HashChangeEvent('hashchange'));
+          }
         });
       }
     }
@@ -1016,7 +1025,7 @@ export function initAdminPage() {
 
 function renderManualOrderForm() {
   const total = offlineCart.reduce((s, i) => s + (i.price * i.quantity), 0);
-  
+
   return `
     <div class="manual-order-container page-enter" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 1.5rem; background: var(--clr-gray-50); padding: 1.5rem; border-radius: var(--radius-lg); border: 2px solid var(--clr-saffron); margin-bottom: 2rem; box-shadow: var(--shadow-md);">
       <!-- Left: Item Selector -->
@@ -1109,8 +1118,8 @@ function renderSubscribersDashboard() {
   if (selectedSubscriberId) return renderSubscriberDetail();
 
   const subs = getSubscribers();
-  const filtered = subs.filter(s => 
-    s.name.toLowerCase().includes(subSearchQuery.toLowerCase()) || 
+  const filtered = subs.filter(s =>
+    s.name.toLowerCase().includes(subSearchQuery.toLowerCase()) ||
     s.phone.includes(subSearchQuery)
   );
 
@@ -1365,7 +1374,7 @@ function removeOfflineItem(id) {
 function renderEditOrderModal(order) {
   if (!order) return '';
   const allProducts = [...getSweetsItems(), ...getRestaurantItems()];
-  
+
   return `
     <div class="modal-backdrop" id="edit-items-modal" style="display:flex; align-items:center; justify-content:center; z-index: 1000;">
       <div class="modal-content" style="width: 90%; max-width: 800px; max-height: 90vh; overflow-y: auto;">
@@ -1382,7 +1391,7 @@ function renderEditOrderModal(order) {
               ${order.items.map((item, index) => `
                 <div style="display: flex; justify-content: space-between; align-items: center; background: var(--clr-gray-50); padding: 0.75rem; border-radius: 8px; border: 1px solid var(--clr-gray-200);">
                   <div style="flex: 1;">
-                    <div style="font-weight: 600;">${item.name}</div>
+                    <div style="font-weight: 600;">${item.name} ${item.unit ? `<span style="font-size: 0.75rem; color: var(--clr-gray-500);">(${item.unit})</span>` : ''}</div>
                     <div style="font-size: 0.85rem; color: var(--clr-gray-600);">${formatPrice(item.price)}</div>
                   </div>
                   <div style="display: flex; align-items: center; gap: 10px;">
@@ -1396,7 +1405,14 @@ function renderEditOrderModal(order) {
                 </div>
               `).join('')}
             </div>
-            <div style="margin-top: 1.5rem; padding-top: 1rem; border-top: 2px dashed var(--clr-gray-200); display: flex; justify-content: space-between; align-items: center;">
+            
+            <div style="margin-top: 1.5rem; padding-top: 1.5rem; border-top: 2px dashed var(--clr-gray-200);">
+              <h3 style="font-size: 1rem; margin-bottom: 0.5rem; color: #d35400;">📝 Admin Note / Reason for edit</h3>
+              <p style="font-size: 0.8rem; color: var(--clr-gray-500); margin-bottom: 0.75rem;">This message will be shown to the customer in their "My Orders" section.</p>
+              <textarea id="edit-order-comment" class="form-input" rows="2" placeholder="Ex: Added extra pieces as requested, Price adjusted for weight variation..." style="font-size: 0.9rem;">${order.adminComment || ''}</textarea>
+            </div>
+
+            <div style="margin-top: 1.5rem; padding-top: 1rem; border-top: 1px solid var(--clr-gray-200); display: flex; justify-content: space-between; align-items: center;">
               <span style="font-weight: 700; font-size: 1.1rem;">Estimated Total:</span>
               <span style="font-size: 1.5rem; font-weight: 800; color: var(--clr-saffron);">${formatPrice(order.total)}</span>
             </div>
@@ -1432,7 +1448,7 @@ function renderEditOrderModal(order) {
 function renderAdminChatWindow(orderId) {
   const messages = getMessages(orderId);
   const order = getAllOrders().find(o => o.orderId === orderId);
-  
+
   return `
     <div style="position: fixed; bottom: 2rem; right: 2rem; width: 400px; height: 500px; background: white; border-radius: var(--radius-lg); box-shadow: 0 10px 40px rgba(0,0,0,0.2); z-index: 1001; display: flex; flex-direction: column; border: 1px solid var(--clr-gray-200); overflow: hidden; animation: slideUp 0.3s ease;">
       <div style="background: var(--clr-primary); color: white; padding: 1rem; display: flex; justify-content: space-between; align-items: center;">

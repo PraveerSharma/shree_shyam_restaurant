@@ -17,7 +17,7 @@ let resendInterval = null;
 
 export function renderCartPage() {
   if (orderSuccess) return renderSuccessScreen();
-  
+
   const cart = getCart();
   const total = getCartTotal();
   const user = getCurrentUser();
@@ -257,7 +257,7 @@ export function initCartPage() {
   // Checkout form
   document.getElementById('checkout-form')?.addEventListener('submit', (e) => {
     e.preventDefault();
-    
+
     const phoneInput = document.getElementById('customer-phone');
     const phone = '+91' + phoneInput.value.trim();
     const pickupDate = document.getElementById('pickup-date').value;
@@ -298,7 +298,7 @@ export function initCartPage() {
 
     const cart = getCart();
     const result = createOrder(cart, { phone, pickupDate, pickupTime, notes, paymentMethod });
-    
+
     if (result.success) {
       orderSuccess = true;
       window.location.hash = '#/orders';
