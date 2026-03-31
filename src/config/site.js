@@ -56,9 +56,7 @@ export const SITE_CONFIG = {
   },
 
   admin: {
-    // In production, use proper hashing. This is a simple demo password.
-    passwordHash: 'c2hyZWVzaHlhbWFkbWluMTIz', // base64 of 'shreeshyamadmin123'
-    password: 'admin@123', // plaintext for demo (validated via hash in production)
+    password: import.meta.env.VITE_ADMIN_PASSWORD || 'admin@123',
   },
 
   currency: {
