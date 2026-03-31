@@ -105,12 +105,16 @@ function renderAdminDashboard() {
             <button class="admin-tab-btn ${mainTab === 'subscribers' ? 'active' : ''}" data-main-tab="subscribers">
               👥 Subscribers
             </button>
+            <button class="admin-tab-btn ${mainTab === 'analytics' ? 'active' : ''}" data-main-tab="analytics">
+              📊 Analytics
+            </button>
           </div>
 
           ${(() => {
       if (mainTab === 'menu') return renderMenuManagement();
       if (mainTab === 'orders') return renderOrdersDashboard();
       if (mainTab === 'subscribers') return renderSubscribersDashboard();
+      if (mainTab === 'analytics') return renderAnalyticsDashboard();
     })()}
         </div>
       </section>
@@ -1427,6 +1431,188 @@ function renderSubscriberDetail() {
             `).join('')}
           </tbody>
         </table>
+      </div>
+    </div>
+  `;
+}
+
+// ============================================
+// ANALYTICS DASHBOARD
+// ============================================
+
+function renderAnalyticsDashboard() {
+  const allOrders = getAllOrders();
+  const subs = getSubscribers();
+  const sweetsItems = getSweetsItems();
+  const restaurantItems = getRestaurantItems();
+
+  // Revenue calculations
+  const now = new Date();
+  const startOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  const startOfWeek = new Date(startOfToday - 7 * 86400000);
+  const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+
+  const todayOrders = allOrders.filter(o => new Date(o.createdAt) >= startOfToday);
+  const weekOrders = allOrders.filter(o => new Date(o.createdAt) >= startOfWeek);
+  const monthOrders = allOrders.filter(o => new Date(o.createdAt) >= startOfMonth);
+
+  const todayRevenue = todayOrders.filter(o => o.status === 'delivered').reduce((s, o) => s + o.total, 0);
+  const weekRevenue = weekOrders.filter(o => o.status === 'delivered').reduce((s, o) => s + o.total, 0);
+  const monthRevenue = monthOrders.filter(o => o.status === 'delivered').reduce((s, o) => s + o.total, 0);
+  const totalRevenue = allOrders.filter(o => o.status === 'delivered').reduce((s, o) => s + o.total, 0) + getTotalClearedRevenue();
+
+  // Popular items (from all orders)
+  const itemCounts = {};
+  allOrders.forEach(o => {
+    (o.items || []).forEach(item => {
+      if (!itemCounts[item.name]) itemCounts[item.name] = { name: item.name, qty: 0, revenue: 0 };
+      itemCounts[item.name].qty += item.quantity;
+      itemCounts[item.name].revenue += item.price * item.quantity;
+    });
+  });
+  const topItems = Object.values(itemCounts).sort((a, b) => b.qty - a.qty).slice(0, 10);
+
+  // Order status breakdown
+  const statusCounts = { pending: 0, accepted: 0, delivered: 0, cancelled: 0 };
+  allOrders.forEach(o => { if (statusCounts[o.status] !== undefined) statusCounts[o.status]++; });
+
+  // Daily orders for last 7 days
+  const dailyData = [];
+  for (let i = 6; i >= 0; i--) {
+    const day = new Date(startOfToday - i * 86400000);
+    const dayEnd = new Date(day.getTime() + 86400000);
+    const dayOrders = allOrders.filter(o => {
+      const d = new Date(o.createdAt);
+      return d >= day && d < dayEnd;
+    });
+    dailyData.push({
+      label: day.toLocaleDateString('en-IN', { day: 'numeric', month: 'short' }),
+      orders: dayOrders.length,
+      revenue: dayOrders.filter(o => o.status === 'delivered').reduce((s, o) => s + o.total, 0),
+    });
+  }
+  const maxDailyOrders = Math.max(...dailyData.map(d => d.orders), 1);
+
+  return `
+    <div class="analytics-dashboard page-enter">
+      <!-- Revenue Stats -->
+      <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 1rem; margin-bottom: 2rem;">
+        <div class="sub-stat-card">
+          <div class="stat-icon" style="background: #D1FAE5; color: #065F46;">💰</div>
+          <div class="stat-label">Today</div>
+          <div class="stat-value" style="color: var(--clr-veg); font-size: 1.4rem;">${formatPrice(todayRevenue)}</div>
+          <div style="font-size: 0.75rem; color: var(--clr-gray-500); margin-top: 4px;">${todayOrders.length} orders</div>
+        </div>
+        <div class="sub-stat-card">
+          <div class="stat-icon" style="background: #DBEAFE; color: #1E40AF;">📅</div>
+          <div class="stat-label">This Week</div>
+          <div class="stat-value" style="color: var(--clr-info); font-size: 1.4rem;">${formatPrice(weekRevenue)}</div>
+          <div style="font-size: 0.75rem; color: var(--clr-gray-500); margin-top: 4px;">${weekOrders.length} orders</div>
+        </div>
+        <div class="sub-stat-card">
+          <div class="stat-icon" style="background: #FEF3C7; color: #92400E;">📊</div>
+          <div class="stat-label">This Month</div>
+          <div class="stat-value" style="color: var(--clr-saffron); font-size: 1.4rem;">${formatPrice(monthRevenue)}</div>
+          <div style="font-size: 0.75rem; color: var(--clr-gray-500); margin-top: 4px;">${monthOrders.length} orders</div>
+        </div>
+        <div class="sub-stat-card">
+          <div class="stat-icon" style="background: #F3E8FF; color: #6B21A8;">🏆</div>
+          <div class="stat-label">All Time</div>
+          <div class="stat-value" style="color: #7C3AED; font-size: 1.4rem;">${formatPrice(totalRevenue)}</div>
+          <div style="font-size: 0.75rem; color: var(--clr-gray-500); margin-top: 4px;">${allOrders.length} total orders</div>
+        </div>
+      </div>
+
+      <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1.5rem; margin-bottom: 2rem;">
+        <!-- Orders Chart (last 7 days) -->
+        <div style="background: white; border: 1px solid var(--clr-gray-200); border-radius: var(--radius-lg); padding: 1.25rem;">
+          <h3 style="font-size: 1rem; color: var(--clr-charcoal); margin-bottom: 1rem;">Orders — Last 7 Days</h3>
+          <div style="display: flex; align-items: flex-end; gap: 6px; height: 120px;">
+            ${dailyData.map(d => `
+              <div style="flex: 1; display: flex; flex-direction: column; align-items: center; gap: 4px;">
+                <div style="font-size: 0.65rem; font-weight: 700; color: var(--clr-saffron);">${d.orders}</div>
+                <div style="width: 100%; background: var(--clr-saffron); border-radius: 4px 4px 0 0; height: ${Math.max((d.orders / maxDailyOrders) * 100, 4)}px; min-height: 4px; transition: height 0.3s ease;"></div>
+                <div style="font-size: 0.6rem; color: var(--clr-gray-500); white-space: nowrap;">${d.label}</div>
+              </div>
+            `).join('')}
+          </div>
+        </div>
+
+        <!-- Order Status Breakdown -->
+        <div style="background: white; border: 1px solid var(--clr-gray-200); border-radius: var(--radius-lg); padding: 1.25rem;">
+          <h3 style="font-size: 1rem; color: var(--clr-charcoal); margin-bottom: 1rem;">Order Status</h3>
+          <div style="display: flex; flex-direction: column; gap: 0.75rem;">
+            ${Object.entries(statusCounts).map(([status, count]) => {
+              const pct = allOrders.length ? Math.round(count / allOrders.length * 100) : 0;
+              const color = status === 'delivered' ? '#2ECC71' : status === 'pending' ? '#F39C12' : status === 'accepted' ? '#3498DB' : '#E74C3C';
+              return `
+                <div>
+                  <div style="display: flex; justify-content: space-between; font-size: 0.85rem; margin-bottom: 4px;">
+                    <span style="text-transform: capitalize; font-weight: 600;">${status}</span>
+                    <span style="color: var(--clr-gray-500);">${count} (${pct}%)</span>
+                  </div>
+                  <div style="height: 8px; background: var(--clr-gray-100); border-radius: 4px; overflow: hidden;">
+                    <div style="height: 100%; width: ${pct}%; background: ${color}; border-radius: 4px; transition: width 0.5s ease;"></div>
+                  </div>
+                </div>
+              `;
+            }).join('')}
+          </div>
+        </div>
+      </div>
+
+      <!-- Popular Items -->
+      <div style="background: white; border: 1px solid var(--clr-gray-200); border-radius: var(--radius-lg); padding: 1.25rem; margin-bottom: 2rem;">
+        <h3 style="font-size: 1rem; color: var(--clr-charcoal); margin-bottom: 1rem;">Top Selling Items</h3>
+        ${topItems.length === 0 ? `
+          <p style="color: var(--clr-gray-400); text-align: center; padding: 1.5rem;">No order data yet.</p>
+        ` : `
+          <div class="admin-table-container">
+            <table class="admin-table">
+              <thead>
+                <tr>
+                  <th>#</th>
+                  <th>Item</th>
+                  <th>Qty Sold</th>
+                  <th>Revenue</th>
+                </tr>
+              </thead>
+              <tbody>
+                ${topItems.map((item, i) => `
+                  <tr>
+                    <td style="font-weight: 700; color: ${i < 3 ? 'var(--clr-saffron)' : 'var(--clr-gray-500)'};">${i + 1}</td>
+                    <td style="font-weight: 600;">${item.name}</td>
+                    <td>${item.qty}</td>
+                    <td style="font-weight: 700;">${formatPrice(item.revenue)}</td>
+                  </tr>
+                `).join('')}
+              </tbody>
+            </table>
+          </div>
+        `}
+      </div>
+
+      <!-- Business Summary -->
+      <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1rem;">
+        <div style="background: white; border: 1px solid var(--clr-gray-200); border-radius: var(--radius-lg); padding: 1.25rem; text-align: center;">
+          <div style="font-size: 0.8rem; color: var(--clr-gray-500); text-transform: uppercase; margin-bottom: 0.5rem;">Menu Items</div>
+          <div style="font-size: 1.75rem; font-weight: 800; color: var(--clr-charcoal);">${sweetsItems.length + restaurantItems.length}</div>
+          <div style="font-size: 0.75rem; color: var(--clr-gray-400);">${sweetsItems.length} sweets · ${restaurantItems.length} restaurant</div>
+        </div>
+        <div style="background: white; border: 1px solid var(--clr-gray-200); border-radius: var(--radius-lg); padding: 1.25rem; text-align: center;">
+          <div style="font-size: 0.8rem; color: var(--clr-gray-500); text-transform: uppercase; margin-bottom: 0.5rem;">Subscribers</div>
+          <div style="font-size: 1.75rem; font-weight: 800; color: var(--clr-charcoal);">${subs.length}</div>
+          <div style="font-size: 0.75rem; color: var(--clr-gray-400);">${formatPrice(subs.reduce((s, sub) => s + (sub.outstandingBalance || 0), 0))} outstanding</div>
+        </div>
+        <div style="background: white; border: 1px solid var(--clr-gray-200); border-radius: var(--radius-lg); padding: 1.25rem; text-align: center;">
+          <div style="font-size: 0.8rem; color: var(--clr-gray-500); text-transform: uppercase; margin-bottom: 0.5rem;">Avg Order Value</div>
+          <div style="font-size: 1.75rem; font-weight: 800; color: var(--clr-charcoal);">
+            ${allOrders.filter(o => o.status === 'delivered').length > 0
+              ? formatPrice(totalRevenue / allOrders.filter(o => o.status === 'delivered').length)
+              : formatPrice(0)}
+          </div>
+          <div style="font-size: 0.75rem; color: var(--clr-gray-400);">per delivered order</div>
+        </div>
       </div>
     </div>
   `;
