@@ -256,7 +256,7 @@ function renderOrdersDashboard() {
                 <div style="display:flex; align-items:center; gap:10px; margin-top: 4px;">
                   <div style="font-size: 0.85rem; color: var(--clr-gray-600);">📞 <a href="tel:${order.customerPhone}" style="color:var(--clr-info); text-decoration:none;">${order.customerPhone}</a></div>
                   
-                  ${order.customerPhone && order.customerPhone !== 'N/A' && !order.isOffline ? `
+                  ${order.customerPhone && order.customerPhone !== 'N/A' ? `
                     <a href="https://wa.me/${order.customerPhone.replace(/[\s\-\+]/g, '').replace(/^91/, '91')}?text=${encodeURIComponent(`Hello ${order.customerName}, regarding your order ${order.orderId} from Shree Shyam Restaurant...`)}" 
                        target="_blank" 
                        class="btn btn-sm" 
@@ -683,6 +683,19 @@ export function initAdminPage() {
       if (btn.classList.contains('remove-item')) removeOfflineItem(id);
     });
 
+    // Handle offline cart manual input
+    document.getElementById('offline-cart-items')?.addEventListener('change', (e) => {
+      const input = e.target;
+      const id = input.dataset.id;
+      if (!id || !input.classList.contains('qty-input')) return;
+      const val = Math.min(Math.max(parseInt(input.value) || 1, 1), 999);
+      const item = offlineCart.find(i => i.id === id);
+      if (item) {
+        item.quantity = val;
+        window.dispatchEvent(new HashChangeEvent('hashchange'));
+      }
+    });
+
     // Place Offline Order
     document.getElementById('place-offline-order-btn')?.addEventListener('click', () => {
       if (offlineCart.length === 0) {
@@ -743,7 +756,7 @@ function renderOfflineOrderForm() {
                   <div style="display: flex; align-items: center; gap: 0.75rem;">
                     <div class="qty-selector" style="height: 32px; padding: 2px;">
                       <button class="qty-btn qty-minus" data-id="${i.id}">−</button>
-                      <span class="qty-value" style="font-size: 0.9rem;">${i.quantity}</span>
+                      <input type="number" class="qty-input" value="${i.quantity}" min="1" max="999" data-id="${i.id}" style="width: 45px; text-align: center; border: none; background: transparent; font-weight: 700; font-size: 0.9rem;">
                       <button class="qty-btn qty-plus" data-id="${i.id}">+</button>
                     </div>
                     <button class="remove-item" data-id="${i.id}" style="background: none; border: none; color: var(--clr-error); cursor: pointer; padding: 4px;">✕</button>

@@ -48,9 +48,8 @@ export function renderProductCard(product) {
         ` : (existingQty > 0 ? `
           <div class="qty-selector active" data-id="${product.id}">
             <button class="qty-btn qty-minus" data-id="${product.id}" aria-label="Decrease quantity">−</button>
-            <span class="qty-value">${existingQty}</span>
+            <input type="number" class="qty-input" value="${existingQty}" min="1" max="999" data-id="${product.id}" style="width: 50px; text-align: center; border: none; background: transparent; font-weight: 700; color: var(--clr-primary); font-size: 1rem;">
             <button class="qty-btn qty-plus" data-id="${product.id}" aria-label="Increase quantity">+</button>
-            <button class="qty-btn qty-plus-10" data-id="${product.id}" style="background:var(--clr-secondary); font-size:0.7rem; width:28px;">+10</button>
           </div>
         ` : `
           <button class="add-to-cart-btn" data-id="${product.id}" aria-label="Add ${product.name} to cart">
@@ -111,9 +110,8 @@ function switchToQtyControls(card, product, qty) {
   actionsDiv.innerHTML = `
     <div class="qty-selector active" data-id="${product.id}">
       <button class="qty-btn qty-minus" data-id="${product.id}" aria-label="Decrease quantity">−</button>
-      <span class="qty-value">${qty}</span>
+      <input type="number" class="qty-input" value="${qty}" min="1" max="999" data-id="${product.id}" style="width: 50px; text-align: center; border: none; background: transparent; font-weight: 700; color: var(--clr-primary); font-size: 1rem;">
       <button class="qty-btn qty-plus" data-id="${product.id}" aria-label="Increase quantity">+</button>
-      <button class="qty-btn qty-plus-10" data-id="${product.id}" style="background:var(--clr-secondary); font-size:0.7rem; width:28px;">+10</button>
     </div>
   `;
   // Trigger entry animation
@@ -148,7 +146,7 @@ function switchToAddButton(card, product) {
 
 function bindQtyControls(card, product, currentQty) {
   let qty = currentQty;
-  const qtyDisplay = card.querySelector('.qty-value');
+  const qtyDisplay = card.querySelector('.qty-input');
   
   card.querySelector('.qty-minus').addEventListener('click', () => {
     qty--;
@@ -159,25 +157,25 @@ function bindQtyControls(card, product, currentQty) {
       switchToAddButton(card, product);
       return;
     }
-    qtyDisplay.textContent = qty;
+    if (qtyDisplay) qtyDisplay.value = qty;
     updateQuantity(product.id, qty);
   });
 
   card.querySelector('.qty-plus').addEventListener('click', () => {
     if (qty >= 999) return;
     qty++;
-    qtyDisplay.textContent = qty;
+    if (qtyInput) qtyInput.value = qty;
     addToCart(product, 1);
   });
 
-  card.querySelector('.qty-plus-10').addEventListener('click', () => {
-    if (qty >= 999) return;
-    const addAmt = Math.min(10, 999 - qty);
-    qty += addAmt;
-    qtyDisplay.textContent = qty;
-    addToCart(product, addAmt);
-    showToast(`Added 10 more ${product.name}`, 'success');
-  });
+  if (qtyInput) {
+    qtyInput.addEventListener('change', (e) => {
+      const newVal = Math.min(Math.max(parseInt(e.target.value) || 1, 1), 999);
+      qty = newVal;
+      e.target.value = qty;
+      updateQuantity(product.id, qty);
+    });
+  }
 }
 
 export function renderProductsGrid(products, containerId) {
