@@ -21,6 +21,8 @@ let activeTab = 'sweets';
 let orderFilter = 'all'; // 'all', 'pending', 'delivered', 'cancelled'
 let showAddForm = false;
 let editingItemId = null;
+let offlineCart = [];
+let offlineSearchQuery = '';
 
 export function renderAdminPage() {
   if (!isAdminLoggedIn()) {
@@ -81,17 +83,23 @@ function renderAdminDashboard() {
             </div>
           </div>
 
-          <!-- Main Dashboard Switcher -->
-          <div style="display: flex; gap: 1rem; margin-bottom: 2rem; border-bottom: 1px solid var(--clr-gray-200); padding-bottom: 1rem;">
+          <div style="display: flex; gap: 1rem; margin-bottom: 2rem; border-bottom: 1px solid var(--clr-gray-200); padding-bottom: 1rem; flex-wrap: wrap;">
             <button class="badge-tab ${mainTab === 'menu' ? 'active' : ''}" data-main-tab="menu" style="${mainTab === 'menu' ? 'background: var(--clr-saffron); color: white;' : 'background: transparent; color: var(--clr-gray-600);'} border: none; font-size: 1.1rem; padding: 0.5rem 1rem; border-radius: var(--radius-md); font-weight: 600; cursor: pointer; transition: all 0.2s;">
               📋 Menu Management
             </button>
             <button class="badge-tab ${mainTab === 'orders' ? 'active' : ''}" data-main-tab="orders" style="${mainTab === 'orders' ? 'background: var(--clr-saffron); color: white;' : 'background: transparent; color: var(--clr-gray-600);'} border: none; font-size: 1.1rem; padding: 0.5rem 1rem; border-radius: var(--radius-md); font-weight: 600; cursor: pointer; transition: all 0.2s;">
               📦 Order Tracking
             </button>
+            <button class="badge-tab ${mainTab === 'offline' ? 'active' : ''}" data-main-tab="offline" style="${mainTab === 'offline' ? 'background: var(--clr-saffron); color: white;' : 'background: transparent; color: var(--clr-gray-600);'} border: none; font-size: 1.1rem; padding: 0.5rem 1rem; border-radius: var(--radius-md); font-weight: 600; cursor: pointer; transition: all 0.2s;">
+              ➕ Offline Order
+            </button>
           </div>
 
-          ${mainTab === 'menu' ? renderMenuManagement() : renderOrdersDashboard()}
+          ${(() => {
+            if (mainTab === 'menu') return renderMenuManagement();
+            if (mainTab === 'orders') return renderOrdersDashboard();
+            if (mainTab === 'offline') return renderOfflineOrderForm();
+          })()}
         </div>
       </section>
     </main>
@@ -233,7 +241,14 @@ function renderOrdersDashboard() {
             filteredOrders.map(order => `
             <tr>
               <td>
-                <div style="font-family: var(--ff-accent); font-weight: 700; color: var(--clr-saffron); margin-bottom: 4px; font-size: 0.9rem;">${order.orderId}</div>
+                <div style="font-family: var(--ff-accent); font-weight: 700; color: var(--clr-saffron); margin-bottom: 4px; font-size: 0.9rem; display: flex; align-items: center; gap: 8px;">
+                  ${order.orderId}
+                  ${order.isOffline ? `
+                    <span style="background: var(--clr-gray-200); color: var(--clr-gray-700); font-size: 0.65rem; padding: 2px 6px; border-radius: 4px; text-transform: uppercase; letter-spacing: 0.05em; font-family: sans-serif; font-weight: 700;">
+                      🏪 Offline
+                    </span>
+                  ` : ''}
+                </div>
                 <div style="font-size: 0.8rem; color: var(--clr-gray-500);">${new Date(order.createdAt).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', hour:'2-digit', minute:'2-digit' })}</div>
               </td>
               <td>
@@ -241,13 +256,15 @@ function renderOrdersDashboard() {
                 <div style="display:flex; align-items:center; gap:10px; margin-top: 4px;">
                   <div style="font-size: 0.85rem; color: var(--clr-gray-600);">📞 <a href="tel:${order.customerPhone}" style="color:var(--clr-info); text-decoration:none;">${order.customerPhone}</a></div>
                   
-                  <a href="https://wa.me/${order.customerPhone.replace(/[\s\-\+]/g, '').replace(/^91/, '91')}?text=${encodeURIComponent(`Hello ${order.customerName}, regarding your order ${order.orderId} from Shree Shyam Restaurant...`)}" 
-                     target="_blank" 
-                     class="btn btn-sm" 
-                     style="background:#FFF4E6; color:#D35400; border:1px solid #FFD8A8; padding: 4px 12px; font-size: 0.8rem; display:inline-flex; align-items:center; gap:6px; border-radius:var(--radius-md); text-decoration:none; font-weight:700; margin-top:8px; transition: all 0.2s;">
-                    <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M.057 24l1.687-6.163c-1.041-1.804-1.588-3.849-1.587-5.946.003-6.556 5.338-11.891 11.893-11.891 3.181.001 6.167 1.24 8.413 3.488 2.246 2.248 3.484 5.232 3.484 8.412-.003 6.557-5.338 11.892-11.893 11.892-1.997-.001-3.951-.5-5.688-1.448l-6.309 1.656zm6.29-4.143c1.552.921 3.13 1.411 4.793 1.412 5.204 0 9.444-4.24 9.446-9.443.002-2.521-.979-4.89-2.762-6.67s-4.149-2.765-6.67-2.765c-5.204 0-9.441 4.239-9.443 9.441-.001 1.742.483 3.339 1.398 4.71l-1.01 3.693 3.791-.994zm11.367-7.4c-.31-.154-1.829-.902-2.107-1.003-.278-.101-.48-.153-.68.154-.201.307-.779 1.003-.955 1.205-.175.202-.351.226-.66.073-.31-.153-1.309-.482-2.493-1.54-.92-.821-1.54-1.835-1.72-2.144-.18-.309-.019-.476.136-.629.139-.138.309-.36.464-.54.154-.18.206-.309.309-.515.103-.206.052-.386-.025-.54-.077-.154-.68-1.644-.932-2.253-.245-.592-.495-.511-.68-.521-.176-.009-.379-.011-.581-.011-.202 0-.531.076-.809.381-.278.305-1.062 1.039-1.062 2.535s1.087 2.941 1.239 3.146c.152.206 2.14 3.268 5.184 4.582 2.534 1.095 3.048.877 3.603.824.555-.053 1.829-.747 2.087-1.468.258-.721.258-1.339.181-1.468-.076-.128-.278-.206-.587-.36z"/></svg>
-                    Chat
-                  </a>
+                  ${order.customerPhone && order.customerPhone !== 'N/A' && !order.isOffline ? `
+                    <a href="https://wa.me/${order.customerPhone.replace(/[\s\-\+]/g, '').replace(/^91/, '91')}?text=${encodeURIComponent(`Hello ${order.customerName}, regarding your order ${order.orderId} from Shree Shyam Restaurant...`)}" 
+                       target="_blank" 
+                       class="btn btn-sm" 
+                       style="background:#FFF4E6; color:#D35400; border:1px solid #FFD8A8; padding: 4px 12px; font-size: 0.8rem; display:inline-flex; align-items:center; gap:6px; border-radius:var(--radius-md); text-decoration:none; font-weight:700; margin-top:8px; transition: all 0.2s;">
+                      <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M.057 24l1.687-6.163c-1.041-1.804-1.588-3.849-1.587-5.946.003-6.556 5.338-11.891 11.893-11.891 3.181.001 6.167 1.24 8.413 3.488 2.246 2.248 3.484 5.232 3.484 8.412-.003 6.557-5.338 11.892-11.893 11.892-1.997-.001-3.951-.5-5.688-1.448l-6.309 1.656zm6.29-4.143c1.552.921 3.13 1.411 4.793 1.412 5.204 0 9.444-4.24 9.446-9.443.002-2.521-.979-4.89-2.762-6.67s-4.149-2.765-6.67-2.765c-5.204 0-9.441 4.239-9.443 9.441-.001 1.742.483 3.339 1.398 4.71l-1.01 3.693 3.791-.994zm11.367-7.4c-.31-.154-1.829-.902-2.107-1.003-.278-.101-.48-.153-.68.154-.201.307-.779 1.003-.955 1.205-.175.202-.351.226-.66.073-.31-.153-1.309-.482-2.493-1.54-.92-.821-1.54-1.835-1.72-2.144-.18-.309-.019-.476.136-.629.139-.138.309-.36.464-.54.154-.18.206-.309.309-.515.103-.206.052-.386-.025-.54-.077-.154-.68-1.644-.932-2.253-.245-.592-.495-.511-.68-.521-.176-.009-.379-.011-.581-.011-.202 0-.531.076-.809.381-.278.305-1.062 1.039-1.062 2.535s1.087 2.941 1.239 3.146c.152.206 2.14 3.268 5.184 4.582 2.534 1.095 3.048.877 3.603.824.555-.053 1.829-.747 2.087-1.468.258-.721.258-1.339.181-1.468-.076-.128-.278-.206-.587-.36z"/></svg>
+                      Chat
+                    </a>
+                  ` : ''}
                 </div>
                 <div style="font-size: 0.85rem; color: var(--clr-gray-600); margin-top:2px;">
                   🗓️ Pickup: <strong style="color:var(--clr-veg);">${order.pickupDate}</strong> 
@@ -629,4 +646,181 @@ export function initAdminPage() {
       window.dispatchEvent(new HashChangeEvent('hashchange'));
     });
   });
+
+  // Main Tab Switcher
+  document.querySelectorAll('.badge-tab').forEach(btn => {
+    btn.addEventListener('click', () => {
+      mainTab = btn.dataset.mainTab;
+      window.dispatchEvent(new HashChangeEvent('hashchange'));
+    });
+  });
+
+  // Offline Order Form Handlers
+  if (mainTab === 'offline') {
+    // Search Menu
+    document.getElementById('offline-product-search')?.addEventListener('input', (e) => {
+      offlineSearchQuery = e.target.value.toLowerCase().trim();
+      renderOfflineSearchResults();
+    });
+
+    // Handle dynamically added search results
+    document.getElementById('offline-search-results')?.addEventListener('click', (e) => {
+      const addBtn = e.target.closest('.add-offline-item');
+      if (addBtn) {
+        const product = JSON.parse(decodeURIComponent(addBtn.dataset.item));
+        addOfflineItem(product);
+      }
+    });
+
+    // Handle offline cart actions
+    document.getElementById('offline-cart-items')?.addEventListener('click', (e) => {
+      const btn = e.target;
+      const id = btn.dataset.id;
+      if (!id) return;
+
+      if (btn.classList.contains('qty-minus')) updateOfflineQty(id, -1);
+      if (btn.classList.contains('qty-plus')) updateOfflineQty(id, 1);
+      if (btn.classList.contains('remove-item')) removeOfflineItem(id);
+    });
+
+    // Place Offline Order
+    document.getElementById('place-offline-order-btn')?.addEventListener('click', () => {
+      if (offlineCart.length === 0) {
+        showToast('Cart is empty', 'error');
+        return;
+      }
+      const name = document.getElementById('offline-customer-name').value;
+      const phone = document.getElementById('offline-customer-phone').value;
+      const notes = document.getElementById('offline-order-notes').value;
+      
+      const { createOfflineOrder } = import.meta.glob('../services/orders.js', { eager: true })['../services/orders.js'];
+      const result = createOfflineOrder(offlineCart, { name, phone, notes });
+      if (result.success) {
+        showToast('Offline order created!', 'success');
+        offlineCart = [];
+        mainTab = 'orders';
+        window.dispatchEvent(new HashChangeEvent('hashchange'));
+      }
+    });
+  }
+}
+
+function renderOfflineOrderForm() {
+  const total = offlineCart.reduce((s, i) => s + (i.price * i.quantity), 0);
+  
+  return `
+    <div class="offline-order-container" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 2rem;">
+      <!-- Left: Item Selector -->
+      <div style="background: white; padding: 1.5rem; border-radius: var(--radius-lg); border: 1px solid var(--clr-gray-200);">
+        <h2 style="margin-bottom: 1rem; font-size: 1.25rem;">🔍 Select Items</h2>
+        <div class="form-group">
+          <input type="text" class="form-input" id="offline-product-search" placeholder="Search by name..." value="${offlineSearchQuery}">
+        </div>
+        <div id="offline-search-results" style="max-height: 400px; overflow-y: auto; display: flex; flex-direction: column; gap: 0.5rem; margin-top: 1rem;">
+          ${renderOfflineSearchResultsHTML()}
+        </div>
+      </div>
+
+      <!-- Right: Builder Cart -->
+      <div style="background: white; padding: 1.5rem; border-radius: var(--radius-lg); border: 1px solid var(--clr-gray-200); display: flex; flex-direction: column; gap: 1.5rem;">
+        <h2 style="margin-bottom: 0.5rem; font-size: 1.25rem;">📦 Order Details</h2>
+        
+        <div class="offline-cart" style="flex: 1;">
+          ${offlineCart.length === 0 ? `
+            <div style="text-align: center; padding: 2rem; color: var(--clr-gray-400); border: 2px dashed var(--clr-gray-100); border-radius: 8px;">
+              Cart is empty. Add items from the left.
+            </div>
+          ` : `
+            <div id="offline-cart-items" style="display: flex; flex-direction: column; gap: 0.75rem;">
+              ${offlineCart.map(i => `
+                <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--clr-gray-50); padding-bottom: 0.5rem;">
+                  <div>
+                    <div style="font-weight: 600;">${i.name}</div>
+                    <div style="font-size: 0.8rem; color: var(--clr-gray-500);">${formatPrice(i.price)}</div>
+                  </div>
+                  <div style="display: flex; align-items: center; gap: 0.75rem;">
+                    <div class="qty-selector" style="height: 32px; padding: 2px;">
+                      <button class="qty-btn qty-minus" data-id="${i.id}">−</button>
+                      <span class="qty-value" style="font-size: 0.9rem;">${i.quantity}</span>
+                      <button class="qty-btn qty-plus" data-id="${i.id}">+</button>
+                    </div>
+                    <button class="remove-item" data-id="${i.id}" style="background: none; border: none; color: var(--clr-error); cursor: pointer; padding: 4px;">✕</button>
+                  </div>
+                </div>
+              `).join('')}
+              <div style="margin-top: 1rem; border-top: 2px solid var(--clr-gray-100); padding-top: 1rem; display: flex; justify-content: space-between; font-weight: 800; font-size: 1.25rem;">
+                <span>Total Amount:</span>
+                <span>${formatPrice(total)}</span>
+              </div>
+            </div>
+          `}
+        </div>
+
+        <div class="offline-customer-info" style="display: flex; flex-direction: column; gap: 1rem; border-top: 1px solid var(--clr-gray-100); padding-top: 1.5rem;">
+          <div class="form-group">
+            <label class="form-label">Customer Name</label>
+            <input type="text" class="form-input" id="offline-customer-name" placeholder="E.g. Mr. Sharma">
+          </div>
+          <div class="form-group">
+            <label class="form-label">Customer Phone (Optional)</label>
+            <input type="tel" class="form-input" id="offline-customer-phone" placeholder="98XXXXXXXX">
+          </div>
+          <div class="form-group">
+            <label class="form-label">Internal Notes</label>
+            <textarea class="form-input" id="offline-order-notes" placeholder="Any special instructions..."></textarea>
+          </div>
+          <button class="btn btn-primary" id="place-offline-order-btn" style="width: 100%; margin-top: 0.5rem;">
+            ✅ Confirm & Create Order
+          </button>
+        </div>
+      </div>
+    </div>
+  `;
+}
+
+function renderOfflineSearchResultsHTML() {
+  if (!offlineSearchQuery) return `<div style="text-align: center; color: var(--clr-gray-400); padding: 1rem;">Start typing to search items...</div>`;
+
+  const allItems = [...getSweetsItems(), ...getRestaurantItems()];
+  const filtered = allItems.filter(i => i.name.toLowerCase().includes(offlineSearchQuery));
+
+  if (filtered.length === 0) return `<div style="text-align: center; color: var(--clr-gray-400); padding: 1rem;">No items found matching "${offlineSearchQuery}"</div>`;
+
+  return filtered.map(i => `
+    <div style="padding: 0.75rem; border: 1px solid var(--clr-gray-100); border-radius: 8px; display: flex; justify-content: space-between; align-items: center;">
+      <div>
+        <div style="font-weight: 600;">${i.name}</div>
+        <div style="font-size: 0.85rem; color: var(--clr-gray-500);">${formatPrice(i.price)} / ${i.unit}</div>
+      </div>
+      <button class="add-offline-item btn btn-outline btn-sm" data-item="${encodeURIComponent(JSON.stringify(i))}" style="padding: 4px 12px; height: auto;">Add</button>
+    </div>
+  `).join('');
+}
+
+function renderOfflineSearchResults() {
+  const container = document.getElementById('offline-search-results');
+  if (container) container.innerHTML = renderOfflineSearchResultsHTML();
+}
+
+function addOfflineItem(product) {
+  const existing = offlineCart.find(i => i.id === product.id);
+  if (existing) {
+    existing.quantity++;
+  } else {
+    offlineCart.push({ ...product, quantity: 1 });
+  }
+  window.dispatchEvent(new HashChangeEvent('hashchange'));
+}
+
+function updateOfflineQty(id, delta) {
+  const item = offlineCart.find(i => i.id === id);
+  if (item) {
+    item.quantity = Math.max(1, item.quantity + delta);
+    window.dispatchEvent(new HashChangeEvent('hashchange'));
+  }
+}
+
+function removeOfflineItem(id) {
+  offlineCart = offlineCart.filter(i => i.id !== id);
+  window.dispatchEvent(new HashChangeEvent('hashchange'));
 }

@@ -78,6 +78,42 @@ export function createOrder(cart, customerInfo) {
   return { success: true, order };
 }
 
+export function createOfflineOrder(items, customerInfo) {
+  // Sanitize
+  const customerName = sanitizeInput(customerInfo.name || 'Walk-in Customer').trim();
+  const customerPhone = sanitizeInput(customerInfo.phone || '').trim();
+  const notes = sanitizeInput(customerInfo.notes || '').trim();
+
+  const order = {
+    orderId: generateOrderId(),
+    userId: 'offline',
+    isOffline: true,
+    customerName,
+    customerPhone: customerPhone || 'N/A',
+    pickupDate: new Date().toLocaleDateString('en-GB'), // Today
+    pickupTime: 'Immediate',
+    notes: notes.slice(0, 500),
+    items: items.map(item => ({
+      name: item.name,
+      quantity: item.quantity,
+      price: item.price,
+      subtotal: item.price * item.quantity,
+    })),
+    total: items.reduce((sum, item) => sum + (item.price * item.quantity), 0),
+    paymentMethod: 'Cash (Offline)',
+    status: 'delivered', // Assume offline orders are usually fulfilled immediately
+    createdAt: new Date().toISOString(),
+    timestamp: new Date().toLocaleString('en-IN', { timeZone: 'Asia/Kolkata' }),
+  };
+
+  // Save order
+  const orders = getOrders();
+  orders.push(order);
+  localStorage.setItem(ORDERS_KEY, JSON.stringify(orders));
+
+  return { success: true, order };
+}
+
 export function generateWhatsAppMessage(order) {
   const lines = [
     `🛒 *NEW ORDER - ${SITE_CONFIG.name}*`,
