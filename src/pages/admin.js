@@ -273,7 +273,7 @@ function renderOrdersDashboard() {
                     </span>
                   ` : ''}
                   ${isDueSoon(order.pickupDate) && order.status !== 'delivered' && order.status !== 'cancelled' ? `
-                    <span class="badge badge-error" style="font-size: 0.7rem; padding: 4px 8px; animation: pulse 1.5s infinite; background: #e74c3c; color: white; border: none; font-weight: 800; box-shadow: 0 0 10px rgba(231, 76, 60, 0.4);">🔥 DUE SOON</span>
+                    <span class="badge badge-error" style="font-size: 0.7rem; padding: 4px 12px; animation: pulse 1.5s infinite; background: #e74c3c; color: white; border: none; font-weight: 800; box-shadow: 0 0 10px rgba(231, 76, 60, 0.4); border-radius: 50px;">🔥 DUE SOON</span>
                   ` : ''}
                 </div>
                 <div style="font-size: 0.8rem; color: var(--clr-gray-500);">${new Date(order.createdAt).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })}</div>
@@ -285,7 +285,6 @@ function renderOrdersDashboard() {
                   
                   ${order.customerPhone && order.customerPhone !== 'N/A' ? `
                     <div style="display: flex; gap: 8px; margin-top: 8px; flex-wrap: wrap;">
-                      <button class="btn btn-sm chat-admin-btn" data-id="${order.orderId}" style="background: #E3F2FD; color: #1976D2; border: 1px solid #BBDEFB; padding: 4px 10px; font-size: 0.8rem; font-weight: 700; border-radius: var(--radius-md);">💬 Chat</button>
                       
                       <a href="https://wa.me/${order.customerPhone.replace(/[\s\-\+]/g, '').replace(/^91/, '91')}?text=${encodeURIComponent(`Hello ${order.customerName}, regarding your order ${order.orderId} from Shree Shyam Restaurant...`)}" 
                          target="_blank" 
@@ -308,7 +307,7 @@ function renderOrdersDashboard() {
               <td>
                 <div style="max-height: 100px; overflow-y: auto; padding-right: 8px;">
                   ${order.items.map(i => `<div style="font-size: 0.85rem; margin-bottom: 4px; color:var(--clr-gray-700); border-bottom: 1px solid var(--clr-gray-50); padding-bottom: 2px;">
-                    <span style="font-weight: 700; color: var(--clr-primary);">${i.quantity}</span> ${i.unit ? `<span style="font-size: 0.7rem; color: var(--clr-gray-500);">(${i.unit})</span>` : ''} × ${i.name}
+                    <span style="font-weight: 700; color: var(--clr-primary);">${i.quantity} ${i.unit || ''}</span> × ${i.name}
                   </div>`).join('')}
                 </div>
                 ${order.status !== 'delivered' && order.status !== 'cancelled' ? `
