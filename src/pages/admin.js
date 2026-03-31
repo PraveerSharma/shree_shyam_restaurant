@@ -20,7 +20,7 @@ import {
   approveQuickOrder, clearPartialAmount
 } from '../services/subscription.js';
 
-let mainTab = 'menu'; // 'menu', 'orders', 'offline', 'subscribers'
+let mainTab = 'menu'; // 'menu', 'orders', 'subscribers'
 let activeTab = 'sweets';
 let orderFilter = 'all'; // 'all', 'pending', 'delivered', 'cancelled'
 let showAddForm = false;
@@ -30,6 +30,7 @@ let offlineSearchQuery = '';
 let selectedSubscriberId = null; // for detail view
 let subSearchQuery = '';
 let showAddSubForm = false;
+let showManualOrderForm = false; // Toggle for manual order form within orders tab
 
 export function renderAdminPage() {
   if (!isAdminLoggedIn()) {
@@ -97,9 +98,6 @@ function renderAdminDashboard() {
             <button class="badge-tab ${mainTab === 'orders' ? 'active' : ''}" data-main-tab="orders" style="${mainTab === 'orders' ? 'background: var(--clr-saffron); color: white;' : 'background: transparent; color: var(--clr-gray-600);'} border: none; font-size: 1.1rem; padding: 0.5rem 1rem; border-radius: var(--radius-md); font-weight: 600; cursor: pointer; transition: all 0.2s;">
               📦 Order Tracking
             </button>
-            <button class="badge-tab ${mainTab === 'offline' ? 'active' : ''}" data-main-tab="offline" style="${mainTab === 'offline' ? 'background: var(--clr-saffron); color: white;' : 'background: transparent; color: var(--clr-gray-600);'} border: none; font-size: 1.1rem; padding: 0.5rem 1rem; border-radius: var(--radius-md); font-weight: 600; cursor: pointer; transition: all 0.2s;">
-              ➕ Offline Order
-            </button>
             <button class="badge-tab ${mainTab === 'subscribers' ? 'active' : ''}" data-main-tab="subscribers" style="${mainTab === 'subscribers' ? 'background: var(--clr-saffron); color: white;' : 'background: transparent; color: var(--clr-gray-600);'} border: none; font-size: 1.1rem; padding: 0.5rem 1rem; border-radius: var(--radius-md); font-weight: 600; cursor: pointer; transition: all 0.2s;">
               👥 Subscribers
             </button>
@@ -108,7 +106,6 @@ function renderAdminDashboard() {
           ${(() => {
             if (mainTab === 'menu') return renderMenuManagement();
             if (mainTab === 'orders') return renderOrdersDashboard();
-            if (mainTab === 'offline') return renderOfflineOrderForm();
             if (mainTab === 'subscribers') return renderSubscribersDashboard();
           })()}
         </div>
@@ -227,13 +224,20 @@ function renderOrdersDashboard() {
     </div>
 
     <!-- Orders Filter -->
-    <div style="display:flex; gap: 0.5rem; margin-bottom: 1.5rem; flex-wrap: wrap;">
-      ${['all', 'pending', 'accepted', 'delivered', 'cancelled'].map(filter => `
-        <button class="order-filter-btn ${orderFilter === filter ? 'active' : ''}" data-filter="${filter}" style="padding: 0.4rem 1rem; border-radius: var(--radius-full); border: 1px solid var(--clr-gray-300); background: ${orderFilter === filter ? 'var(--clr-saffron)' : 'white'}; color: ${orderFilter === filter ? 'white' : 'var(--clr-gray-700)'}; font-size: 0.85rem; cursor: pointer; font-weight: 500; text-transform: capitalize;">
-          ${filter}
-        </button>
-      `).join('')}
+    <div style="display:flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem; flex-wrap: wrap; gap: 1rem;">
+      <div style="display:flex; gap: 0.5rem; flex-wrap: wrap;">
+        ${['all', 'pending', 'accepted', 'delivered', 'cancelled'].map(filter => `
+          <button class="order-filter-btn ${orderFilter === filter ? 'active' : ''}" data-filter="${filter}" style="padding: 0.4rem 1rem; border-radius: var(--radius-full); border: 1px solid var(--clr-gray-300); background: ${orderFilter === filter ? 'var(--clr-saffron)' : 'white'}; color: ${orderFilter === filter ? 'white' : 'var(--clr-gray-700)'}; font-size: 0.85rem; cursor: pointer; font-weight: 500; text-transform: capitalize;">
+            ${filter}
+          </button>
+        `).join('')}
+      </div>
+      <button class="btn ${showManualOrderForm ? 'btn-ghost' : 'btn-primary'} btn-sm" id="admin-manual-order-toggle">
+        ${showManualOrderForm ? '✕ Close Form' : '➕ Manual Order'}
+      </button>
     </div>
+
+    ${showManualOrderForm ? renderManualOrderForm() : ''}
 
     <!-- Orders Table -->
     <div class="admin-table-wrapper">
@@ -665,12 +669,19 @@ export function initAdminPage() {
   document.querySelectorAll('.badge-tab').forEach(btn => {
     btn.addEventListener('click', () => {
       mainTab = btn.dataset.mainTab;
+      showManualOrderForm = false; // Close form when switching major tabs
       window.dispatchEvent(new HashChangeEvent('hashchange'));
     });
   });
 
-  // Offline Order Form Handlers
-  if (mainTab === 'offline') {
+  // Manual Order Toggle (within Orders tab)
+  document.getElementById('admin-manual-order-toggle')?.addEventListener('click', () => {
+    showManualOrderForm = !showManualOrderForm;
+    window.dispatchEvent(new HashChangeEvent('hashchange'));
+  });
+
+  // Manual Order Form Handlers
+  if (mainTab === 'orders' && showManualOrderForm) {
     // Search Menu
     document.getElementById('offline-product-search')?.addEventListener('input', (e) => {
       offlineSearchQuery = e.target.value.toLowerCase().trim();
@@ -710,7 +721,7 @@ export function initAdminPage() {
       }
     });
 
-    // Place Offline Order
+    // Place Manual Order
     document.getElementById('place-offline-order-btn')?.addEventListener('click', () => {
       if (offlineCart.length === 0) {
         showToast('Cart is empty', 'error');
@@ -720,14 +731,13 @@ export function initAdminPage() {
       const phone = document.getElementById('offline-customer-phone').value;
       const pickupDate = document.getElementById('offline-pickup-date').value;
       const pickupTime = document.getElementById('offline-pickup-time').value;
-      const notes = document.getElementById('offline-order-notes').value;
       
       const { createOfflineOrder } = import.meta.glob('../services/orders.js', { eager: true })['../services/orders.js'];
-      const result = createOfflineOrder(offlineCart, { name, phone, pickupDate, pickupTime, notes });
+      const result = createOfflineOrder(offlineCart, { name, phone, pickupDate, pickupTime });
       if (result.success) {
-        showToast('Offline order created!', 'success');
+        showToast('Manual order created successfully!', 'success');
         offlineCart = [];
-        mainTab = 'orders';
+        showManualOrderForm = false;
         window.dispatchEvent(new HashChangeEvent('hashchange'));
       }
     });
@@ -863,87 +873,91 @@ export function initAdminPage() {
   }
 }
 
-function renderOfflineOrderForm() {
+function renderManualOrderForm() {
   const total = offlineCart.reduce((s, i) => s + (i.price * i.quantity), 0);
   
   return `
-    <div class="offline-order-container" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 2rem;">
+    <div class="manual-order-container page-enter" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 1.5rem; background: var(--clr-gray-50); padding: 1.5rem; border-radius: var(--radius-lg); border: 2px solid var(--clr-saffron); margin-bottom: 2rem; box-shadow: var(--shadow-md);">
       <!-- Left: Item Selector -->
-      <div style="background: white; padding: 1.5rem; border-radius: var(--radius-lg); border: 1px solid var(--clr-gray-200);">
-        <h2 style="margin-bottom: 1rem; font-size: 1.25rem;">🔍 Select Items</h2>
+      <div style="background: white; padding: 1.25rem; border-radius: var(--radius-md); border: 1px solid var(--clr-gray-200);">
+        <h2 style="margin-bottom: 1rem; font-size: 1.1rem; color: var(--clr-primary);">🔍 Search Menu Items</h2>
         <div class="form-group">
-          <input type="text" class="form-input" id="offline-product-search" placeholder="Search by name..." value="${offlineSearchQuery}">
+          <input type="text" class="form-input" id="offline-product-search" placeholder="Search dish name..." value="${offlineSearchQuery}">
         </div>
-        <div id="offline-search-results" style="max-height: 400px; overflow-y: auto; display: flex; flex-direction: column; gap: 0.5rem; margin-top: 1rem;">
+        <div id="offline-search-results" style="max-height: 300px; overflow-y: auto; display: flex; flex-direction: column; gap: 0.5rem; margin-top: 1rem;">
           ${renderOfflineSearchResultsHTML()}
         </div>
       </div>
 
       <!-- Right: Builder Cart -->
-      <div style="background: white; padding: 1.5rem; border-radius: var(--radius-lg); border: 1px solid var(--clr-gray-200); display: flex; flex-direction: column; gap: 1.5rem;">
-        <h2 style="margin-bottom: 0.5rem; font-size: 1.25rem;">📦 Order Details</h2>
+      <div style="background: white; padding: 1.25rem; border-radius: var(--radius-md); border: 1px solid var(--clr-gray-200); display: flex; flex-direction: column; gap: 1rem;">
+        <h2 style="margin-bottom: 0.5rem; font-size: 1.1rem; color: var(--clr-saffron);">📦 Order Builder</h2>
         
-        <div class="offline-cart" style="flex: 1;">
+        <div class="offline-cart" style="flex: 1; max-height: 250px; overflow-y: auto;">
           ${offlineCart.length === 0 ? `
-            <div style="text-align: center; padding: 2rem; color: var(--clr-gray-400); border: 2px dashed var(--clr-gray-100); border-radius: 8px;">
-              Cart is empty. Add items from the left.
+            <div style="text-align: center; padding: 1.5rem; color: var(--clr-gray-400); border: 2px dashed var(--clr-gray-100); border-radius: 8px; font-size: 0.9rem;">
+              Builder is empty. Add items from the search.
             </div>
           ` : `
-            <div id="offline-cart-items" style="display: flex; flex-direction: column; gap: 0.75rem;">
+            <div id="offline-cart-items" style="display: flex; flex-direction: column; gap: 0.5rem;">
               ${offlineCart.map(i => `
                 <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--clr-gray-50); padding-bottom: 0.5rem;">
-                  <div>
-                    <div style="font-weight: 600;">${i.name}</div>
-                    <div style="font-size: 0.8rem; color: var(--clr-gray-500);">${formatPrice(i.price)}</div>
+                  <div style="flex: 1; min-width: 0; padding-right: 10px;">
+                    <div style="font-weight: 600; font-size: 0.9rem; text-overflow: ellipsis; overflow: hidden; white-space: nowrap;">${i.name}</div>
+                    <div style="font-size: 0.75rem; color: var(--clr-gray-500);">${formatPrice(i.price)}</div>
                   </div>
-                  <div style="display: flex; align-items: center; gap: 0.75rem;">
-                    <div class="qty-selector" style="height: 32px; padding: 2px;">
-                      <button class="qty-btn qty-minus" data-id="${i.id}">−</button>
-                      <input type="number" class="qty-input" value="${i.quantity}" min="1" max="999" data-id="${i.id}" style="width: 45px; text-align: center; border: none; background: transparent; font-weight: 700; font-size: 0.9rem;">
-                      <button class="qty-btn qty-plus" data-id="${i.id}">+</button>
+                  <div style="display: flex; align-items: center; gap: 0.5rem;">
+                    <div class="qty-selector" style="height: 28px; padding: 2px;">
+                      <button class="qty-btn qty-minus" data-id="${i.id}" style="width: 24px;">−</button>
+                      <input type="number" class="qty-input" value="${i.quantity}" min="1" max="999" data-id="${i.id}" style="width: 35px; text-align: center; border: none; background: transparent; font-weight: 700; font-size: 0.85rem;">
+                      <button class="qty-btn qty-plus" data-id="${i.id}" style="width: 24px;">+</button>
                     </div>
                     <button class="remove-item" data-id="${i.id}" style="background: none; border: none; color: var(--clr-error); cursor: pointer; padding: 4px;">✕</button>
                   </div>
                 </div>
               `).join('')}
-              <div style="margin-top: 1rem; border-top: 2px solid var(--clr-gray-100); padding-top: 1rem; display: flex; justify-content: space-between; font-weight: 800; font-size: 1.25rem;">
-                <span>Total Amount:</span>
-                <span>${formatPrice(total)}</span>
-              </div>
             </div>
           `}
         </div>
 
-        <div class="offline-customer-info" style="display: flex; flex-direction: column; gap: 1rem; border-top: 1px solid var(--clr-gray-100); padding-top: 1.5rem;">
-          <div class="form-group">
-            <label class="form-label">Customer Name</label>
-            <input type="text" class="form-input" id="offline-customer-name" placeholder="E.g. Mr. Sharma">
+        <div style="border-top: 1px solid var(--clr-gray-100); padding-top: 1rem;">
+          <div style="display: flex; justify-content: space-between; font-weight: 800; font-size: 1.1rem; margin-bottom: 1rem;">
+            <span>Total:</span>
+            <span style="color: var(--clr-primary);">${formatPrice(total)}</span>
           </div>
-          <div class="form-group">
-            <label class="form-label">Customer Phone (Optional)</label>
-            <input type="tel" class="form-input" id="offline-customer-phone" placeholder="98XXXXXXXX">
-          </div>
-          <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
-            <div class="form-group">
-              <label class="form-label">📅 Pickup Date</label>
-              <input type="date" class="form-input" id="offline-pickup-date" min="${getTodayDate()}" value="${getTodayDate()}">
+          
+          <div class="offline-customer-info" style="display: flex; flex-direction: column; gap: 0.75rem;">
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 0.75rem;">
+              <div class="form-group" style="margin:0;">
+                <label class="form-label" style="font-size: 0.75rem;">Customer Name</label>
+                <input type="text" class="form-input" id="offline-customer-name" placeholder="Name" style="padding: 6px 10px;">
+              </div>
+              <div class="form-group" style="margin:0;">
+                <label class="form-label" style="font-size: 0.75rem;">Phone (Optional)</label>
+                <input type="tel" class="form-input" id="offline-customer-phone" placeholder="98XXXXXXXX" style="padding: 6px 10px;">
+              </div>
             </div>
-            <div class="form-group">
-              <label class="form-label">⏰ Time Slot</label>
-              <select class="form-input" id="offline-pickup-time">
-                <option value="10:00 AM - 02:00 PM">10:00 AM - 02:00 PM</option>
-                <option value="02:00 PM - 06:00 PM">02:00 PM - 06:00 PM</option>
-                <option value="06:00 PM - 10:00 PM">06:00 PM - 10:00 PM</option>
-              </select>
+            
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 0.75rem;">
+              <div class="form-group" style="margin:0;">
+                <label class="form-label" style="font-size: 0.75rem;">📅 Pickup Date</label>
+                <input type="date" class="form-input" id="offline-pickup-date" min="${getTodayDate()}" value="${getTodayDate()}" style="padding: 6px 10px;">
+              </div>
+              <div class="form-group" style="margin:0;">
+                <label class="form-label" style="font-size: 0.75rem;">⏰ Time Slot</label>
+                <select class="form-input" id="offline-pickup-time" style="padding: 6px 10px;">
+                  <option value="10:00 AM - 12:00 PM">10:00 AM - 12:00 PM</option>
+                  <option value="10:00 AM - 02:00 PM">10:00 AM - 02:00 PM</option>
+                  <option value="02:00 PM - 06:00 PM">02:00 PM - 06:00 PM</option>
+                  <option value="06:00 PM - 10:00 PM">06:00 PM - 10:00 PM</option>
+                </select>
+              </div>
             </div>
+            
+            <button class="btn btn-primary" id="place-offline-order-btn" style="width: 100%; margin-top: 0.5rem; background: var(--clr-veg); border-color: var(--clr-veg);">
+              ✅ Create Manual Order
+            </button>
           </div>
-          <div class="form-group">
-            <label class="form-label">Internal Notes</label>
-            <textarea class="form-input" id="offline-order-notes" placeholder="Any special instructions..."></textarea>
-          </div>
-          <button class="btn btn-primary" id="place-offline-order-btn" style="width: 100%; margin-top: 0.5rem;">
-            ✅ Confirm & Create Order
-          </button>
         </div>
       </div>
     </div>
