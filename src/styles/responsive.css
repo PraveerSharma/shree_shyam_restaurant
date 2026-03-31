@@ -157,6 +157,7 @@
   .modal-content {
     width: 95% !important;
     max-width: 95vw;
+    padding: 1rem !important;
   }
 
   .sub-dashboard {
@@ -173,9 +174,39 @@
   .order-card-header {
     flex-direction: column;
     align-items: flex-start;
+    gap: 0.5rem;
   }
-  .order-card-body[style*="grid-template-columns"] {
+
+  /* Admin order card: stack vertically on mobile */
+  .admin-order-grid {
     grid-template-columns: 1fr !important;
+    gap: 0.75rem;
+  }
+
+  /* Edit order modal: single column */
+  .edit-modal-grid {
+    grid-template-columns: 1fr;
+    gap: 1rem;
+  }
+
+  /* Subscriber detail: stack actions */
+  .sub-detail-actions {
+    grid-template-columns: 1fr;
+  }
+
+  /* Form 2-col: stack on mobile */
+  .form-row-2col {
+    grid-template-columns: 1fr;
+  }
+
+  /* Manual order form */
+  .manual-order-container {
+    padding: 1rem;
+  }
+
+  /* Subscription promo */
+  .subscription-promo {
+    padding: 1.5rem !important;
   }
 
   .chat-window {
@@ -183,6 +214,24 @@
     right: 0.75rem;
     bottom: 0.75rem;
     height: 400px;
+  }
+
+  /* Admin page header */
+  .admin-header {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 0.75rem;
+  }
+
+  /* Stat cards smaller */
+  .sub-stat-card .stat-value {
+    font-size: 1.4rem;
+  }
+
+  /* Order filter pills scroll */
+  .order-filter-btn {
+    font-size: 0.78rem;
+    padding: 5px 12px;
   }
 }
 
@@ -192,10 +241,11 @@
     gap: 0.25rem;
   }
   .admin-tab-btn {
-    font-size: 0.85rem;
-    padding: 0.5rem 0.8rem;
+    font-size: 0.82rem;
+    padding: 0.5rem 0.7rem;
     flex: 1;
     text-align: center;
+    min-width: 0;
   }
   .sub-card .sub-card-actions {
     flex-direction: column;
@@ -203,6 +253,37 @@
   .sub-card .sub-card-actions .btn {
     width: 100%;
     text-align: center;
+  }
+  .sub-card .sub-card-header {
+    flex-direction: column;
+    gap: 0.5rem;
+  }
+  .sub-card .sub-balance {
+    text-align: left;
+    font-size: 1.25rem;
+  }
+
+  /* Orders page tabs */
+  .orders-page-tabs {
+    gap: 0;
+  }
+  .orders-page-tab {
+    flex: 1;
+    text-align: center;
+    font-size: 0.85rem;
+    padding: 0.6rem 0.5rem;
+  }
+
+  /* Payment options stack */
+  .payment-option {
+    padding: 0.75rem;
+  }
+
+  /* Order card footer */
+  .order-card-footer {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 0.5rem;
   }
 }
 
@@ -251,6 +332,61 @@
 
   .cart-page h1 {
     font-size: var(--fs-h2);
+  }
+
+  /* Stat cards: 2-col on tiny screens */
+  .sub-stat-card {
+    padding: 1rem;
+  }
+  .sub-stat-card .stat-icon {
+    width: 36px;
+    height: 36px;
+    font-size: 1rem;
+  }
+  .sub-stat-card .stat-value {
+    font-size: 1.2rem;
+  }
+  .sub-stat-card .stat-label {
+    font-size: 0.7rem;
+  }
+
+  /* Admin tab text without emoji on very small screens */
+  .admin-tab-btn {
+    font-size: 0.78rem;
+    padding: 0.45rem 0.5rem;
+  }
+
+  /* Subscriber avatar smaller */
+  .sub-card .sub-avatar {
+    width: 36px;
+    height: 36px;
+    font-size: 0.85rem;
+  }
+  .sub-card .sub-name {
+    font-size: 0.95rem;
+  }
+  .sub-card .sub-meta {
+    font-size: 0.72rem;
+  }
+
+  /* Empty state smaller */
+  .empty-state {
+    padding: 2.5rem 1.5rem;
+  }
+  .empty-state .empty-icon {
+    font-size: 2.5rem;
+  }
+
+  /* Badge smaller */
+  .badge {
+    font-size: 0.68rem;
+    padding: 3px 8px;
+  }
+
+  /* Order filter pills: horizontal scroll */
+  .order-filter-btn {
+    font-size: 0.72rem;
+    padding: 4px 10px;
   }
 }
 

@@ -274,7 +274,7 @@ function renderOrdersDashboard() {
                 </select>
               </div>
 
-              <div class="order-card-body" style="display: grid; grid-template-columns: 1fr 1fr auto; gap: 1rem; align-items: start;">
+              <div class="order-card-body admin-order-grid">
                 <!-- Customer -->
                 <div>
                   <div style="font-weight: 700; margin-bottom: 4px;">${order.customerName}</div>
@@ -1032,7 +1032,7 @@ function renderManualOrderForm() {
   const total = offlineCart.reduce((s, i) => s + (i.price * i.quantity), 0);
 
   return `
-    <div class="manual-order-container page-enter" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 1.5rem; background: var(--clr-gray-50); padding: 1.5rem; border-radius: var(--radius-lg); border: 2px solid var(--clr-saffron); margin-bottom: 2rem; box-shadow: var(--shadow-md);">
+    <div class="manual-order-container page-enter">
       <!-- Left: Item Selector -->
       <div style="background: white; padding: 1.25rem; border-radius: var(--radius-md); border: 1px solid var(--clr-gray-200);">
         <h2 style="margin-bottom: 1rem; font-size: 1.1rem; color: var(--clr-primary);">🔍 Search Menu Items</h2>
@@ -1082,7 +1082,7 @@ function renderManualOrderForm() {
           </div>
           
           <div class="offline-customer-info" style="display: flex; flex-direction: column; gap: 0.75rem;">
-            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 0.75rem;">
+            <div class="form-row-2col">
               <div class="form-group" style="margin:0;">
                 <label class="form-label" style="font-size: 0.75rem;">Customer Name</label>
                 <input type="text" class="form-input" id="offline-customer-name" placeholder="Name" style="padding: 6px 10px;">
@@ -1092,8 +1092,8 @@ function renderManualOrderForm() {
                 <input type="tel" class="form-input" id="offline-customer-phone" placeholder="98XXXXXXXX" style="padding: 6px 10px;">
               </div>
             </div>
-            
-            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 0.75rem;">
+
+            <div class="form-row-2col">
               <div class="form-group" style="margin:0;">
                 <label class="form-label" style="font-size: 0.75rem;">📅 Pickup Date</label>
                 <input type="date" class="form-input" id="offline-pickup-date" min="${getTodayDate()}" value="${getTodayDate()}" style="padding: 6px 10px;">
@@ -1219,7 +1219,7 @@ function renderSubscriberCards(filtered, query, totalCount) {
   }
 
   return `
-    <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(340px, 1fr)); gap: 1rem;">
+    <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 1rem;">
       ${filtered.map(sub => `
         <div class="sub-card" data-sub-id="${sub.userId}">
           <div class="sub-card-header">
@@ -1301,7 +1301,7 @@ function renderSubscriberDetail() {
       </div>
 
       <!-- Actions Row -->
-      <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin-bottom: 1.5rem;">
+      <div class="sub-detail-actions">
         <div style="background: white; padding: 1.25rem; border-radius: var(--radius-lg); border: 1px solid var(--clr-gray-200);">
           <h3 style="margin-bottom: 1rem; font-size: 1rem; color: var(--clr-charcoal);">Add Bill Item</h3>
           <form id="add-manual-bill-form" data-id="${sub.userId}" style="display: flex; flex-direction: column; gap: 0.75rem;">
@@ -1429,7 +1429,7 @@ function renderEditOrderModal(order) {
           <button class="btn btn-ghost" id="close-edit-items" style="font-size: 1.5rem; padding: 0;">✕</button>
         </div>
 
-        <div style="display: grid; grid-template-columns: 1.2fr 1fr; gap: 2rem;">
+        <div class="edit-modal-grid">
           <!-- Left: Current Items -->
           <div>
             <h3 style="font-size: 1rem; margin-bottom: 1rem;">Current Items</h3>

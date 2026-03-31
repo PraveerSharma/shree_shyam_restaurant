@@ -157,14 +157,14 @@ function renderSubscriptionTab(user) {
 
   if (!isSub) {
     return `
-      <div class="subscription-promo" style="background: linear-gradient(135deg, #FFF9F2 0%, #FFF1E0 100%); padding: 3rem; border-radius: var(--radius-lg); border: 2px solid #FFD8A8; text-align: center;">
-        <div style="font-size: 4rem; margin-bottom: 1.5rem;">⭐</div>
-        <h2 style="color: #D35400; margin-bottom: 1rem;">Join Our Regular Guests Program</h2>
+      <div class="subscription-promo" style="background: linear-gradient(135deg, #FFF9F2 0%, #FFF1E0 100%); padding: 2rem; border-radius: var(--radius-lg); border: 2px solid #FFD8A8; text-align: center;">
+        <div style="font-size: 3rem; margin-bottom: 1rem;">⭐</div>
+        <h2 style="color: #D35400; margin-bottom: 1rem; font-size: clamp(1.2rem, 4vw, 1.5rem);">Join Our Regular Guests Program</h2>
         <p style="color: #873600; max-width: 600px; margin: 0 auto 2rem; line-height: 1.6;">
           Become a regular subscriber and enjoy the convenience of <strong>Monthly Billing</strong>.
           Order throughout the month and pay collectively whenever it's convenient for you.
         </p>
-        <div style="background: white; padding: 2rem; border-radius: var(--radius-md); box-shadow: var(--shadow-md); text-align: left; max-width: 500px; margin: 0 auto;">
+        <div style="background: white; padding: 1.5rem; border-radius: var(--radius-md); box-shadow: var(--shadow-md); text-align: left; max-width: 500px; margin: 0 auto;">
           <h3 style="margin-bottom: 1.5rem; text-align: center;">Subscription Form</h3>
           <form id="subscribe-form">
             <div class="form-group">
