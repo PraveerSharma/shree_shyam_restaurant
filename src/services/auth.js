@@ -171,6 +171,35 @@ export async function login(email, password) {
   return { success: true, user: session };
 }
 
+/**
+ * Updates the phone number for the currently logged-in user in both 
+ * the persistent storage and the active session.
+ * @param {string} phone - Verified phone number with +91 prefix
+ */
+export function updateUserPhone(phone) {
+  const currentUser = getCurrentUser();
+  if (!currentUser) return { success: false, error: 'User not logged in' };
+
+  // Update in Users database
+  const users = getUsers();
+  const index = users.findIndex(u => u.id === currentUser.id);
+  
+  if (index !== -1) {
+    users[index].phone = phone;
+    users[index].phoneVerified = true;
+    saveUsers(users);
+    
+    // Update active session
+    const updatedUser = { ...currentUser, phone, phoneVerified: true };
+    localStorage.setItem(SESSION_KEY, JSON.stringify(updatedUser));
+    
+    window.dispatchEvent(new CustomEvent('auth-changed', { detail: updatedUser }));
+    return { success: true };
+  }
+  
+  return { success: false, error: 'User record not found' };
+}
+
 export function logout() {
   localStorage.removeItem(SESSION_KEY);
   window.dispatchEvent(new CustomEvent('auth-changed', { detail: null }));

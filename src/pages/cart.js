@@ -7,9 +7,13 @@ import { createOrder, sendToWhatsApp } from '../services/orders.js';
 import { formatPrice, getTodayDate } from '../utils/format.js';
 import { showToast, sanitizeInput } from '../utils/dom.js';
 import { SITE_CONFIG } from '../config/site.js';
-import { getCurrentUser } from '../services/auth.js';
+import { getCurrentUser, updateUserPhone } from '../services/auth.js';
+import { sendOTP, verifyOTP } from '../services/otp.js';
 
 let orderSuccess = false;
+let phoneVerified = false;
+let resendTimer = 0;
+let resendInterval = null;
 
 export function renderCartPage() {
   if (orderSuccess) return renderSuccessScreen();
@@ -17,6 +21,11 @@ export function renderCartPage() {
   const cart = getCart();
   const total = getCartTotal();
   const user = getCurrentUser();
+
+  // Auto-fill and auto-verify if already verified in DB
+  if (user && user.phoneVerified && !phoneVerified) {
+    phoneVerified = true;
+  }
 
   if (cart.length === 0) {
     return `
@@ -107,13 +116,44 @@ export function renderCartPage() {
                 </div>
 
                 <div class="form-group">
-                  <label class="form-label" for="customer-phone">📱 Phone / WhatsApp *</label>
-                  <input class="form-input" type="tel" id="customer-phone" 
-                         placeholder="+91 86907 56828" required maxlength="15"
-                         value="${user?.phone || ''}"
-                         autocomplete="tel"
-                         aria-label="Your phone number">
+                  <label class="form-label" for="customer-phone">📱 Mobile Number *</label>
+                  <div style="display:flex;gap:8px;">
+                    <div class="phone-input-group" style="flex:1;">
+                      <span class="phone-prefix">+91</span>
+                      <input class="form-input" type="tel" id="customer-phone" 
+                             placeholder="86907 56828" required maxlength="10"
+                             value="${user?.phone ? user.phone.replace('+91', '').trim() : ''}"
+                             ${phoneVerified ? 'disabled' : ''}
+                             aria-label="Your mobile number">
+                    </div>
+                    <button type="button" class="btn btn-outline btn-sm" id="send-otp-btn" 
+                            ${phoneVerified ? 'disabled' : ''}
+                            style="white-space:nowrap; border-radius:var(--radius-md);">
+                      ${phoneVerified ? '✅ Verified' : 'Verify via OTP'}
+                    </button>
+                  </div>
                   <div class="form-error" id="phone-error"></div>
+                  
+                  <!-- OTP Container -->
+                  <div id="otp-container" class="otp-container">
+                    <p style="font-size:0.85rem; color:var(--clr-gray-600); margin-bottom:var(--sp-xs);">
+                      Enter the 6-digit code sent to your phone:
+                    </p>
+                    <div class="otp-grid">
+                      <input type="text" maxlength="1" class="otp-digit" data-index="0">
+                      <input type="text" maxlength="1" class="otp-digit" data-index="1">
+                      <input type="text" maxlength="1" class="otp-digit" data-index="2">
+                      <input type="text" maxlength="1" class="otp-digit" data-index="3">
+                      <input type="text" maxlength="1" class="otp-digit" data-index="4">
+                      <input type="text" maxlength="1" class="otp-digit" data-index="5">
+                    </div>
+                    <div id="resend-timer-container" class="resend-timer">
+                      Resend code in <span id="timer-sec">30</span>s
+                    </div>
+                    <button type="button" class="resend-btn" id="resend-otp-btn" style="display:none; margin: 0 auto;">
+                      Didn't get it? Resend OTP
+                    </button>
+                  </div>
                 </div>
 
                 <div class="form-group">
@@ -124,8 +164,8 @@ export function renderCartPage() {
                             aria-label="Order notes"></textarea>
                 </div>
 
-                <button type="submit" class="btn btn-primary btn-lg" style="width:100%;" id="place-order-btn">
-                  ✅ Place Order via WhatsApp
+                <button type="submit" class="btn btn-primary btn-lg" style="width:100%;" id="place-order-btn" ${!phoneVerified ? 'disabled' : ''}>
+                  ${phoneVerified ? '✅ Place Order via WhatsApp' : '🔒 Verify Phone to Order'}
                 </button>
               </form>
             </div>
@@ -203,11 +243,105 @@ export function initCartPage() {
     });
   });
 
+  // OTP Logic
+  const sendOtpBtn = document.getElementById('send-otp-btn');
+  const otpContainer = document.getElementById('otp-container');
+  const otpDigits = document.querySelectorAll('.otp-digit');
+  const resendBtn = document.getElementById('resend-otp-btn');
+  const timerSec = document.getElementById('timer-sec');
+  const phoneInput = document.getElementById('customer-phone');
+
+  const startResendTimer = () => {
+    resendTimer = 30;
+    if (resendInterval) clearInterval(resendInterval);
+    resendBtn.style.display = 'none';
+    document.getElementById('resend-timer-container').style.display = 'block';
+    
+    resendInterval = setInterval(() => {
+      resendTimer--;
+      timerSec.textContent = resendTimer;
+      if (resendTimer <= 0) {
+        clearInterval(resendInterval);
+        document.getElementById('resend-timer-container').style.display = 'none';
+        resendBtn.style.display = 'block';
+      }
+    }, 1000);
+  };
+
+  sendOtpBtn?.addEventListener('click', () => {
+    const phone = phoneInput.value.trim();
+    if (phone.length < 10) {
+      document.getElementById('phone-error').textContent = 'Please enter a valid 10-digit mobile number';
+      return;
+    }
+    document.getElementById('phone-error').textContent = '';
+    
+    const result = sendOTP('+91' + phone);
+    if (result.success) {
+      otpContainer.classList.add('visible');
+      startResendTimer();
+      otpDigits[0].focus();
+    }
+  });
+
+  resendBtn?.addEventListener('click', () => {
+    const phone = phoneInput.value.trim();
+    sendOTP('+91' + phone);
+    startResendTimer();
+  });
+
+  otpDigits.forEach((digit, idx) => {
+    digit.addEventListener('keyup', (e) => {
+      if (e.key >= 0 && e.key <= 9) {
+        if (idx < 5) otpDigits[idx + 1].focus();
+        checkAndVerifyOTP();
+      } else if (e.key === 'Backspace') {
+        if (idx > 0) otpDigits[idx - 1].focus();
+      }
+    });
+  });
+
+  const checkAndVerifyOTP = () => {
+    const code = Array.from(otpDigits).map(d => d.value).join('');
+    if (code.length === 6) {
+      const phone = '+91' + phoneInput.value.trim();
+      const result = verifyOTP(phone, code);
+      if (result.success) {
+        phoneVerified = true;
+        
+        // Persist verified phone to User DB if logged in
+        updateUserPhone(phone);
+        
+        otpDigits.forEach(d => {
+          d.classList.add('success');
+          d.disabled = true;
+        });
+        clearInterval(resendInterval);
+        otpContainer.style.opacity = '0.5';
+        document.getElementById('resend-timer-container').style.display = 'none';
+        resendBtn.style.display = 'none';
+        
+        // Refresh UI to enable Place Order
+        window.dispatchEvent(new HashChangeEvent('hashchange'));
+        showToast('Mobile number verified!', 'success');
+      } else {
+        showToast(result.error, 'error');
+        otpDigits.forEach(d => d.value = '');
+        otpDigits[0].focus();
+      }
+    }
+  };
+
   // Checkout form
   document.getElementById('checkout-form')?.addEventListener('submit', (e) => {
     e.preventDefault();
     
-    const phone = document.getElementById('customer-phone').value.trim();
+    if (!phoneVerified) {
+      showToast('Please verify your phone number via OTP first', 'warning');
+      return;
+    }
+
+    const phone = '+91' + document.getElementById('customer-phone').value.trim();
     const pickupDate = document.getElementById('pickup-date').value;
     const notes = document.getElementById('order-notes').value.trim();
 
@@ -220,10 +354,6 @@ export function initCartPage() {
       document.getElementById('pickup-date-error').textContent = 'Please select a pickup date';
       hasError = true;
     }
-    if (!phone || phone.length < 10) {
-      document.getElementById('phone-error').textContent = 'Please enter a valid phone number';
-      hasError = true;
-    }
     if (hasError) return;
 
     const cart = getCart();
@@ -232,6 +362,7 @@ export function initCartPage() {
     if (result.success) {
       sendToWhatsApp(result.order);
       orderSuccess = true;
+      phoneVerified = false; // Reset for next time
       window.dispatchEvent(new HashChangeEvent('hashchange'));
       showToast('Order placed! Check WhatsApp for confirmation.', 'success', 5000);
     } else {

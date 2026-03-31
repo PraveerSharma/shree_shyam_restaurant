@@ -605,6 +605,106 @@ textarea.form-input {
   min-height: 80px;
 }
 
+/* Phone Input with Prefix */
+.phone-input-group {
+  display: flex;
+  position: relative;
+  border: 1.5px solid var(--clr-gray-200);
+  border-radius: var(--radius-md);
+  background: var(--clr-ivory);
+  transition: all var(--dur-fast);
+  overflow: hidden;
+}
+.phone-input-group:focus-within {
+  border-color: var(--clr-saffron);
+  box-shadow: 0 0 0 3px rgba(212, 115, 26, 0.1);
+  background: white;
+}
+.phone-prefix {
+  display: flex;
+  align-items: center;
+  padding: 0 12px;
+  background: var(--clr-gray-100);
+  color: var(--clr-gray-600);
+  font-weight: 700;
+  font-size: 0.95rem;
+  border-right: 1.5px solid var(--clr-gray-200);
+  user-select: none;
+}
+.phone-input-group .form-input {
+  border: none;
+  background: transparent;
+  width: 100%;
+}
+.phone-input-group .form-input:focus {
+  box-shadow: none;
+}
+
+/* OTP Input Grid */
+.otp-container {
+  margin-top: var(--sp-lg);
+  padding: var(--sp-lg);
+  background: rgba(212, 115, 26, 0.05);
+  border-radius: var(--radius-lg);
+  border: 1px dashed var(--clr-saffron);
+  display: none; /* Shown via JS */
+  animation: slideDown 0.4s var(--ease-spring);
+}
+.otp-container.visible {
+  display: block;
+}
+.otp-grid {
+  display: grid;
+  grid-template-columns: repeat(6, 1fr);
+  gap: 8px;
+  margin: var(--sp-md) 0;
+}
+.otp-digit {
+  width: 100%;
+  aspect-ratio: 1;
+  text-align: center;
+  font-size: 1.5rem;
+  font-weight: 800;
+  border: 2px solid var(--clr-gray-200);
+  border-radius: var(--radius-md);
+  background: white;
+  transition: all var(--dur-fast);
+  color: var(--clr-charcoal);
+}
+.otp-digit:focus {
+  border-color: var(--clr-saffron);
+  box-shadow: 0 0 0 4px rgba(212, 115, 26, 0.15);
+  outline: none;
+  transform: translateY(-2px);
+}
+.otp-digit.success {
+  border-color: var(--clr-success);
+  background: rgba(46, 204, 113, 0.05);
+}
+.resend-timer {
+  font-size: 0.8rem;
+  color: var(--clr-gray-500);
+  text-align: center;
+  margin-top: var(--sp-sm);
+}
+.resend-btn {
+  color: var(--clr-saffron);
+  font-weight: 600;
+  background: none;
+  padding: 0;
+  font-size: 0.8rem;
+  cursor: pointer;
+}
+.resend-btn:disabled {
+  color: var(--clr-gray-400);
+  cursor: not-allowed;
+}
+
+@keyframes slideDown {
+  from { opacity: 0; transform: translateY(-10px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
 /* ── Filter Bar ── */
 .filter-bar {
   display: flex;
