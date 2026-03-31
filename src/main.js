@@ -125,6 +125,9 @@ function renderPage(route) {
   // Scroll to top
   window.scrollTo(0, 0);
 
+  // Analytics: track page view
+  import('./services/analytics.js').then(({ trackPageView }) => trackPageView(route)).catch(() => {});
+
   // Init scroll reveals
   setTimeout(() => initScrollReveal(), 100);
 }

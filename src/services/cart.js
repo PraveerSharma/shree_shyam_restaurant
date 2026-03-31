@@ -1,5 +1,6 @@
 import { getCurrentUser } from './auth.js';
 import { dbSyncCart } from './db.js';
+import { trackAddToCart } from './analytics.js';
 
 function getCartKey() {
   const user = getCurrentUser();
@@ -51,8 +52,9 @@ export function addToCart(product, qty = 1) {
       quantity: Math.min(qty, 999),
     });
   }
-  
+
   saveCart(cart);
+  trackAddToCart(product.id, product.name);
   return cart;
 }
 
