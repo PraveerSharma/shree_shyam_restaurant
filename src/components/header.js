@@ -6,9 +6,11 @@
 import { SITE_CONFIG } from '../config/site.js';
 import { getCartCount } from '../services/cart.js';
 import { getCurrentUser, logout } from '../services/auth.js';
+import { isAdminLoggedIn } from '../services/admin.js';
 
 export function renderHeader() {
   const user = getCurrentUser();
+  const adminActive = isAdminLoggedIn();
   const cartCount = getCartCount();
 
   return `
@@ -46,6 +48,8 @@ export function renderHeader() {
             <button class="btn btn-ghost btn-sm" id="logout-btn" title="Logout">
               <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
             </button>
+          ` : adminActive ? `
+            <span style="font-size: 0.85rem; font-weight: 600; color: var(--clr-saffron);">👨‍💼 Admin Active</span>
           ` : `
             <button class="btn btn-ghost btn-sm" id="login-btn">Login</button>
             <button class="btn btn-primary btn-sm" id="register-btn">Register</button>
@@ -68,6 +72,8 @@ export function renderHeader() {
         ${user ? `
           <span class="mobile-nav-user">Hello, ${user.name}</span>
           <button class="btn btn-secondary btn-sm" id="mobile-logout-btn">Logout</button>
+        ` : adminActive ? `
+          <span style="font-size: 0.9rem; font-weight: 600; color: var(--clr-saffron);">👨‍💼 Admin Mode Active</span>
         ` : `
           <button class="btn btn-ghost btn-sm" id="mobile-login-btn">Login</button>
           <button class="btn btn-primary btn-sm" id="mobile-register-btn">Register</button>

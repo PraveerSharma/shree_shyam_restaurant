@@ -103,26 +103,6 @@ function renderMenuManagement() {
 
   return `
           <!-- Category Switcher -->
-        <div class="container">
-          <div class="admin-header">
-            <div>
-              <h1 style="font-size:var(--fs-h2);">⚙️ Admin Dashboard</h1>
-              <p style="color:var(--clr-gray-500);">Manage items, prices, and availability</p>
-            </div>
-            <div style="display:flex;gap:0.5rem;flex-wrap:wrap;">
-              <button class="btn btn-outline btn-sm" id="admin-add-btn">
-                ➕ Add Item
-              </button>
-              <button class="btn btn-ghost btn-sm" id="admin-reset-btn">
-                🔄 Reset to Defaults
-              </button>
-              <button class="btn btn-ghost btn-sm" id="admin-logout-btn" style="color:var(--clr-error);">
-                🚪 Logout
-              </button>
-            </div>
-          </div>
-
-          <!-- Tab Switcher -->
           <div class="category-tabs" style="margin-bottom:1.5rem;">
             <button class="category-tab ${activeTab === 'sweets' ? 'active' : ''}" data-tab="sweets">
               🍬 Sweets & Snacks (${getSweetsItems().length})

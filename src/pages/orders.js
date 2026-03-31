@@ -80,10 +80,32 @@ export function renderOrdersPage() {
                       </div>
                       <div>
                         <div style="font-size: 0.85rem; color: var(--clr-gray-500); margin-bottom: 0.25rem;">Status</div>
-                        <div style="display: inline-flex; align-items: center; gap: 0.4rem; padding: 0.25rem 0.75rem; background: #fff8e1; color: #f57c00; border-radius: 100px; font-size: 0.85rem; font-weight: 600;">
-                          <span style="width: 8px; height: 8px; background: #f57c00; border-radius: 50%;"></span>
-                          Pending Pickup
-                        </div>
+                        ${(() => {
+                          const status = order.status || 'pending';
+                          let bg, color, label;
+                          switch(status) {
+                            case 'pending': 
+                              bg = '#fff8e1'; color = '#f57c00'; label = 'Pending Processing'; 
+                              break;
+                            case 'accepted': 
+                              bg = '#e3f2fd'; color = '#1976d2'; label = 'Accepted / Preparing'; 
+                              break;
+                            case 'delivered': 
+                              bg = '#e8f5e9'; color = '#2e7d32'; label = 'Picked Up / Delivered'; 
+                              break;
+                            case 'cancelled': 
+                              bg = '#ffebee'; color = '#c62828'; label = 'Cancelled'; 
+                              break;
+                            default: 
+                              bg = '#f5f5f5'; color = '#616161'; label = status;
+                          }
+                          return `
+                            <div style="display: inline-flex; align-items: center; gap: 0.4rem; padding: 0.25rem 0.75rem; background: ${bg}; color: ${color}; border-radius: 100px; font-size: 0.85rem; font-weight: 600; text-transform: capitalize;">
+                              <span style="width: 8px; height: 8px; background: ${color}; border-radius: 50%;"></span>
+                              ${label}
+                            </div>
+                          `;
+                        })()}
                       </div>
                       <div style="text-align: right;">
                         <div style="font-size: 0.85rem; color: var(--clr-gray-500); margin-bottom: 0.25rem;">Total Amount</div>
