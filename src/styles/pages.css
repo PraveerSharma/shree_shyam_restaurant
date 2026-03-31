@@ -554,3 +554,446 @@
   line-height: 1.8;
   list-style: disc;
 }
+
+/* ── Badges ── */
+.badge {
+  display: inline-block;
+  padding: 4px 12px;
+  border-radius: 50px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  white-space: nowrap;
+  line-height: 1.4;
+}
+.badge-warning {
+  background: #FEF3C7;
+  color: #92400E;
+  border: 1px solid #FDE68A;
+}
+.badge-success {
+  background: #D1FAE5;
+  color: #065F46;
+  border: 1px solid #A7F3D0;
+}
+.badge-error {
+  background: #FEE2E2;
+  color: #991B1B;
+  border: 1px solid #FECACA;
+}
+.badge-info {
+  background: #DBEAFE;
+  color: #1E40AF;
+  border: 1px solid #BFDBFE;
+}
+
+/* ── Admin Table Container ── */
+.admin-table-container {
+  background: white;
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-sm);
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+/* ── Modal Backdrop & Content ── */
+.modal-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.5);
+  backdrop-filter: blur(4px);
+  z-index: 1000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  animation: fadeIn 0.2s ease;
+}
+.modal-content {
+  background: white;
+  border-radius: var(--radius-lg);
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.2);
+  max-height: 90vh;
+  overflow-y: auto;
+  animation: slideUp 0.3s ease;
+}
+
+/* ── Keyframes ── */
+@keyframes slideUp {
+  from { opacity: 0; transform: translateY(20px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+@keyframes pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.6; }
+}
+
+/* ── Subscriber Cards ── */
+.sub-stat-card {
+  background: white;
+  padding: 1.5rem;
+  border-radius: var(--radius-lg);
+  border: 1px solid var(--clr-gray-200);
+  box-shadow: var(--shadow-sm);
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+.sub-stat-card:hover {
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-md);
+}
+.sub-stat-card .stat-icon {
+  width: 44px;
+  height: 44px;
+  border-radius: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.25rem;
+  margin-bottom: 0.75rem;
+}
+.sub-stat-card .stat-label {
+  font-size: 0.8rem;
+  color: var(--clr-gray-500);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  margin-bottom: 0.25rem;
+  font-weight: 500;
+}
+.sub-stat-card .stat-value {
+  font-size: 1.75rem;
+  font-weight: 800;
+  line-height: 1.2;
+}
+
+/* ── Subscriber List Cards ── */
+.sub-card {
+  background: white;
+  border: 1px solid var(--clr-gray-200);
+  border-radius: var(--radius-lg);
+  padding: 1.25rem;
+  transition: all 0.2s ease;
+  cursor: pointer;
+}
+.sub-card:hover {
+  border-color: var(--clr-saffron);
+  box-shadow: 0 4px 16px rgba(212, 115, 26, 0.1);
+}
+.sub-card .sub-card-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  margin-bottom: 0.75rem;
+}
+.sub-card .sub-avatar {
+  width: 42px;
+  height: 42px;
+  border-radius: 50%;
+  background: var(--grad-saffron);
+  color: white;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 700;
+  font-size: 1rem;
+  flex-shrink: 0;
+}
+.sub-card .sub-name {
+  font-weight: 700;
+  font-size: 1.05rem;
+  color: var(--clr-charcoal);
+}
+.sub-card .sub-meta {
+  font-size: 0.8rem;
+  color: var(--clr-gray-500);
+  margin-top: 2px;
+}
+.sub-card .sub-balance {
+  font-size: 1.5rem;
+  font-weight: 800;
+  text-align: right;
+}
+.sub-card .sub-card-actions {
+  display: flex;
+  gap: 0.5rem;
+  margin-top: 1rem;
+  padding-top: 0.75rem;
+  border-top: 1px solid var(--clr-gray-100);
+  flex-wrap: wrap;
+}
+.sub-card .sub-card-actions .btn {
+  font-size: 0.8rem;
+  padding: 6px 12px;
+}
+
+/* ── Admin Tab Buttons ── */
+.admin-tab-bar {
+  display: flex;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+  margin-bottom: 1.5rem;
+}
+.admin-tab-btn {
+  border: none;
+  font-size: 1rem;
+  padding: 0.6rem 1.2rem;
+  border-radius: var(--radius-md);
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  background: transparent;
+  color: var(--clr-gray-600);
+}
+.admin-tab-btn:hover {
+  background: var(--clr-gray-100);
+  color: var(--clr-charcoal);
+}
+.admin-tab-btn.active {
+  background: var(--clr-saffron);
+  color: white;
+  box-shadow: 0 2px 8px rgba(212, 115, 26, 0.3);
+}
+
+/* ── Order Status Colors ── */
+.status-badge {
+  display: inline-block;
+  padding: 4px 12px;
+  border-radius: 50px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  text-transform: capitalize;
+}
+.status-badge.pending { background: #FFF3CD; color: #856404; }
+.status-badge.accepted { background: #D1ECF1; color: #0C5460; }
+.status-badge.ready { background: #D4EDDA; color: #155724; }
+.status-badge.delivered { background: #C3E6CB; color: #0B5E2A; }
+.status-badge.cancelled { background: #F8D7DA; color: #721C24; }
+
+/* ── Order Filter Buttons ── */
+.order-filter-btn {
+  border: 1px solid var(--clr-gray-200);
+  background: white;
+  padding: 6px 16px;
+  border-radius: var(--radius-full);
+  font-size: 0.85rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  color: var(--clr-gray-600);
+}
+.order-filter-btn:hover {
+  background: var(--clr-gray-100);
+  border-color: var(--clr-gray-300);
+}
+.order-filter-btn.active {
+  background: var(--clr-saffron);
+  color: white;
+  border-color: var(--clr-saffron);
+}
+
+/* ── Client Orders Page ── */
+.orders-page-tabs {
+  display: flex;
+  gap: 0;
+  margin-bottom: 2rem;
+  border-bottom: 2px solid var(--clr-gray-200);
+}
+.orders-page-tab {
+  background: none;
+  border: none;
+  font-weight: 600;
+  cursor: pointer;
+  padding: 0.75rem 1.25rem;
+  position: relative;
+  color: var(--clr-gray-500);
+  font-size: 0.95rem;
+  transition: color 0.2s ease;
+}
+.orders-page-tab:hover {
+  color: var(--clr-charcoal);
+}
+.orders-page-tab.active {
+  color: var(--clr-saffron);
+}
+.orders-page-tab.active::after {
+  content: '';
+  position: absolute;
+  bottom: -2px;
+  left: 0;
+  right: 0;
+  height: 2px;
+  background: var(--clr-saffron);
+  border-radius: 2px 2px 0 0;
+}
+
+/* ── Order Card ── */
+.order-card {
+  background: white;
+  border: 1px solid var(--clr-gray-200);
+  border-radius: var(--radius-lg);
+  overflow: hidden;
+  transition: box-shadow 0.2s ease;
+}
+.order-card:hover {
+  box-shadow: var(--shadow-md);
+}
+.order-card-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 1rem 1.25rem;
+  background: var(--clr-gray-50);
+  border-bottom: 1px solid var(--clr-gray-100);
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+.order-card-body {
+  padding: 1rem 1.25rem;
+}
+.order-card-items {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+  margin-bottom: 0.75rem;
+}
+.order-card-footer {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0.75rem 1.25rem;
+  border-top: 1px solid var(--clr-gray-100);
+  background: var(--clr-gray-50);
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+/* ── Subscription Dashboard (Client) ── */
+.sub-dashboard {
+  display: grid;
+  grid-template-columns: 280px 1fr;
+  gap: 2rem;
+}
+.sub-profile-card {
+  background: white;
+  border: 1px solid var(--clr-gray-200);
+  border-radius: var(--radius-lg);
+  padding: 1.5rem;
+  position: sticky;
+  top: 100px;
+  height: fit-content;
+}
+.sub-history-section {
+  min-width: 0;
+}
+
+/* ── Empty State ── */
+.empty-state {
+  text-align: center;
+  padding: 4rem 2rem;
+}
+.empty-state .empty-icon {
+  font-size: 3rem;
+  margin-bottom: 1rem;
+}
+.empty-state h2 {
+  font-size: var(--fs-h3);
+  color: var(--clr-charcoal);
+  margin-bottom: 0.5rem;
+}
+.empty-state p {
+  color: var(--clr-gray-500);
+  margin-bottom: 1.5rem;
+}
+
+/* ── Chat Window ── */
+.chat-window {
+  position: fixed;
+  bottom: 1.5rem;
+  right: 1.5rem;
+  width: 360px;
+  max-width: calc(100vw - 2rem);
+  height: 480px;
+  max-height: calc(100vh - 6rem);
+  background: white;
+  border-radius: var(--radius-lg);
+  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.2);
+  z-index: 1001;
+  display: flex;
+  flex-direction: column;
+  border: 1px solid var(--clr-gray-200);
+  overflow: hidden;
+  animation: slideUp 0.3s ease;
+}
+.chat-window .chat-header {
+  background: var(--clr-saffron);
+  color: white;
+  padding: 1rem;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+.chat-window .chat-messages {
+  flex: 1;
+  padding: 1rem;
+  overflow-y: auto;
+  background: var(--clr-gray-50);
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+.chat-window .chat-input-bar {
+  padding: 0.75rem;
+  border-top: 1px solid var(--clr-gray-200);
+  display: flex;
+  gap: 8px;
+}
+
+/* ── Payment Method Options ── */
+.payment-option {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 1rem;
+  border: 2px solid var(--clr-gray-200);
+  border-radius: var(--radius-md);
+  background: white;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+.payment-option:hover {
+  border-color: var(--clr-saffron-light);
+  background: var(--clr-ivory);
+}
+.payment-option.selected {
+  border-color: var(--clr-saffron);
+  background: var(--clr-ivory);
+  box-shadow: 0 0 0 1px var(--clr-saffron);
+}
+
+/* ── Add Subscriber Form ── */
+.add-sub-form {
+  background: white;
+  padding: 1.5rem;
+  border: 1px solid var(--clr-gray-200);
+  border-radius: var(--radius-lg);
+  margin-bottom: 1.5rem;
+  box-shadow: var(--shadow-sm);
+}
+.add-sub-form h3 {
+  margin-bottom: 1.25rem;
+  font-size: 1.1rem;
+  color: var(--clr-charcoal);
+}
+.add-sub-form .form-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr;
+  gap: 1rem;
+  margin-bottom: 1rem;
+}
+.add-sub-form .form-actions {
+  display: flex;
+  gap: 0.5rem;
+  justify-content: flex-end;
+}

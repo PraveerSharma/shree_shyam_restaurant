@@ -164,4 +164,7 @@ function updateStickyCart(e) {
 
 export function cleanupSweetsPage() {
   window.removeEventListener('cart-updated', updateStickyCart);
+  currentCategory = 'all';
+  currentSort = 'default';
+  searchQuery = '';
 }

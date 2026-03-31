@@ -153,6 +153,54 @@
     margin: var(--sp-md);
     max-width: 100%;
   }
+
+  .modal-content {
+    width: 95% !important;
+    max-width: 95vw;
+  }
+
+  .sub-dashboard {
+    grid-template-columns: 1fr;
+  }
+  .sub-profile-card {
+    position: static;
+  }
+
+  .add-sub-form .form-row {
+    grid-template-columns: 1fr;
+  }
+
+  .order-card-header {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .chat-window {
+    width: calc(100vw - 1.5rem);
+    right: 0.75rem;
+    bottom: 0.75rem;
+    height: 400px;
+  }
+}
+
+/* ── Small Tablet / Large Phone (<600px) ── */
+@media (max-width: 600px) {
+  .admin-tab-bar {
+    gap: 0.25rem;
+  }
+  .admin-tab-btn {
+    font-size: 0.85rem;
+    padding: 0.5rem 0.8rem;
+    flex: 1;
+    text-align: center;
+  }
+  .sub-card .sub-card-actions {
+    flex-direction: column;
+  }
+  .sub-card .sub-card-actions .btn {
+    width: 100%;
+    text-align: center;
+  }
 }
 
 /* ── Small Mobile (<480px) ── */

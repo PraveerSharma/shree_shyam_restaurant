@@ -40,18 +40,12 @@ export function renderOrdersPage() {
             <p class="page-subtitle">Manage your orders and subscription details</p>
           </div>
 
-          <div class="tabs" style="display: flex; gap: 1rem; margin-bottom: 2rem; border-bottom: 2px solid var(--clr-gray-200); padding-bottom: 0.5rem;">
-            <button class="tab-btn ${activeOrdersTab === 'history' ? 'active' : ''}" 
-                    style="background: none; border: none; font-weight: 700; cursor: pointer; padding: 0.5rem 1rem; position: relative; color: ${activeOrdersTab === 'history' ? 'var(--clr-primary)' : 'var(--clr-gray-500)'}; transition: all 0.3s;"
-                    id="tab-history">
+          <div class="orders-page-tabs">
+            <button class="orders-page-tab ${activeOrdersTab === 'history' ? 'active' : ''}" id="tab-history">
               My Orders
-              ${activeOrdersTab === 'history' ? '<div style="position: absolute; bottom: -0.5rem; left: 0; width: 100%; height: 3px; background: var(--clr-primary); border-radius: 4px;"></div>' : ''}
             </button>
-            <button class="tab-btn ${activeOrdersTab === 'subscription' ? 'active' : ''}" 
-                    style="background: none; border: none; font-weight: 700; cursor: pointer; padding: 0.5rem 1rem; position: relative; color: ${activeOrdersTab === 'subscription' ? 'var(--clr-primary)' : 'var(--clr-gray-500)'}; transition: all 0.3s;"
-                    id="tab-subscription">
+            <button class="orders-page-tab ${activeOrdersTab === 'subscription' ? 'active' : ''}" id="tab-subscription">
               My Subscription
-              ${activeOrdersTab === 'subscription' ? '<div style="position: absolute; bottom: -0.5rem; left: 0; width: 100%; height: 3px; background: var(--clr-primary); border-radius: 4px;"></div>' : ''}
             </button>
           </div>
 
@@ -81,57 +75,53 @@ function renderOrderHistory(orders) {
   }
 
   return `
-    <div class="orders-list" style="display: flex; flex-direction: column; gap: 1.5rem;">
+    <div class="orders-list" style="display: flex; flex-direction: column; gap: 1.25rem;">
       ${orders.map(order => `
-        <div class="order-card" style="background: white; border: 1px solid var(--clr-gray-200); border-radius: var(--radius-lg); overflow: hidden; box-shadow: var(--shadow-sm);">
-          <div class="order-header" style="padding: 1.25rem 1.5rem; background: var(--clr-gray-50); border-bottom: 1px solid var(--clr-gray-200); display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 1rem;">
+        <div class="order-card">
+          <div class="order-card-header">
             <div>
-              <div style="font-size: 0.85rem; color: var(--clr-gray-500); text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 0.25rem;">Order ID</div>
-              <div style="font-weight: 700; font-family: var(--ff-accent); color: var(--clr-primary); display: flex; align-items: center; gap: 8px;">
+              <div style="font-size: 0.75rem; color: var(--clr-gray-500); text-transform: uppercase; letter-spacing: 0.04em;">Order</div>
+              <div style="font-weight: 700; font-family: var(--ff-accent); color: var(--clr-saffron); display: flex; align-items: center; gap: 6px;">
                 ${order.orderId}
                 ${isDueSoon(order.pickupDate) && order.status !== 'delivered' && order.status !== 'cancelled' ? `
-                  <span class="badge badge-error" style="font-size: 0.65rem; padding: 2px 6px; animation: pulse 2s infinite;">⚠️ DUE SOON</span>
+                  <span class="badge badge-error" style="font-size: 0.65rem; padding: 2px 6px; animation: pulse 2s infinite;">DUE SOON</span>
                 ` : ''}
               </div>
             </div>
-            <div style="text-align: right;">
-              <div style="font-size: 0.85rem; color: var(--clr-gray-500); text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 0.25rem;">Date Placed</div>
-              <div style="font-weight: 600;">${new Date(order.createdAt).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })}</div>
+            <div style="display: flex; align-items: center; gap: 0.75rem;">
+              <span class="badge ${order.status === 'delivered' ? 'badge-success' : order.status === 'cancelled' ? 'badge-error' : 'badge-warning'}" style="text-transform: capitalize;">
+                ${order.status}
+              </span>
+              <span style="font-size: 0.85rem; color: var(--clr-gray-500);">${new Date(order.createdAt).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' })}</span>
             </div>
           </div>
-          
-          <div class="order-body" style="padding: 1.5rem;">
-            <div class="order-items-summary" style="margin-bottom: 1.5rem;">
-              <div style="font-weight: 600; margin-bottom: 0.75rem; color: var(--clr-gray-700);">Items</div>
-              <div style="display: flex; flex-direction: column; gap: 0.5rem;">
-                ${order.items.map(item => `
-                  <div style="display: flex; justify-content: space-between; font-size: 0.95rem;">
-                    <span>${item.name} <span style="color: var(--clr-gray-400);">× ${item.quantity}</span></span>
-                    <span>${formatPrice(item.price * item.quantity)}</span>
-                  </div>
-                `).join('')}
-              </div>
+
+          <div class="order-card-body">
+            <div class="order-card-items">
+              ${order.items.map(item => `
+                <div style="display: flex; justify-content: space-between; font-size: 0.9rem;">
+                  <span>${item.name} <span style="color: var(--clr-gray-400);">x${item.quantity}</span></span>
+                  <span style="font-weight: 600;">${formatPrice(item.price * item.quantity)}</span>
+                </div>
+              `).join('')}
             </div>
 
             ${order.adminComment ? `
-              <div style="background: #FFF9F2; border: 1px dashed var(--clr-saffron); border-left: 5px solid var(--clr-saffron); padding: 1.25rem; margin: 1rem 0 1.5rem; border-radius: var(--radius-md); box-shadow: var(--shadow-sm); animation: slideIn 0.3s ease;">
-                <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 6px;">
-                  <span style="font-size: 1.2rem;">👨‍🍳</span>
-                  <div style="font-size: 0.8rem; color: #D35400; font-weight: 800; text-transform: uppercase;">Note from Restaurant</div>
-                </div>
-                <div style="font-size: 0.95rem; color: #873600; line-height: 1.5; font-style: italic;">"${order.adminComment}"</div>
+              <div style="background: var(--clr-ivory); border-left: 3px solid var(--clr-saffron); padding: 0.75rem 1rem; border-radius: 0 var(--radius-sm) var(--radius-sm) 0; margin-bottom: 0.75rem;">
+                <div style="font-size: 0.75rem; color: var(--clr-saffron-dark); font-weight: 700; margin-bottom: 4px;">Restaurant Note</div>
+                <div style="font-size: 0.85rem; color: var(--clr-gray-700); font-style: italic;">"${order.adminComment}"</div>
               </div>
             ` : ''}
 
-            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1.5rem; padding-top: 1.5rem; border-top: 1px dashed var(--clr-gray-200);">
+            <div style="display: flex; gap: 1.5rem; flex-wrap: wrap; font-size: 0.85rem; color: var(--clr-gray-600);">
               <div>
-                <div style="font-size: 0.85rem; color: var(--clr-gray-500); margin-bottom: 0.25rem;">Pickup Schedule</div>
-                <div style="font-weight: 600; color: var(--clr-secondary);">🗓️ ${order.pickupDate}</div>
-                <div class="time-slot-container" data-id="${order.orderId}" style="margin-top: 4px;">
+                <span style="color: var(--clr-gray-400);">Pickup:</span>
+                <span style="font-weight: 600;"> ${order.pickupDate}</span>
+                <div class="time-slot-container" data-id="${order.orderId}" style="margin-top: 2px;">
                   <div style="display: flex; align-items: center; gap: 0.5rem;" class="time-display-wrapper">
-                    <div style="font-weight: 600; color: var(--clr-saffron);" class="current-time-slot">⏰ ${order.pickupTime}</div>
+                    <span style="font-weight: 600; color: var(--clr-saffron);" class="current-time-slot">${order.pickupTime}</span>
                     ${order.status === 'pending' ? `
-                      <button class="edit-time-btn" style="font-size: 0.75rem; color: var(--clr-info); text-decoration: underline; background: none; border: none; cursor: pointer; padding: 0;">Edit</button>
+                      <button class="edit-time-btn" style="font-size: 0.7rem; color: var(--clr-info); text-decoration: underline; background: none; border: none; cursor: pointer; padding: 0;">Edit</button>
                     ` : ''}
                   </div>
                   <div style="display: none; align-items: center; gap: 0.5rem;" class="time-edit-wrapper">
@@ -141,24 +131,17 @@ function renderOrderHistory(orders) {
                       <option value="06:00 PM - 10:00 PM" ${order.pickupTime === '06:00 PM - 10:00 PM' ? 'selected' : ''}>6-10 PM</option>
                     </select>
                     <button class="save-time-btn" data-id="${order.orderId}" style="background: var(--clr-veg); color: white; border: none; padding: 2px 8px; border-radius: 4px; font-size: 0.75rem; cursor: pointer;">Save</button>
-                    <button class="cancel-time-btn" style="background: var(--clr-gray-200); color: var(--clr-gray-700); border: none; padding: 2px 8px; border-radius: 4px; font-size: 0.75rem; cursor: pointer;">✕</button>
+                    <button class="cancel-time-btn" style="background: var(--clr-gray-200); color: var(--clr-gray-700); border: none; padding: 2px 8px; border-radius: 4px; font-size: 0.75rem; cursor: pointer;">X</button>
                   </div>
                 </div>
               </div>
-              <div>
-                <div style="font-size: 0.85rem; color: var(--clr-gray-500); margin-bottom: 0.25rem;">Payment & Status</div>
-                <div style="font-size: 0.9rem; font-weight: 600; margin-bottom: 4px;">💳 ${order.paymentMethod || 'Cash on Delivery'}</div>
-                <div class="badge ${order.status === 'delivered' ? 'badge-success' : 'badge-warning'}">
-                  ${order.status}
-                </div>
-              </div>
-                <div style="text-align: right;">
-                  <div style="font-size: 0.85rem; color: var(--clr-gray-500); margin-bottom: 0.25rem;">Total Amount</div>
-                  <div style="font-size: 1.25rem; font-weight: 800; color: var(--clr-gray-900);">${formatPrice(order.total)}</div>
-                  <button class="btn btn-sm btn-outline chat-support-btn" data-id="${order.orderId}" style="margin-top: 0.75rem; font-size: 0.75rem; border-radius: 20px; padding: 4px 12px; font-weight: 700;">💬 Chat with Us</button>
-                </div>
-              </div>
+              <div><span style="color: var(--clr-gray-400);">Payment:</span> ${order.paymentMethod || 'Cash on Delivery'}</div>
             </div>
+          </div>
+
+          <div class="order-card-footer">
+            <div style="font-size: 1.15rem; font-weight: 800; color: var(--clr-charcoal);">${formatPrice(order.total)}</div>
+            <button class="btn btn-sm btn-outline chat-support-btn" data-id="${order.orderId}" style="font-size: 0.75rem; border-radius: 20px; padding: 4px 12px;">💬 Chat</button>
           </div>
         </div>
       `).join('')}
@@ -175,7 +158,7 @@ function renderSubscriptionTab(user) {
         <div style="font-size: 4rem; margin-bottom: 1.5rem;">⭐</div>
         <h2 style="color: #D35400; margin-bottom: 1rem;">Join Our Regular Guests Program</h2>
         <p style="color: #873600; max-width: 600px; margin: 0 auto 2rem; line-height: 1.6;">
-          Become a regular subscriber and enjoy the convenience of **Monthly Billing**. 
+          Become a regular subscriber and enjoy the convenience of <strong>Monthly Billing</strong>.
           Order throughout the month and pay collectively whenever it's convenient for you.
         </p>
         <div style="background: white; padding: 2rem; border-radius: var(--radius-md); box-shadow: var(--shadow-md); text-align: left; max-width: 500px; margin: 0 auto;">
@@ -202,28 +185,28 @@ function renderSubscriptionTab(user) {
 
   const sub = getSubscription(user.id);
   return `
-    <div class="subscriber-dashboard" style="display: grid; grid-template-columns: 1fr 2fr; gap: 2rem;">
-      <div class="sub-profile-card" style="background: white; padding: 2rem; border-radius: var(--radius-lg); border: 1px solid var(--clr-gray-200); position: sticky; top: 100px; height: fit-content;">
-        <div style="text-align: center; margin-bottom: 2rem;">
-          <div style="width: 80px; height: 80px; background: #FFF4E6; color: #D35400; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 2.5rem; margin: 0 auto 1rem; font-weight: 800;">
+    <div class="sub-dashboard">
+      <div class="sub-profile-card">
+        <div style="text-align: center; margin-bottom: 1.5rem;">
+          <div class="sub-avatar" style="width: 72px; height: 72px; font-size: 2rem; margin: 0 auto 0.75rem;">
             ${sub.name.charAt(0)}
           </div>
           <h3 style="margin-bottom: 0.25rem;">${sub.name}</h3>
-          <span style="background: #E6F4EA; color: #1E7E34; font-size: 0.75rem; padding: 4px 12px; border-radius: 100px; font-weight: 700; text-transform: uppercase;">Active Subscriber</span>
+          <span class="badge badge-success" style="font-size: 0.7rem; text-transform: uppercase;">Active Subscriber</span>
         </div>
 
-        <div style="border-top: 1px solid var(--clr-gray-100); padding-top: 1.5rem; margin-bottom: 2rem; text-align: center;">
-          <div style="font-size: 0.9rem; color: var(--clr-gray-500); margin-bottom: 0.5rem;">Outstanding Balance</div>
-          <div style="font-size: 2rem; font-weight: 800; color: var(--clr-primary);">${formatPrice(sub.outstandingBalance)}</div>
+        <div style="border-top: 1px solid var(--clr-gray-100); padding-top: 1.25rem; margin-bottom: 1.5rem; text-align: center;">
+          <div style="font-size: 0.8rem; color: var(--clr-gray-500); margin-bottom: 0.25rem;">Outstanding Balance</div>
+          <div style="font-size: 1.75rem; font-weight: 800; color: ${sub.outstandingBalance > 0 ? 'var(--clr-error)' : 'var(--clr-veg)'};">${formatPrice(sub.outstandingBalance)}</div>
         </div>
 
-        <div style="background: var(--clr-gray-50); padding: 1rem; border-radius: var(--radius-md); font-size: 0.9rem; color: var(--clr-gray-600);">
+        <div style="background: var(--clr-gray-50); padding: 0.75rem; border-radius: var(--radius-md); font-size: 0.85rem; color: var(--clr-gray-600);">
           <div style="margin-bottom: 0.5rem;">📞 ${formatPhoneNumber(sub.phone)}</div>
           <div>📍 ${sub.address}</div>
         </div>
       </div>
 
-      <div class="sub-history">
+      <div class="sub-history-section">
         <!-- Quick Order Form -->
         <div style="background: #F0F9FF; padding: 2rem; border-radius: var(--radius-lg); border: 2px solid #BAE6FD; margin-bottom: 2.5rem; box-shadow: var(--shadow-sm);">
           <div style="display: flex; align-items: center; gap: 0.75rem; margin-bottom: 1rem;">
@@ -260,7 +243,7 @@ function renderSubscriptionTab(user) {
                 </div>
                 <div style="display: flex; align-items: center; gap: 1.5rem; text-align: right;">
                    <div style="font-weight: 800; font-size: 1.1rem; min-width: 80px;">${formatPrice(h.amount)}</div>
-                   <span style="font-size: 0.7rem; padding: 4px 10px; border-radius: 100px; font-weight: 800; text-transform: uppercase; letter-spacing: 0.05em; background: ${h.status === 'pending' ? '#FEF3C7' : '#D1FAE5'}; color: ${h.status === 'pending' ? '#92400E' : '#065F46'}; border: 1px solid ${h.status === 'pending' ? '#FDE68A' : '#A7F3D0'};">
+                   <span class="badge ${h.status === 'pending' ? 'badge-warning' : 'badge-success'}">
                     ${h.status === 'pending' ? 'Unpaid' : 'Paid'}
                    </span>
                 </div>
@@ -388,13 +371,13 @@ export function initOrdersPage() {
 function renderUserChatWindow(orderId) {
   const messages = getMessages(orderId);
   return `
-    <div style="position: fixed; bottom: 1.5rem; right: 1.5rem; width: 320px; height: 450px; background: white; border-radius: var(--radius-lg); box-shadow: 0 10px 30px rgba(0,0,0,0.15); z-index: 1000; display: flex; flex-direction: column; border: 1px solid var(--clr-gray-200); overflow: hidden;">
-      <div style="background: var(--clr-primary); color: white; padding: 0.85rem 1rem; display: flex; justify-content: space-between; align-items: center;">
+    <div class="chat-window">
+      <div class="chat-header">
         <div style="font-weight: 700; font-size: 0.9rem;">Chat with Support [${orderId.split('-').pop()}]</div>
         <button id="close-chat" style="background: none; border: none; color: white; font-size: 1.25rem; cursor: pointer;">✕</button>
       </div>
-      
-      <div id="chat-messages" style="flex: 1; padding: 1rem; overflow-y: auto; background: #f8f9fa; display: flex; flex-direction: column; gap: 0.75rem;">
+
+      <div id="chat-messages" class="chat-messages">
         ${messages.length === 0 ? `
           <div style="text-align: center; color: var(--clr-gray-400); margin-top: 2rem; font-size: 0.85rem; padding: 0 1rem;">
             <div style="font-size: 1.5rem; margin-bottom: 0.5rem;">👋</div>
@@ -402,14 +385,14 @@ function renderUserChatWindow(orderId) {
           </div>
         ` : messages.map(msg => `
           <div style="align-self: ${msg.sender === 'user' ? 'flex-end' : 'flex-start'}; max-width: 85%;">
-            <div style="background: ${msg.sender === 'user' ? 'var(--clr-primary)' : 'white'}; color: ${msg.sender === 'user' ? 'white' : 'var(--clr-gray-800)'}; padding: 0.65rem 0.85rem; border-radius: 12px; border-bottom-${msg.sender === 'user' ? 'right' : 'left'}-radius: 2px; font-size: 0.9rem; box-shadow: var(--shadow-sm); border: ${msg.sender === 'user' ? 'none' : '1px solid var(--clr-gray-200)'};">
+            <div style="background: ${msg.sender === 'user' ? 'var(--clr-saffron)' : 'white'}; color: ${msg.sender === 'user' ? 'white' : 'var(--clr-gray-800)'}; padding: 0.65rem 0.85rem; border-radius: 12px; ${msg.sender === 'user' ? 'border-bottom-right-radius: 2px;' : 'border-bottom-left-radius: 2px; border: 1px solid var(--clr-gray-200);'} font-size: 0.9rem; box-shadow: var(--shadow-sm);">
               ${msg.text}
             </div>
           </div>
         `).join('')}
       </div>
-      
-      <div style="padding: 0.75rem; border-top: 1px solid var(--clr-gray-200); display: flex; gap: 8px;">
+
+      <div class="chat-input-bar">
         <input type="text" id="chat-input" class="form-input" placeholder="Your message..." style="height: 36px; border-radius: 18px; font-size: 0.9rem; padding: 0 1rem;">
         <button id="send-msg" class="btn btn-primary" style="width: 36px; height: 36px; border-radius: 50%; padding: 0; display: flex; align-items: center; justify-content:center;">➤</button>
       </div>

@@ -160,4 +160,7 @@ function updateStickyCart(e) {
 
 export function cleanupRestaurantPage() {
   window.removeEventListener('cart-updated', updateStickyCart);
+  currentCategory = 'all';
+  currentSort = 'default';
+  searchQuery = '';
 }

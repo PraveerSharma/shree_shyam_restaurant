@@ -18,7 +18,7 @@ import { getAllUsersCount, getCurrentUser } from '../services/auth.js';
 import {
   getSubscribers, clearOutstandingBill, createAdminSubscriber, generateBillSummary, addManualBill,
   approveQuickOrder, clearPartialAmount,
-  getTotalClearedRevenue, saveSubscribers
+  getTotalClearedRevenue
 } from '../services/subscription.js';
 import { getMessages, sendMessage } from '../services/chat.js';
 
@@ -95,14 +95,14 @@ function renderAdminDashboard() {
             </div>
           </div>
 
-          <div style="display: flex; gap: 1rem; margin-bottom: 2rem; border-bottom: 1px solid var(--clr-gray-200); padding-bottom: 1rem; flex-wrap: wrap;">
-            <button class="badge-tab ${mainTab === 'menu' ? 'active' : ''}" data-main-tab="menu" style="${mainTab === 'menu' ? 'background: var(--clr-saffron); color: white;' : 'background: transparent; color: var(--clr-gray-600);'} border: none; font-size: 1.1rem; padding: 0.5rem 1rem; border-radius: var(--radius-md); font-weight: 600; cursor: pointer; transition: all 0.2s;">
-              📋 Menu Management
+          <div class="admin-tab-bar">
+            <button class="admin-tab-btn ${mainTab === 'menu' ? 'active' : ''}" data-main-tab="menu">
+              📋 Menu
             </button>
-            <button class="badge-tab ${mainTab === 'orders' ? 'active' : ''}" data-main-tab="orders" style="${mainTab === 'orders' ? 'background: var(--clr-saffron); color: white;' : 'background: transparent; color: var(--clr-gray-600);'} border: none; font-size: 1.1rem; padding: 0.5rem 1rem; border-radius: var(--radius-md); font-weight: 600; cursor: pointer; transition: all 0.2s;">
-              📦 Order Tracking
+            <button class="admin-tab-btn ${mainTab === 'orders' ? 'active' : ''}" data-main-tab="orders">
+              📦 Orders
             </button>
-            <button class="badge-tab ${mainTab === 'subscribers' ? 'active' : ''}" data-main-tab="subscribers" style="${mainTab === 'subscribers' ? 'background: var(--clr-saffron); color: white;' : 'background: transparent; color: var(--clr-gray-600);'} border: none; font-size: 1.1rem; padding: 0.5rem 1rem; border-radius: var(--radius-md); font-weight: 600; cursor: pointer; transition: all 0.2s;">
+            <button class="admin-tab-btn ${mainTab === 'subscribers' ? 'active' : ''}" data-main-tab="subscribers">
               👥 Subscribers
             </button>
           </div>
@@ -192,13 +192,14 @@ function renderOrdersDashboard() {
     filteredOrders = filteredOrders.filter(o => o.status === orderFilter);
   }
 
-  const getStatusColor = (status) => {
+  const getStatusClass = (status) => {
     switch (status) {
-      case 'pending': return 'background:#FFF3CD; color:#856404; border:1px solid #FFEEBA;';
-      case 'accepted': return 'background:#D1ECF1; color:#0C5460; border:1px solid #BEE5EB;';
-      case 'delivered': return 'background:#D4EDDA; color:#155724; border:1px solid #C3E6CB;';
-      case 'cancelled': return 'background:#F8D7DA; color:#721C24; border:1px solid #F5C6CB;';
-      default: return 'background:#E2E3E5; color:#383D41; border:1px solid #D6D8DB;';
+      case 'pending': return 'status-badge pending';
+      case 'accepted': return 'status-badge accepted';
+      case 'ready': return 'status-badge ready';
+      case 'delivered': return 'status-badge delivered';
+      case 'cancelled': return 'status-badge cancelled';
+      default: return 'status-badge';
     }
   };
 
@@ -321,7 +322,7 @@ function renderOrdersDashboard() {
                 <div style="font-size: 0.75rem; color: var(--clr-gray-500); margin-top: 3px;">${order.paymentMethod}</div>
               </td>
               <td style="min-width: 150px;">
-                <select class="form-input status-select" data-id="${order.orderId}" style="${getStatusColor(order.status)}; font-weight: 600; text-transform: capitalize; padding: 6px 10px;">
+                <select class="form-input status-select ${getStatusClass(order.status)}" data-id="${order.orderId}" style="font-weight: 600; text-transform: capitalize; padding: 6px 10px;">
                   ${['pending', 'accepted', 'delivered', 'cancelled'].map(opt => `
                     <option value="${opt}" ${order.status === opt ? 'selected' : ''} style="background: white; color: black;">${opt}</option>
                   `).join('')}
@@ -491,10 +492,11 @@ export function initAdminPage() {
     return;
   }
 
-  // Main Tab switching (Menu vs Orders)
-  document.querySelectorAll('.badge-tab[data-main-tab]').forEach(tab => {
+  // Main Tab switching
+  document.querySelectorAll('.admin-tab-btn[data-main-tab]').forEach(tab => {
     tab.addEventListener('click', () => {
       mainTab = tab.dataset.mainTab;
+      showManualOrderForm = false;
       window.dispatchEvent(new HashChangeEvent('hashchange'));
     });
   });
@@ -683,15 +685,6 @@ export function initAdminPage() {
     showConfirm(`Reset all ${activeTab} items to defaults? Custom changes will be lost.`, () => {
       resetToDefaults(activeTab);
       showToast('Reset to defaults', 'info');
-      window.dispatchEvent(new HashChangeEvent('hashchange'));
-    });
-  });
-
-  // Main Tab Switcher
-  document.querySelectorAll('.badge-tab').forEach(btn => {
-    btn.addEventListener('click', () => {
-      mainTab = btn.dataset.mainTab;
-      showManualOrderForm = false; // Close form when switching major tabs
       window.dispatchEvent(new HashChangeEvent('hashchange'));
     });
   });
@@ -904,6 +897,11 @@ export function initAdminPage() {
       window.dispatchEvent(new HashChangeEvent('hashchange'));
     });
 
+    document.getElementById('add-sub-btn-empty')?.addEventListener('click', () => {
+      showAddSubForm = true;
+      window.dispatchEvent(new HashChangeEvent('hashchange'));
+    });
+
     document.getElementById('cancel-sub-btn')?.addEventListener('click', () => {
       showAddSubForm = false;
       window.dispatchEvent(new HashChangeEvent('hashchange'));
@@ -940,6 +938,32 @@ export function initAdminPage() {
         selectedSubscriberId = id;
         window.dispatchEvent(new HashChangeEvent('hashchange'));
       }
+
+      if (btn.classList.contains('clear-sub-btn')) {
+        showConfirm('Clear all outstanding bills for this subscriber?', () => {
+          if (clearOutstandingBill(id).success) {
+            showToast('Account balance cleared', 'success');
+            window.dispatchEvent(new HashChangeEvent('hashchange'));
+          }
+        });
+      }
+
+      if (btn.classList.contains('share-sub-btn')) {
+        const sub = getSubscribers().find(s => s.userId === id);
+        if (sub) {
+          const text = generateBillSummary(sub);
+          const url = `https://wa.me/${sub.phone.replace(/[\s\-\+]/g, '').replace(/^91/, '91')}?text=${encodeURIComponent(text)}`;
+          window.open(url, '_blank');
+        }
+      }
+    });
+
+    // Delegated actions for subscriber detail view
+    document.querySelector('.subscriber-detail')?.addEventListener('click', (e) => {
+      const btn = e.target.closest('button');
+      if (!btn) return;
+      const id = btn.dataset.id;
+      if (!id) return;
 
       if (btn.classList.contains('clear-sub-btn')) {
         showConfirm('Clear all outstanding bills for this subscriber?', () => {
@@ -1124,6 +1148,7 @@ function renderSubscribersDashboard() {
   if (selectedSubscriberId) return renderSubscriberDetail();
 
   const subs = getSubscribers();
+  const totalOutstanding = subs.reduce((sum, s) => sum + (s.outstandingBalance || 0), 0);
   const filtered = subs.filter(s =>
     s.name.toLowerCase().includes(subSearchQuery.toLowerCase()) ||
     s.phone.includes(subSearchQuery)
@@ -1131,100 +1156,98 @@ function renderSubscribersDashboard() {
 
   return `
     <div class="subscribers-dashboard page-enter">
-      <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1.5rem; margin-bottom: 2rem;">
-        <div style="background: white; padding: 1.5rem; border-radius: var(--radius-lg); border: 1px solid var(--clr-gray-200); box-shadow: var(--shadow-sm);">
-          <div style="font-size: 0.85rem; color: var(--clr-gray-500); text-transform: uppercase; margin-bottom: 0.5rem;">Total Revenue (Cleared)</div>
-          <div style="font-size: 2rem; font-weight: 800; color: var(--clr-veg);">${formatPrice(getTotalClearedRevenue())}</div>
+      <!-- Stats Row -->
+      <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 1rem; margin-bottom: 2rem;">
+        <div class="sub-stat-card">
+          <div class="stat-icon" style="background: #D1FAE5; color: #065F46;">💰</div>
+          <div class="stat-label">Revenue (Cleared)</div>
+          <div class="stat-value" style="color: var(--clr-veg);">${formatPrice(getTotalClearedRevenue())}</div>
         </div>
-        <div style="background: white; padding: 1.5rem; border-radius: var(--radius-lg); border: 1px solid var(--clr-gray-200); box-shadow: var(--shadow-sm);">
-          <div style="font-size: 0.85rem; color: var(--clr-gray-500); text-transform: uppercase; margin-bottom: 0.5rem;">Total Outstanding</div>
-          <div style="font-size: 2rem; font-weight: 800; color: var(--clr-error);">${formatPrice(subs.reduce((sum, s) => sum + (s.outstandingBalance || 0), 0))}</div>
+        <div class="sub-stat-card">
+          <div class="stat-icon" style="background: #FEE2E2; color: #991B1B;">📊</div>
+          <div class="stat-label">Outstanding</div>
+          <div class="stat-value" style="color: var(--clr-error);">${formatPrice(totalOutstanding)}</div>
         </div>
-        <div style="background: white; padding: 1.5rem; border-radius: var(--radius-lg); border: 1px solid var(--clr-gray-200); box-shadow: var(--shadow-sm);">
-          <div style="font-size: 0.85rem; color: var(--clr-gray-500); text-transform: uppercase; margin-bottom: 0.5rem;">Total Subscribers</div>
-          <div style="font-size: 2rem; font-weight: 800; color: var(--clr-primary);">${subs.length}</div>
+        <div class="sub-stat-card">
+          <div class="stat-icon" style="background: #DBEAFE; color: #1E40AF;">👥</div>
+          <div class="stat-label">Subscribers</div>
+          <div class="stat-value" style="color: var(--clr-info);">${subs.length}</div>
         </div>
       </div>
 
-      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 2rem;">
-        <div style="position: relative; flex: 1; max-width: 400px;">
-          <span style="position: absolute; left: 1rem; top: 50%; transform: translateY(-50%); color: var(--clr-gray-400);">🔍</span>
+      <!-- Search & Add -->
+      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem; gap: 1rem; flex-wrap: wrap;">
+        <div style="position: relative; flex: 1; min-width: 200px; max-width: 400px;">
+          <span style="position: absolute; left: 1rem; top: 50%; transform: translateY(-50%); color: var(--clr-gray-400); pointer-events: none;">🔍</span>
           <input type="text" id="sub-search" class="form-input" placeholder="Search by name or phone..." value="${subSearchQuery}" style="padding-left: 2.5rem;">
         </div>
-        <button class="btn btn-primary" id="add-sub-btn">➕ New Subscriber</button>
+        <button class="btn btn-primary" id="add-sub-btn" style="white-space: nowrap;">+ New Subscriber</button>
       </div>
 
+      <!-- Add Form -->
       ${showAddSubForm ? `
-        <div style="background: white; padding: 2rem; border: 1px solid var(--clr-gray-200); border-radius: var(--radius-lg); margin-bottom: 2rem; box-shadow: var(--shadow-md);">
-          <h3 style="margin-bottom: 1.5rem;">Add New Subscriber</h3>
-          <form id="new-sub-form" style="display: grid; grid-template-columns: 1fr 1fr 1fr auto; gap: 1rem; align-items: flex-end;">
-            <div class="form-group" style="margin: 0;">
-              <label class="form-label">Full Name</label>
-              <input type="text" class="form-input" id="new-sub-name" required placeholder="E.g. Rajesh Kumar">
+        <div class="add-sub-form">
+          <h3>Add New Subscriber</h3>
+          <form id="new-sub-form">
+            <div class="form-row">
+              <div class="form-group" style="margin: 0;">
+                <label class="form-label">Full Name</label>
+                <input type="text" class="form-input" id="new-sub-name" required placeholder="E.g. Rajesh Kumar">
+              </div>
+              <div class="form-group" style="margin: 0;">
+                <label class="form-label">Phone Number</label>
+                <input type="tel" class="form-input" id="new-sub-phone" required placeholder="98XXXXXXXX">
+              </div>
+              <div class="form-group" style="margin: 0;">
+                <label class="form-label">Address</label>
+                <input type="text" class="form-input" id="new-sub-address" placeholder="E.g. Vaishali Nagar">
+              </div>
             </div>
-            <div class="form-group" style="margin: 0;">
-              <label class="form-label">Phone Number</label>
-              <input type="tel" class="form-input" id="new-sub-phone" required placeholder="98XXXXXXXX">
-            </div>
-            <div class="form-group" style="margin: 0;">
-              <label class="form-label">Address</label>
-              <input type="text" class="form-input" id="new-sub-address" placeholder="E.g. Vaishali Nagar">
-            </div>
-            <div style="display: flex; gap: 0.5rem;">
-              <button type="submit" class="btn btn-primary">Save Subscriber</button>
+            <div class="form-actions">
               <button type="button" class="btn btn-ghost" id="cancel-sub-btn">Cancel</button>
+              <button type="submit" class="btn btn-primary">Save Subscriber</button>
             </div>
           </form>
         </div>
       ` : ''}
 
-      <div class="admin-table-container">
-        <table class="admin-table">
-          <thead>
-            <tr>
-              <th>Subscriber Details</th>
-              <th>Contact Info</th>
-              <th>Outstanding Balance</th>
-              <th>Actions</th>
-            </tr>
-          </thead>
-          <tbody>
-            ${filtered.length === 0 ? `
-              <tr><td colspan="4" style="text-align: center; padding: 3rem;">No subscribers found.</td></tr>
-            ` : filtered.map(sub => `
-              <tr>
-                <td>
-                  <div style="font-weight: 700; font-size: 1.1rem; color: var(--clr-primary);">${sub.name}</div>
-                  <div style="font-size: 0.8rem; color: var(--clr-gray-500);">Joined: ${new Date(sub.joinedAt).toLocaleDateString()}</div>
-                </td>
-                <td>
-                  <div style="margin-bottom: 4px;">📞 ${formatPhoneNumber(sub.phone)}</div>
-                  <div style="font-size: 0.85rem; color: var(--clr-gray-500);">📍 ${sub.address || 'No address'}</div>
-                </td>
-                <td>
-                  <div style="font-size: 1.25rem; font-weight: 800; color: ${sub.outstandingBalance > 0 ? 'var(--clr-error)' : 'var(--clr-veg)'};">
-                    ${formatPrice(sub.outstandingBalance)}
+      <!-- Subscriber Cards -->
+      ${filtered.length === 0 ? `
+        <div class="empty-state">
+          <div class="empty-icon">👥</div>
+          <h2>${subSearchQuery ? 'No results found' : 'No subscribers yet'}</h2>
+          <p>${subSearchQuery ? `No subscribers match "${subSearchQuery}"` : 'Add your first regular subscriber to start managing monthly billing.'}</p>
+          ${!subSearchQuery ? '<button class="btn btn-primary" id="add-sub-btn-empty">+ Add First Subscriber</button>' : ''}
+        </div>
+      ` : `
+        <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(340px, 1fr)); gap: 1rem;">
+          ${filtered.map(sub => `
+            <div class="sub-card" data-sub-id="${sub.userId}">
+              <div class="sub-card-header">
+                <div style="display: flex; gap: 0.75rem; align-items: center;">
+                  <div class="sub-avatar">${sub.name.charAt(0).toUpperCase()}</div>
+                  <div>
+                    <div class="sub-name">${sub.name}</div>
+                    <div class="sub-meta">📞 ${formatPhoneNumber(sub.phone)} ${sub.address ? `· 📍 ${sub.address}` : ''}</div>
                   </div>
-                </td>
-                <td>
-                  <div style="display: flex; gap: 0.5rem; flex-wrap: wrap;">
-                    <button class="btn btn-sm btn-outline view-sub-btn" data-id="${sub.userId}">📜 View Bills</button>
-                    <button class="btn btn-sm btn-outline quick-add-bill-btn" data-id="${sub.userId}">➕ Bill</button>
-                    <button class="btn btn-sm share-sub-btn" data-id="${sub.userId}" style="background: #E6F4EA; color: #1E7E34; border: 1px solid #C2E7CB;">📤 Share</button>
-                    ${sub.outstandingBalance > 0 ? `
-                      <div style="display: flex; align-items: center; gap: 4px; background: white; padding: 2px; border-radius: 4px; border: 1px solid var(--clr-gray-200);">
-                        <input type="number" class="clear-amount-input" placeholder="Amount" style="width: 70px; border: none; font-size: 0.8rem; padding: 4px;">
-                        <button class="btn btn-sm clear-partial-btn" data-id="${sub.userId}" style="background: #E3F2FD; color: #1976D2; padding: 4px 8px;">Clear Partial</button>
-                      </div>
-                      <button class="btn btn-sm clear-sub-btn" data-id="${sub.userId}" style="background: #1976D2; color: white;">Full Clear</button>
-                    ` : ''}
-                  </div>
-                </td>
-              </tr>
-            `).join('')}
-          </tbody>
-        </table>
-      </div>
+                </div>
+                <div class="sub-balance" style="color: ${sub.outstandingBalance > 0 ? 'var(--clr-error)' : 'var(--clr-veg)'};">
+                  ${formatPrice(sub.outstandingBalance)}
+                </div>
+              </div>
+              <div style="font-size: 0.75rem; color: var(--clr-gray-400); margin-bottom: 0.5rem;">Joined ${new Date(sub.joinedAt).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })}</div>
+              <div class="sub-card-actions">
+                <button class="btn btn-sm btn-outline view-sub-btn" data-id="${sub.userId}">View Details</button>
+                <button class="btn btn-sm btn-outline quick-add-bill-btn" data-id="${sub.userId}">+ Add Bill</button>
+                <button class="btn btn-sm share-sub-btn" data-id="${sub.userId}" style="background: #E6F4EA; color: #1E7E34; border: 1px solid #C2E7CB;">Share</button>
+                ${sub.outstandingBalance > 0 ? `
+                  <button class="btn btn-sm clear-sub-btn" data-id="${sub.userId}" style="background: var(--clr-info); color: white; border: none;">Clear All</button>
+                ` : ''}
+              </div>
+            </div>
+          `).join('')}
+        </div>
+      `}
     </div>
   `;
 }
@@ -1236,85 +1259,86 @@ function renderSubscriberDetail() {
     return renderSubscribersDashboard();
   }
 
+  const pendingCount = sub.billingHistory.filter(h => h.status === 'pending' || h.status === 'pending_price').length;
+
   return `
     <div class="subscriber-detail page-enter">
-      <div style="margin-bottom: 2rem;">
-        <button class="btn btn-ghost btn-sm" id="back-to-subs-btn" style="margin-bottom: 1rem;">← Back to All Subscribers</button>
-        <div style="display: flex; justify-content: space-between; align-items: flex-end;">
+      <button class="btn btn-ghost btn-sm" id="back-to-subs-btn" style="margin-bottom: 1rem;">← Back to Subscribers</button>
+
+      <!-- Profile Header -->
+      <div style="background: white; border: 1px solid var(--clr-gray-200); border-radius: var(--radius-lg); padding: 1.5rem; margin-bottom: 1.5rem; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 1rem;">
+        <div style="display: flex; gap: 1rem; align-items: center;">
+          <div class="sub-avatar" style="width: 56px; height: 56px; font-size: 1.4rem;">${sub.name.charAt(0).toUpperCase()}</div>
           <div>
-            <h2 style="margin-bottom: 0.5rem; font-size: 2rem; color: var(--clr-primary);">${sub.name}</h2>
-            <div style="display: flex; gap: 1.5rem; color: var(--clr-gray-600);">
+            <h2 style="margin: 0; font-size: 1.5rem; color: var(--clr-charcoal);">${sub.name}</h2>
+            <div style="display: flex; gap: 1.5rem; color: var(--clr-gray-500); font-size: 0.9rem; margin-top: 4px; flex-wrap: wrap;">
               <span>📞 ${formatPhoneNumber(sub.phone)}</span>
-              <span>📍 ${sub.address}</span>
+              ${sub.address ? `<span>📍 ${sub.address}</span>` : ''}
             </div>
           </div>
-          <div style="text-align: right;">
-            <div style="font-size: 0.9rem; color: var(--clr-gray-500); text-transform: uppercase;">Total Outstanding</div>
-            <div style="font-size: 2.5rem; font-weight: 800; color: var(--clr-error); line-height: 1;">${formatPrice(sub.outstandingBalance)}</div>
-          </div>
+        </div>
+        <div style="text-align: right;">
+          <div style="font-size: 0.75rem; color: var(--clr-gray-500); text-transform: uppercase; letter-spacing: 0.04em;">Outstanding</div>
+          <div style="font-size: 2rem; font-weight: 800; color: ${sub.outstandingBalance > 0 ? 'var(--clr-error)' : 'var(--clr-veg)'}; line-height: 1.2;">${formatPrice(sub.outstandingBalance)}</div>
+          ${sub.outstandingBalance > 0 ? `<div style="font-size: 0.75rem; color: var(--clr-gray-400); margin-top: 2px;">${pendingCount} pending item${pendingCount !== 1 ? 's' : ''}</div>` : ''}
         </div>
       </div>
 
-      </div>
-
-      <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 2rem; margin-bottom: 2rem;">
-        <!-- Left: Quick Bill Form -->
-        <div style="background: white; padding: 1.5rem; border-radius: var(--radius-lg); border: 1px solid var(--clr-gray-200); box-shadow: var(--shadow-sm);">
-          <h3 style="margin-bottom: 1rem; color: var(--clr-primary); font-size: 1.1rem;">➕ Add New Bill Item</h3>
-          <form id="add-manual-bill-form" data-id="${sub.userId}" style="display: flex; flex-direction: column; gap: 1rem;">
-            <div class="form-group">
-              <label class="form-label">Description</label>
-              <input type="text" class="form-input" id="manual-bill-desc" placeholder="e.g. Monthly Service Charge, Event Catering" required>
+      <!-- Actions Row -->
+      <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin-bottom: 1.5rem;">
+        <div style="background: white; padding: 1.25rem; border-radius: var(--radius-lg); border: 1px solid var(--clr-gray-200);">
+          <h3 style="margin-bottom: 1rem; font-size: 1rem; color: var(--clr-charcoal);">Add Bill Item</h3>
+          <form id="add-manual-bill-form" data-id="${sub.userId}" style="display: flex; flex-direction: column; gap: 0.75rem;">
+            <input type="text" class="form-input" id="manual-bill-desc" placeholder="Description (e.g. Event Catering)" required>
+            <div style="display: flex; gap: 0.5rem;">
+              <input type="number" class="form-input" id="manual-bill-amount" placeholder="Amount (₹)" step="0.01" required style="flex: 1;">
+              <button type="submit" class="btn btn-primary">Add</button>
             </div>
-            <div class="form-group">
-              <label class="form-label">Amount (₹)</label>
-              <input type="number" class="form-input" id="manual-bill-amount" placeholder="0.00" step="0.01" required>
-            </div>
-            <button type="submit" class="btn btn-primary" style="width: 100%;">Add to Account Balance</button>
           </form>
         </div>
-
-        <!-- Right: Current Summary -->
-        <div style="background: var(--clr-gray-50); padding: 1.5rem; border-radius: var(--radius-lg); border: 1px solid var(--clr-gray-200); display: flex; flex-direction: column; justify-content: center; text-align: center;">
-          <div style="font-weight: 700; color: var(--clr-gray-500); text-transform: uppercase; font-size: 0.8rem; letter-spacing: 0.05em; margin-bottom: 0.5rem;">Quick Share</div>
-          <p style="font-size: 0.9rem; color: var(--clr-gray-600); margin-bottom: 1rem;">Send the current balance summary to the subscriber's WhatsApp.</p>
-          <button class="btn share-sub-btn" data-id="${sub.userId}" style="background: #E6F4EA; color: #1E7E34; border: 1px solid #C2E7CB;">📤 Share Bill on WhatsApp</button>
+        <div style="background: var(--clr-gray-50); padding: 1.25rem; border-radius: var(--radius-lg); border: 1px solid var(--clr-gray-200); display: flex; flex-direction: column; justify-content: center; align-items: center; gap: 0.75rem; text-align: center;">
+          <p style="font-size: 0.85rem; color: var(--clr-gray-500); margin: 0;">Share balance summary via WhatsApp</p>
+          <button class="btn share-sub-btn" data-id="${sub.userId}" style="background: #E6F4EA; color: #1E7E34; border: 1px solid #C2E7CB;">📤 Share on WhatsApp</button>
+          ${sub.outstandingBalance > 0 ? `
+            <button class="btn btn-sm clear-sub-btn" data-id="${sub.userId}" style="background: var(--clr-info); color: white; border: none; margin-top: 4px;">Clear Full Balance</button>
+          ` : ''}
         </div>
       </div>
 
-      <div class="admin-table-container">
-        <h3 style="margin-bottom: 1rem; color: var(--clr-secondary);">Order & Credit History</h3>
+      <!-- Billing History -->
+      <div class="admin-table-container" style="padding: 1.25rem;">
+        <h3 style="margin-bottom: 1rem; font-size: 1rem; color: var(--clr-charcoal);">Billing History</h3>
         <table class="admin-table">
           <thead>
             <tr>
               <th>Date</th>
-              <th>Description / Order ID</th>
+              <th>Description</th>
               <th>Amount</th>
               <th>Status</th>
             </tr>
           </thead>
           <tbody>
             ${sub.billingHistory.length === 0 ? `
-              <tr><td colspan="4" style="text-align: center; padding: 2rem; color: var(--clr-gray-400);">No history available.</td></tr>
+              <tr><td colspan="4" style="text-align: center; padding: 2.5rem; color: var(--clr-gray-400);">No billing history yet.</td></tr>
             ` : sub.billingHistory.map(h => `
               <tr>
-                <td>${new Date(h.date).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })}</td>
+                <td style="white-space: nowrap;">${new Date(h.date).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })}</td>
                 <td>
                   <div style="font-weight: 600;">${h.description || 'Manual Entry'}</div>
-                  <div style="font-size: 0.75rem; color: var(--clr-gray-400); font-family: var(--ff-accent);">${h.orderId}</div>
+                  <div style="font-size: 0.7rem; color: var(--clr-gray-400); font-family: var(--ff-accent);">${h.orderId}</div>
                   ${h.status === 'pending_price' ? `
-                    <div style="margin-top: 8px; display: flex; gap: 4px; align-items: center;">
-                      <input type="number" class="price-input" data-order-id="${h.orderId}" placeholder="Price" style="width: 80px; font-size: 0.85rem; padding: 4px; border: 1px solid var(--clr-primary); border-radius: 4px;">
-                      <button class="btn btn-sm btn-primary approve-bill-btn" data-user-id="${sub.userId}" data-order-id="${h.orderId}" style="padding: 4px 8px; font-size: 0.8rem;">Approve</button>
+                    <div style="margin-top: 6px; display: flex; gap: 4px; align-items: center;">
+                      <input type="number" class="price-input form-input" data-order-id="${h.orderId}" placeholder="₹ Price" style="width: 90px; padding: 4px 8px; font-size: 0.85rem;">
+                      <button class="btn btn-sm btn-primary approve-bill-btn" data-user-id="${sub.userId}" data-order-id="${h.orderId}">Set Price</button>
                     </div>
                   ` : ''}
                 </td>
-                <td style="font-weight: 800; color: ${h.status === 'pending' || h.status === 'pending_price' ? 'var(--clr-error)' : 'var(--clr-veg)'};">
+                <td style="font-weight: 700; color: ${h.status === 'pending' || h.status === 'pending_price' ? 'var(--clr-error)' : 'var(--clr-veg)'};">
                   ${h.status === 'pending_price' ? '---' : formatPrice(h.amount)}
                 </td>
                 <td>
                   <span class="badge ${h.status === 'pending' || h.status === 'pending_price' ? 'badge-warning' : 'badge-success'}">
-                    ${h.status === 'pending_price' ? 'Pricing Needed' : (h.status === 'pending' ? 'Outstanding' : 'Cleared')}
+                    ${h.status === 'pending_price' ? 'Needs Price' : (h.status === 'pending' ? 'Outstanding' : 'Cleared')}
                   </span>
                 </td>
               </tr>
@@ -1382,8 +1406,8 @@ function renderEditOrderModal(order) {
   const allProducts = [...getSweetsItems(), ...getRestaurantItems()];
 
   return `
-    <div class="modal-backdrop" id="edit-items-modal" style="display:flex; align-items:center; justify-content:center; z-index: 1000;">
-      <div class="modal-content" style="width: 90%; max-width: 800px; max-height: 90vh; overflow-y: auto;">
+    <div class="modal-backdrop" id="edit-items-modal">
+      <div class="modal-content" style="width: 90%; max-width: 800px; padding: 1.5rem;">
         <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom: 1.5rem; border-bottom: 1px solid var(--clr-gray-200); padding-bottom: 1rem;">
           <h2 style="color: var(--clr-primary);">✏️ Edit Order ${order.orderId}</h2>
           <button class="btn btn-ghost" id="close-edit-items" style="font-size: 1.5rem; padding: 0;">✕</button>
@@ -1413,7 +1437,7 @@ function renderEditOrderModal(order) {
             </div>
             
             <div style="margin-top: 1.5rem; padding-top: 1.5rem; border-top: 2px dashed var(--clr-gray-200);">
-              <h3 style="font-size: 1rem; margin-bottom: 0.5rem; color: #d35400;">📝 Admin Note / Reason for edit</h3>
+              <h3 style="font-size: 1rem; margin-bottom: 0.5rem; color: var(--clr-saffron-dark);">📝 Admin Note / Reason for edit</h3>
               <p style="font-size: 0.8rem; color: var(--clr-gray-500); margin-bottom: 0.75rem;">This message will be shown to the customer in their "My Orders" section.</p>
               <textarea id="edit-order-comment" class="form-input" rows="2" placeholder="Ex: Added extra pieces as requested, Price adjusted for weight variation..." style="font-size: 0.9rem;">${order.adminComment || ''}</textarea>
             </div>
@@ -1456,16 +1480,16 @@ function renderAdminChatWindow(orderId) {
   const order = getAllOrders().find(o => o.orderId === orderId);
 
   return `
-    <div style="position: fixed; bottom: 2rem; right: 2rem; width: 400px; height: 500px; background: white; border-radius: var(--radius-lg); box-shadow: 0 10px 40px rgba(0,0,0,0.2); z-index: 1001; display: flex; flex-direction: column; border: 1px solid var(--clr-gray-200); overflow: hidden; animation: slideUp 0.3s ease;">
-      <div style="background: var(--clr-primary); color: white; padding: 1rem; display: flex; justify-content: space-between; align-items: center;">
+    <div class="chat-window">
+      <div class="chat-header">
         <div>
           <div style="font-weight: 700;">Chat with ${order?.customerName || 'Customer'}</div>
           <div style="font-size: 0.75rem; opacity: 0.8;">Order: ${orderId}</div>
         </div>
         <button id="close-admin-chat" style="background: none; border: none; color: white; font-size: 1.5rem; cursor: pointer;">✕</button>
       </div>
-      
-      <div id="admin-chat-messages" style="flex: 1; padding: 1rem; overflow-y: auto; background: #f8f9fa; display: flex; flex-direction: column; gap: 1rem;">
+
+      <div id="admin-chat-messages" class="chat-messages">
         ${messages.length === 0 ? `
           <div style="text-align: center; color: var(--clr-gray-400); margin-top: 2rem;">
             <div style="font-size: 2rem; margin-bottom: 0.5rem;">💬</div>
@@ -1473,7 +1497,7 @@ function renderAdminChatWindow(orderId) {
           </div>
         ` : messages.map(msg => `
           <div style="align-self: ${msg.sender === 'admin' ? 'flex-end' : 'flex-start'}; max-width: 80%;">
-            <div style="background: ${msg.sender === 'admin' ? 'var(--clr-primary)' : 'white'}; color: ${msg.sender === 'admin' ? 'white' : 'var(--clr-gray-800)'}; padding: 0.75rem 1rem; border-radius: 12px; border-bottom-${msg.sender === 'admin' ? 'right' : 'left'}-radius: 2px; box-shadow: var(--shadow-sm); border: ${msg.sender === 'admin' ? 'none' : '1px solid var(--clr-gray-200)'};">
+            <div style="background: ${msg.sender === 'admin' ? 'var(--clr-saffron)' : 'white'}; color: ${msg.sender === 'admin' ? 'white' : 'var(--clr-gray-800)'}; padding: 0.75rem 1rem; border-radius: 12px; ${msg.sender === 'admin' ? 'border-bottom-right-radius: 2px;' : 'border-bottom-left-radius: 2px; border: 1px solid var(--clr-gray-200);'} box-shadow: var(--shadow-sm);">
               ${msg.text}
             </div>
             <div style="font-size: 0.65rem; color: var(--clr-gray-500); margin-top: 4px; text-align: ${msg.sender === 'admin' ? 'right' : 'left'};">
@@ -1482,8 +1506,8 @@ function renderAdminChatWindow(orderId) {
           </div>
         `).join('')}
       </div>
-      
-      <div style="padding: 1rem; border-top: 1px solid var(--clr-gray-200); display: flex; gap: 8px;">
+
+      <div class="chat-input-bar">
         <input type="text" id="admin-chat-input" class="form-input" placeholder="Type a message..." style="height: 40px; border-radius: 20px; padding: 0 1.25rem;">
         <button id="admin-send-msg" class="btn btn-primary" style="width: 40px; height: 40px; border-radius: 50%; padding: 0; display: flex; align-items: center; justify-content:center;">➤</button>
       </div>
