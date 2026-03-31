@@ -114,9 +114,12 @@ function renderOrderHistory(orders) {
             </div>
 
             ${order.adminComment ? `
-              <div style="background: #FFF9F2; border-left: 4px solid var(--clr-saffron); padding: 1rem; margin-bottom: 1.5rem; border-radius: 4px;">
-                <div style="font-size: 0.75rem; color: #D35400; font-weight: 800; text-transform: uppercase; margin-bottom: 4px;">📝 Note from Admin</div>
-                <div style="font-size: 0.95rem; color: #873600; line-height: 1.4;">${order.adminComment}</div>
+              <div style="background: #FFF9F2; border: 1px dashed var(--clr-saffron); border-left: 5px solid var(--clr-saffron); padding: 1.25rem; margin: 1rem 0 1.5rem; border-radius: var(--radius-md); box-shadow: var(--shadow-sm); animation: slideIn 0.3s ease;">
+                <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 6px;">
+                  <span style="font-size: 1.2rem;">👨‍🍳</span>
+                  <div style="font-size: 0.8rem; color: #D35400; font-weight: 800; text-transform: uppercase;">Note from Restaurant</div>
+                </div>
+                <div style="font-size: 0.95rem; color: #873600; line-height: 1.5; font-style: italic;">"${order.adminComment}"</div>
               </div>
             ` : ''}
 

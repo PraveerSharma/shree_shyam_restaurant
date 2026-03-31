@@ -311,7 +311,9 @@ function renderOrdersDashboard() {
                   </div>`).join('')}
                 </div>
                 ${order.status !== 'delivered' && order.status !== 'cancelled' ? `
-                  <button class="btn btn-sm btn-outline edit-items-btn" data-id="${order.orderId}" style="margin-top: 8px; padding: 2px 10px; font-size: 0.75rem; font-weight: 700; border-radius: var(--radius-sm); border-color: var(--clr-saffron); color: var(--clr-saffron);">⚡ Change Items</button>
+                  <button class="edit-items-btn" data-id="${order.orderId}" style="margin-top: 8px; background: none; border: 1px solid var(--clr-saffron); color: var(--clr-saffron); cursor: pointer; padding: 2px 6px; border-radius: 4px; font-size: 0.8rem; display: flex; align-items: center; gap: 4px; transition: all 0.2s;" title="Edit Order Items">
+                    ✏️ <span style="font-size: 0.7rem; font-weight: 700;">Edit</span>
+                  </button>
                 ` : ''}
               </td>
               <td>
