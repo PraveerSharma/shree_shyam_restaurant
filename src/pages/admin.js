@@ -842,9 +842,22 @@ export function initAdminPage() {
   // Subscribers Tab Handlers
   if (mainTab === 'subscribers') {
 
+    let subSearchTimer = null;
     document.getElementById('sub-search')?.addEventListener('input', (e) => {
-      subSearchQuery = e.target.value.toLowerCase().trim();
-      window.dispatchEvent(new HashChangeEvent('hashchange'));
+      const val = e.target.value.trim();
+      subSearchQuery = val;
+      clearTimeout(subSearchTimer);
+      subSearchTimer = setTimeout(() => updateSubSearchResults(val), 150);
+    });
+
+    document.getElementById('sub-search-clear')?.addEventListener('click', () => {
+      const input = document.getElementById('sub-search');
+      if (input) {
+        input.value = '';
+        input.focus();
+      }
+      subSearchQuery = '';
+      updateSubSearchResults('');
     });
 
     document.getElementById('add-sub-btn')?.addEventListener('click', () => {
@@ -1104,10 +1117,7 @@ function renderSubscribersDashboard() {
 
   const subs = getSubscribers();
   const totalOutstanding = subs.reduce((sum, s) => sum + (s.outstandingBalance || 0), 0);
-  const filtered = subs.filter(s =>
-    s.name.toLowerCase().includes(subSearchQuery.toLowerCase()) ||
-    s.phone.includes(subSearchQuery)
-  );
+  const filtered = filterSubscribers(subs, subSearchQuery);
 
   return `
     <div class="subscribers-dashboard page-enter">
@@ -1134,9 +1144,13 @@ function renderSubscribersDashboard() {
       <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem; gap: 1rem; flex-wrap: wrap;">
         <div style="position: relative; flex: 1; min-width: 200px; max-width: 400px;">
           <span style="position: absolute; left: 1rem; top: 50%; transform: translateY(-50%); color: var(--clr-gray-400); pointer-events: none;">🔍</span>
-          <input type="text" id="sub-search" class="form-input" placeholder="Search by name or phone..." value="${subSearchQuery}" style="padding-left: 2.5rem;">
+          <input type="text" id="sub-search" class="form-input" placeholder="Search name, phone, or address..." value="${subSearchQuery}" style="padding-left: 2.5rem; padding-right: 2.5rem;">
+          <button id="sub-search-clear" style="position: absolute; right: 0.75rem; top: 50%; transform: translateY(-50%); background: none; border: none; color: var(--clr-gray-400); cursor: pointer; font-size: 1.1rem; padding: 2px; line-height: 1; display: ${subSearchQuery ? 'block' : 'none'};">✕</button>
         </div>
-        <button class="btn btn-primary" id="add-sub-btn" style="white-space: nowrap;">+ New Subscriber</button>
+        <div style="display: flex; align-items: center; gap: 0.75rem;">
+          <span id="sub-search-count" style="font-size: 0.8rem; color: var(--clr-gray-500);">${subSearchQuery ? `${filtered.length} of ${subs.length}` : ''}</span>
+          <button class="btn btn-primary" id="add-sub-btn" style="white-space: nowrap;">+ New Subscriber</button>
+        </div>
       </div>
 
       <!-- Add Form -->
@@ -1167,44 +1181,84 @@ function renderSubscribersDashboard() {
       ` : ''}
 
       <!-- Subscriber Cards -->
-      ${filtered.length === 0 ? `
-        <div class="empty-state">
-          <div class="empty-icon">👥</div>
-          <h2>${subSearchQuery ? 'No results found' : 'No subscribers yet'}</h2>
-          <p>${subSearchQuery ? `No subscribers match "${subSearchQuery}"` : 'Add your first regular subscriber to start managing monthly billing.'}</p>
-          ${!subSearchQuery ? '<button class="btn btn-primary" id="add-sub-btn-empty">+ Add First Subscriber</button>' : ''}
-        </div>
-      ` : `
-        <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(340px, 1fr)); gap: 1rem;">
-          ${filtered.map(sub => `
-            <div class="sub-card" data-sub-id="${sub.userId}">
-              <div class="sub-card-header">
-                <div style="display: flex; gap: 0.75rem; align-items: center;">
-                  <div class="sub-avatar">${sub.name.charAt(0).toUpperCase()}</div>
-                  <div>
-                    <div class="sub-name">${sub.name}</div>
-                    <div class="sub-meta">📞 ${formatPhoneNumber(sub.phone)} ${sub.address ? `· 📍 ${sub.address}` : ''}</div>
-                  </div>
-                </div>
-                <div class="sub-balance" style="color: ${sub.outstandingBalance > 0 ? 'var(--clr-error)' : 'var(--clr-veg)'};">
-                  ${formatPrice(sub.outstandingBalance)}
-                </div>
-              </div>
-              <div style="font-size: 0.75rem; color: var(--clr-gray-400); margin-bottom: 0.5rem;">Joined ${new Date(sub.joinedAt).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })}</div>
-              <div class="sub-card-actions">
-                <button class="btn btn-sm btn-outline view-sub-btn" data-id="${sub.userId}">View Details</button>
-                <button class="btn btn-sm btn-outline quick-add-bill-btn" data-id="${sub.userId}">+ Add Bill</button>
-                <button class="btn btn-sm share-sub-btn" data-id="${sub.userId}" style="background: #E6F4EA; color: #1E7E34; border: 1px solid #C2E7CB;">Share</button>
-                ${sub.outstandingBalance > 0 ? `
-                  <button class="btn btn-sm clear-sub-btn" data-id="${sub.userId}" style="background: var(--clr-info); color: white; border: none;">Clear All</button>
-                ` : ''}
-              </div>
-            </div>
-          `).join('')}
-        </div>
-      `}
+      <div id="sub-cards-container">
+        ${renderSubscriberCards(filtered, subSearchQuery, subs.length)}
+      </div>
     </div>
   `;
+}
+
+function filterSubscribers(subs, query) {
+  if (!query) return subs;
+  const q = query.toLowerCase().replace(/[\s\-\+]/g, '');
+  return subs.filter(s => {
+    const name = s.name.toLowerCase();
+    const phone = s.phone.replace(/[\s\-\+]/g, '');
+    const address = (s.address || '').toLowerCase();
+    return name.includes(q) || phone.includes(q) || address.includes(q);
+  });
+}
+
+function renderSubscriberCards(filtered, query, totalCount) {
+  if (filtered.length === 0) {
+    return `
+      <div class="empty-state">
+        <div class="empty-icon">👥</div>
+        <h2>${query ? 'No results found' : 'No subscribers yet'}</h2>
+        <p>${query ? `No subscribers match "${query}"` : 'Add your first regular subscriber to start managing monthly billing.'}</p>
+        ${!query ? '<button class="btn btn-primary" id="add-sub-btn-empty">+ Add First Subscriber</button>' : ''}
+      </div>
+    `;
+  }
+
+  return `
+    <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(340px, 1fr)); gap: 1rem;">
+      ${filtered.map(sub => `
+        <div class="sub-card" data-sub-id="${sub.userId}">
+          <div class="sub-card-header">
+            <div style="display: flex; gap: 0.75rem; align-items: center;">
+              <div class="sub-avatar">${sub.name.charAt(0).toUpperCase()}</div>
+              <div>
+                <div class="sub-name">${sub.name}</div>
+                <div class="sub-meta">📞 ${formatPhoneNumber(sub.phone)} ${sub.address ? `· 📍 ${sub.address}` : ''}</div>
+              </div>
+            </div>
+            <div class="sub-balance" style="color: ${sub.outstandingBalance > 0 ? 'var(--clr-error)' : 'var(--clr-veg)'};">
+              ${formatPrice(sub.outstandingBalance)}
+            </div>
+          </div>
+          <div style="font-size: 0.75rem; color: var(--clr-gray-400); margin-bottom: 0.5rem;">Joined ${new Date(sub.joinedAt).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })}</div>
+          <div class="sub-card-actions">
+            <button class="btn btn-sm btn-outline view-sub-btn" data-id="${sub.userId}">View Details</button>
+            <button class="btn btn-sm btn-outline quick-add-bill-btn" data-id="${sub.userId}">+ Add Bill</button>
+            <button class="btn btn-sm share-sub-btn" data-id="${sub.userId}" style="background: #E6F4EA; color: #1E7E34; border: 1px solid #C2E7CB;">Share</button>
+            ${sub.outstandingBalance > 0 ? `
+              <button class="btn btn-sm clear-sub-btn" data-id="${sub.userId}" style="background: var(--clr-info); color: white; border: none;">Clear All</button>
+            ` : ''}
+          </div>
+        </div>
+      `).join('')}
+    </div>
+  `;
+}
+
+function updateSubSearchResults(query) {
+  const subs = getSubscribers();
+  const filtered = filterSubscribers(subs, query);
+  const container = document.getElementById('sub-cards-container');
+  if (container) {
+    container.innerHTML = renderSubscriberCards(filtered, query, subs.length);
+  }
+  // Update result count
+  const countEl = document.getElementById('sub-search-count');
+  if (countEl) {
+    countEl.textContent = query ? `${filtered.length} of ${subs.length}` : '';
+  }
+  // Show/hide clear button
+  const clearBtn = document.getElementById('sub-search-clear');
+  if (clearBtn) {
+    clearBtn.style.display = query ? 'block' : 'none';
+  }
 }
 
 function renderSubscriberDetail() {
