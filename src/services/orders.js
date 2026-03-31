@@ -26,10 +26,9 @@ function generateOrderId() {
   const dateStr = date.getFullYear().toString() +
     (date.getMonth() + 1).toString().padStart(2, '0') +
     date.getDate().toString().padStart(2, '0');
-  const orders = getOrders();
-  const todayOrders = orders.filter(o => o.orderId.includes(dateStr));
-  const seq = (todayOrders.length + 1).toString().padStart(3, '0');
-  return `${SITE_CONFIG.orderPrefix}-${dateStr}-${seq}`;
+  // Use random suffix instead of sequential count to prevent collisions across devices
+  const rand = Math.random().toString(36).substring(2, 6).toUpperCase();
+  return `${SITE_CONFIG.orderPrefix}-${dateStr}-${rand}`;
 }
 
 export function createOrder(cart, customerInfo) {

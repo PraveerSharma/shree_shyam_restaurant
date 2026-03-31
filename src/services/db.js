@@ -5,7 +5,56 @@
 
 import { supabase } from '../config/supabase.js';
 
-// ── Generic Helpers ──
+// ── Retry Queue: persists failed writes for later retry ──
+
+const RETRY_KEY = 'ssr_db_retry_queue';
+
+function getRetryQueue() {
+  try { return JSON.parse(localStorage.getItem(RETRY_KEY) || '[]'); } catch { return []; }
+}
+
+function addToRetryQueue(operation) {
+  const queue = getRetryQueue();
+  queue.push({ ...operation, timestamp: Date.now() });
+  // Keep max 50 items, drop oldest
+  if (queue.length > 50) queue.splice(0, queue.length - 50);
+  localStorage.setItem(RETRY_KEY, JSON.stringify(queue));
+}
+
+export async function processRetryQueue() {
+  const queue = getRetryQueue();
+  if (!queue.length) return;
+
+  const remaining = [];
+  for (const op of queue) {
+    try {
+      let result;
+      if (op.type === 'insert') {
+        result = await supabase.from(op.table).insert(op.data).select();
+      } else if (op.type === 'upsert') {
+        result = await supabase.from(op.table).upsert(op.data, { onConflict: op.onConflict || 'id' }).select();
+      } else if (op.type === 'update') {
+        let q = supabase.from(op.table).update(op.updates);
+        for (const [k, v] of Object.entries(op.match)) q = q.eq(k, v);
+        result = await q.select();
+      } else if (op.type === 'delete') {
+        let q = supabase.from(op.table).delete();
+        for (const [k, v] of Object.entries(op.match)) q = q.eq(k, v);
+        result = await q;
+      }
+      if (result?.error) remaining.push(op); // Still failing, keep in queue
+    } catch {
+      remaining.push(op); // Network error, keep for next retry
+    }
+  }
+
+  localStorage.setItem(RETRY_KEY, JSON.stringify(remaining));
+  if (queue.length - remaining.length > 0) {
+    console.log(`[DB] Retry: ${queue.length - remaining.length} succeeded, ${remaining.length} remaining`);
+  }
+}
+
+// ── Generic Helpers (with retry queue on failure) ──
 
 export async function fetchFromSupabase(table, query = {}) {
   let q = supabase.from(table).select(query.select || '*');
@@ -19,13 +68,21 @@ export async function fetchFromSupabase(table, query = {}) {
 
 export async function insertRow(table, row) {
   const { data, error } = await supabase.from(table).insert(row).select();
-  if (error) { console.error(`[DB] insert ${table}:`, error.message); return null; }
+  if (error) {
+    console.error(`[DB] insert ${table}:`, error.message);
+    addToRetryQueue({ type: 'insert', table, data: row });
+    return null;
+  }
   return data;
 }
 
 export async function upsertRow(table, row, onConflict = 'id') {
   const { data, error } = await supabase.from(table).upsert(row, { onConflict }).select();
-  if (error) { console.error(`[DB] upsert ${table}:`, error.message); return null; }
+  if (error) {
+    console.error(`[DB] upsert ${table}:`, error.message);
+    addToRetryQueue({ type: 'upsert', table, data: row, onConflict });
+    return null;
+  }
   return data;
 }
 
@@ -33,7 +90,11 @@ export async function updateRow(table, match, updates) {
   let q = supabase.from(table).update(updates);
   for (const [key, val] of Object.entries(match)) { q = q.eq(key, val); }
   const { data, error } = await q.select();
-  if (error) { console.error(`[DB] update ${table}:`, error.message); return null; }
+  if (error) {
+    console.error(`[DB] update ${table}:`, error.message);
+    addToRetryQueue({ type: 'update', table, match, updates });
+    return null;
+  }
   return data;
 }
 
@@ -41,7 +102,11 @@ export async function deleteRow(table, match) {
   let q = supabase.from(table).delete();
   for (const [key, val] of Object.entries(match)) { q = q.eq(key, val); }
   const { error } = await q;
-  if (error) { console.error(`[DB] delete ${table}:`, error.message); return false; }
+  if (error) {
+    console.error(`[DB] delete ${table}:`, error.message);
+    addToRetryQueue({ type: 'delete', table, match });
+    return false;
+  }
   return true;
 }
 
@@ -366,3 +431,32 @@ export async function dbLoadCart(userId) {
     image: i.image || '',
   }));
 }
+
+// ── Realtime: Subscribe to order changes (for admin dashboard) ──
+
+let realtimeChannel = null;
+
+export function subscribeToOrders(callback) {
+  if (realtimeChannel) realtimeChannel.unsubscribe();
+
+  realtimeChannel = supabase
+    .channel('orders-realtime')
+    .on('postgres_changes', { event: '*', schema: 'public', table: 'orders' }, (payload) => {
+      console.log('[RT] Order change:', payload.eventType);
+      // Re-sync orders to localStorage then notify
+      syncOrders().then(() => {
+        if (typeof callback === 'function') callback(payload);
+      });
+    })
+    .subscribe();
+
+  return realtimeChannel;
+}
+
+export function unsubscribeFromOrders() {
+  if (realtimeChannel) {
+    realtimeChannel.unsubscribe();
+    realtimeChannel = null;
+  }
+}
+

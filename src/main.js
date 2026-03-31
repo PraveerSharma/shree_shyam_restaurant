@@ -163,18 +163,45 @@ document.addEventListener('securitypolicyviolation', (e) => {
 handleRoute();
 
 // ── Supabase Sync (background — doesn't block initial render) ──
-import { syncAll } from './services/db.js';
+import { syncAll, processRetryQueue, subscribeToOrders } from './services/db.js';
+import { showToast } from './utils/dom.js';
+
+// Show sync indicator
+const syncBar = document.createElement('div');
+syncBar.id = 'sync-bar';
+syncBar.style.cssText = 'position:fixed;top:0;left:0;height:3px;background:var(--clr-saffron);z-index:9999;transition:width 0.3s ease;width:30%;';
+document.body.appendChild(syncBar);
+
+// Process retry queue first (for any previously failed writes)
+processRetryQueue().catch(() => {});
+
 syncAll().then(ok => {
+  syncBar.style.width = '100%';
+  setTimeout(() => syncBar.remove(), 400);
   if (ok) {
     console.log('[DB] Synced with Supabase');
     handleRoute(); // Re-render with server data
+  } else {
+    showToast('Using offline data. Some features may be limited.', 'info');
   }
-}).catch(err => console.warn('[DB] Sync failed, using local data:', err));
+}).catch(err => {
+  syncBar.remove();
+  console.warn('[DB] Sync failed, using local data:', err);
+});
 
-// ── Service Worker Registration (for PWA-ready) ──
-if ('serviceWorker' in navigator && import.meta.env.PROD) {
+// ── Realtime: auto-refresh admin orders dashboard when new orders arrive ──
+subscribeToOrders(() => {
+  // Only re-render if currently on admin orders tab
+  if (window.location.hash.includes('admin')) {
+    handleRoute();
+  }
+});
+
+// ── Service Worker Registration (PWA) ──
+if ('serviceWorker' in navigator) {
   window.addEventListener('load', () => {
-    // Service worker can be registered for offline support in production
-    console.log('Production mode: Service Worker ready for registration');
+    navigator.serviceWorker.register('/sw.js').catch(() => {
+      // SW registration failed — not critical
+    });
   });
 }
