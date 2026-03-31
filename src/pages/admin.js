@@ -31,8 +31,10 @@ let offlineSearchQuery = '';
 let selectedSubscriberId = null; // for detail view
 let subSearchQuery = '';
 let showAddSubForm = false;
-let showManualOrderForm = false; // Toggle for manual order form within orders tab
+let showManualOrderForm = false;
 let editingOrderId = null;
+let orderSearchQuery = '';
+let orderDateFilter = 'all'; // 'all', 'today', 'week', 'month'
 
 export function renderAdminPage() {
   if (!isAdminLoggedIn()) {
@@ -189,6 +191,27 @@ function renderOrdersDashboard() {
   if (orderFilter !== 'all') {
     filteredOrders = filteredOrders.filter(o => o.status === orderFilter);
   }
+  // Date filter
+  if (orderDateFilter !== 'all') {
+    const now = new Date();
+    const startOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    filteredOrders = filteredOrders.filter(o => {
+      const d = new Date(o.createdAt);
+      if (orderDateFilter === 'today') return d >= startOfToday;
+      if (orderDateFilter === 'week') return d >= new Date(startOfToday - 7 * 86400000);
+      if (orderDateFilter === 'month') return d >= new Date(startOfToday - 30 * 86400000);
+      return true;
+    });
+  }
+  // Search filter
+  if (orderSearchQuery) {
+    const q = orderSearchQuery.toLowerCase();
+    filteredOrders = filteredOrders.filter(o =>
+      o.customerName.toLowerCase().includes(q) ||
+      o.orderId.toLowerCase().includes(q) ||
+      (o.customerPhone || '').includes(q)
+    );
+  }
 
   const getSelectStatusStyle = (status) => {
     switch (status) {
@@ -228,8 +251,23 @@ function renderOrdersDashboard() {
         </div>
       </div>
 
-      <!-- Filter + Actions -->
-      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.25rem; flex-wrap: wrap; gap: 0.75rem;">
+      <!-- Search + Date + Status Filters -->
+      <div style="display: flex; gap: 0.75rem; margin-bottom: 1rem; flex-wrap: wrap; align-items: center;">
+        <div style="position: relative; flex: 1; min-width: 180px; max-width: 320px;">
+          <span style="position: absolute; left: 0.75rem; top: 50%; transform: translateY(-50%); color: var(--clr-gray-400); pointer-events: none; font-size: 0.85rem;">🔍</span>
+          <input type="text" id="order-search" class="form-input" placeholder="Search name, order ID, phone..." value="${orderSearchQuery}" style="padding-left: 2.2rem; padding-right: 2rem; height: 36px; font-size: 0.85rem;">
+          ${orderSearchQuery ? `<button id="order-search-clear" style="position: absolute; right: 0.5rem; top: 50%; transform: translateY(-50%); background: none; border: none; color: var(--clr-gray-400); cursor: pointer; font-size: 1rem; line-height: 1;">✕</button>` : ''}
+        </div>
+        <div style="display: flex; gap: 0.3rem;">
+          ${['all', 'today', 'week', 'month'].map(d => `
+            <button class="order-filter-btn order-date-btn ${orderDateFilter === d ? 'active' : ''}" data-date="${d}" style="font-size: 0.78rem; padding: 4px 10px;">
+              ${d === 'all' ? 'All Time' : d === 'today' ? 'Today' : d === 'week' ? '7 Days' : '30 Days'}
+            </button>
+          `).join('')}
+        </div>
+      </div>
+
+      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem; flex-wrap: wrap; gap: 0.5rem;">
         <div style="display: flex; gap: 0.4rem; flex-wrap: wrap;">
           ${['all', 'pending', 'accepted', 'delivered', 'cancelled'].map(filter => `
             <button class="order-filter-btn ${orderFilter === filter ? 'active' : ''}" data-filter="${filter}">
@@ -237,9 +275,12 @@ function renderOrdersDashboard() {
             </button>
           `).join('')}
         </div>
-        <button class="btn ${showManualOrderForm ? 'btn-ghost' : 'btn-primary'} btn-sm" id="admin-manual-order-toggle">
-          ${showManualOrderForm ? '✕ Close' : '+ Manual Order'}
-        </button>
+        <div style="display: flex; align-items: center; gap: 0.75rem;">
+          ${orderSearchQuery || orderDateFilter !== 'all' ? `<span style="font-size: 0.8rem; color: var(--clr-gray-500);">${filteredOrders.length} result${filteredOrders.length !== 1 ? 's' : ''}</span>` : ''}
+          <button class="btn ${showManualOrderForm ? 'btn-ghost' : 'btn-primary'} btn-sm" id="admin-manual-order-toggle">
+            ${showManualOrderForm ? '✕ Close' : '+ Manual Order'}
+          </button>
+        </div>
       </div>
 
       ${showManualOrderForm ? renderManualOrderForm() : ''}
@@ -502,12 +543,37 @@ export function initAdminPage() {
     });
   });
 
-  // Order Filters switching
+  // Order status filter
   document.querySelectorAll('.order-filter-btn[data-filter]').forEach(btn => {
     btn.addEventListener('click', () => {
       orderFilter = btn.dataset.filter;
       window.dispatchEvent(new HashChangeEvent('hashchange'));
     });
+  });
+
+  // Order date filter
+  document.querySelectorAll('.order-date-btn[data-date]').forEach(btn => {
+    btn.addEventListener('click', () => {
+      orderDateFilter = btn.dataset.date;
+      window.dispatchEvent(new HashChangeEvent('hashchange'));
+    });
+  });
+
+  // Order search
+  let orderSearchTimer = null;
+  document.getElementById('order-search')?.addEventListener('input', (e) => {
+    orderSearchQuery = e.target.value.trim();
+    clearTimeout(orderSearchTimer);
+    orderSearchTimer = setTimeout(() => {
+      window.dispatchEvent(new HashChangeEvent('hashchange'));
+    }, 300);
+  });
+
+  document.getElementById('order-search-clear')?.addEventListener('click', () => {
+    orderSearchQuery = '';
+    const input = document.getElementById('order-search');
+    if (input) { input.value = ''; input.focus(); }
+    window.dispatchEvent(new HashChangeEvent('hashchange'));
   });
 
   // Order Status update
