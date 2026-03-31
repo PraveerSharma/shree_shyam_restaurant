@@ -249,7 +249,10 @@ function renderOrdersDashboard() {
                     WhatsApp
                   </a>
                 </div>
-                <div style="font-size: 0.85rem; color: var(--clr-gray-600); margin-top:2px;">🗓️ Pickup: <strong style="color:var(--clr-veg);">${order.pickupDate}</strong></div>
+                <div style="font-size: 0.85rem; color: var(--clr-gray-600); margin-top:2px;">
+                  🗓️ Pickup: <strong style="color:var(--clr-veg);">${order.pickupDate}</strong> 
+                  <span style="margin-left: 8px; font-weight: 700; color: var(--clr-saffron);">⏰ ${order.pickupTime || 'No slot'}</span>
+                </div>
               </td>
               <td>
                 <div style="max-height: 80px; overflow-y: auto; padding-right: 8px;">

@@ -37,11 +37,13 @@ export function createOrder(cart, customerInfo) {
   // Sanitize inputs
   const phone = sanitizeInput(customerInfo.phone || '').trim();
   const pickupDate = sanitizeInput(customerInfo.pickupDate || '').trim();
+  const pickupTime = sanitizeInput(customerInfo.pickupTime || '').trim();
   const notes = sanitizeInput(customerInfo.notes || '').trim();
 
   // Validate
   if (!phone) return { success: false, error: 'Phone/WhatsApp number is required' };
   if (!pickupDate) return { success: false, error: 'Pickup date is required' };
+  if (!pickupTime) return { success: false, error: 'Pickup time slot is required' };
   if (!cart || cart.length === 0) return { success: false, error: 'Cart is empty' };
 
   const order = {
@@ -50,6 +52,7 @@ export function createOrder(cart, customerInfo) {
     customerName: user.name,
     customerPhone: phone,
     pickupDate,
+    pickupTime,
     notes: notes.slice(0, 500), // Limit notes length
     items: cart.map(item => ({
       name: item.name,
@@ -78,6 +81,7 @@ export function generateWhatsAppMessage(order) {
     `━━━━━━━━━━━━━━━━━━━━`,
     `📋 *Order ID:* ${order.orderId}`,
     `📅 *Pickup Date:* ${order.pickupDate}`,
+    `⏰ *Pickup Time:* ${order.pickupTime}`,
     `📱 *Phone:* ${order.customerPhone}`,
     `⏰ *Placed:* ${order.timestamp}`,
     ``,
@@ -150,5 +154,17 @@ export function updateOrderStatus(orderId, status) {
   
   // Optional real-time event dispatch
   window.dispatchEvent(new CustomEvent('orders-updated', { detail: { orderId, status } }));
+  return true;
+}
+
+export function updateOrderPickupTime(orderId, pickupTime) {
+  const orders = getOrders();
+  const orderIndex = orders.findIndex(o => o.orderId === orderId);
+  if (orderIndex === -1) return false;
+  
+  orders[orderIndex].pickupTime = pickupTime;
+  localStorage.setItem(ORDERS_KEY, JSON.stringify(orders));
+  
+  window.dispatchEvent(new CustomEvent('orders-updated', { detail: { orderId, pickupTime } }));
   return true;
 }

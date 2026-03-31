@@ -107,11 +107,23 @@ export function renderCartPage() {
 
               <form id="checkout-form" novalidate>
                 <div class="form-group">
+                <div class="form-group">
                   <label class="form-label" for="pickup-date">📅 Pickup Date *</label>
                   <input class="form-input" type="date" id="pickup-date" 
                          min="${getTodayDate()}" required 
                          aria-label="Select pickup date">
                   <div class="form-error" id="pickup-date-error"></div>
+                </div>
+
+                <div class="form-group">
+                  <label class="form-label" for="pickup-time">⏰ Pickup Time Slot *</label>
+                  <select class="form-input" id="pickup-time" required aria-label="Select pickup time slot">
+                    <option value="" disabled selected>Select a time slot</option>
+                    <option value="10:00 AM - 02:00 PM">10:00 AM - 02:00 PM</option>
+                    <option value="02:00 PM - 06:00 PM">02:00 PM - 06:00 PM</option>
+                    <option value="06:00 PM - 10:00 PM">06:00 PM - 10:00 PM</option>
+                  </select>
+                  <div class="form-error" id="pickup-time-error"></div>
                 </div>
 
                 <div class="form-group">
@@ -137,7 +149,7 @@ export function renderCartPage() {
                 </div>
 
                 <button type="submit" class="btn btn-primary btn-lg" style="width:100%;" id="place-order-btn">
-                  🚀 Place Order via WhatsApp
+                  🚀 Place Order
                 </button>
               </form>
             </div>
@@ -148,36 +160,9 @@ export function renderCartPage() {
   `;
 }
 
-function renderSuccessScreen() {
-  return `
-    <main class="page-content page-enter">
-      <section class="section">
-        <div class="container">
-          <div class="order-success">
-            <div class="order-success-icon">✅</div>
-            <h1>Order Placed Successfully!</h1>
-            <p>Your order has been sent via WhatsApp. Please check WhatsApp for confirmation and order details.</p>
-            <p style="color:var(--clr-gray-400);font-size:0.9rem;">
-              Remember to pick up your order on the selected date. Payment will be collected at pickup.
-            </p>
-            <div style="display:flex;gap:1rem;justify-content:center;margin-top:2rem;flex-wrap:wrap;">
-              <a href="#/" class="btn btn-primary" id="back-home-btn">🏠 Back to Home</a>
-              <a href="#/sweets" class="btn btn-secondary">🍬 Order More</a>
-            </div>
-          </div>
-        </div>
-      </section>
-    </main>
-  `;
-}
 
 export function initCartPage() {
-  if (orderSuccess) {
-    document.getElementById('back-home-btn')?.addEventListener('click', () => {
-      orderSuccess = false;
-    });
-    return;
-  }
+  const phoneInput = document.getElementById('customer-phone');
 
   // Quantity controls
   document.querySelectorAll('.cart-qty-minus').forEach(btn => {
@@ -222,6 +207,7 @@ export function initCartPage() {
     const phoneInput = document.getElementById('customer-phone');
     const phone = '+91' + phoneInput.value.trim();
     const pickupDate = document.getElementById('pickup-date').value;
+    const pickupTime = document.getElementById('pickup-time').value;
     const notes = document.getElementById('order-notes').value.trim();
 
     // Clear errors
@@ -237,16 +223,19 @@ export function initCartPage() {
       document.getElementById('pickup-date-error').textContent = 'Please select a pickup date';
       hasError = true;
     }
+    if (!pickupTime) {
+      document.getElementById('pickup-time-error').textContent = 'Please select a pickup time slot';
+      hasError = true;
+    }
     if (hasError) return;
 
     const cart = getCart();
-    const result = createOrder(cart, { phone, pickupDate, notes });
+    const result = createOrder(cart, { phone, pickupDate, pickupTime, notes });
     
     if (result.success) {
-      sendToWhatsApp(result.order);
       orderSuccess = true;
-      window.dispatchEvent(new HashChangeEvent('hashchange'));
-      showToast('Order placed! Opening WhatsApp...', 'success', 5000);
+      window.location.hash = '#/orders';
+      showToast('Order placed successfully!', 'success', 5000);
     } else {
       showToast(result.error, 'error');
     }

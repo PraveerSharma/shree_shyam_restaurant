@@ -115,7 +115,10 @@ function renderRegisterForm() {
       
       <div class="form-group">
         <label class="form-label" for="reg-phone">Phone Number</label>
-        <input class="form-input" type="tel" id="reg-phone" placeholder="+91 86907 56828" required autocomplete="tel" maxlength="15">
+        <div class="phone-input-group">
+          <span class="phone-prefix">+91</span>
+          <input class="form-input" type="tel" id="reg-phone" placeholder="86907 56828" required autocomplete="tel" maxlength="10">
+        </div>
         <div class="form-error" id="reg-phone-error"></div>
       </div>
       
@@ -235,7 +238,7 @@ function initFormHandlers() {
   registerForm?.addEventListener('submit', async (e) => {
     e.preventDefault();
     const name = document.getElementById('reg-name').value;
-    const phone = document.getElementById('reg-phone').value;
+    const phone = '+91' + document.getElementById('reg-phone').value.trim();
     const email = document.getElementById('reg-email').value;
     const password = document.getElementById('reg-password').value;
 

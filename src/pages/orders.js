@@ -3,9 +3,10 @@
 // Displays user-specific order history
 // ============================================
 
-import { getOrderHistory } from '../services/orders.js';
+import { getOrderHistory, updateOrderPickupTime } from '../services/orders.js';
 import { getCurrentUser } from '../services/auth.js';
 import { formatPrice } from '../utils/format.js';
+import { showToast } from '../utils/dom.js';
 
 export function renderOrdersPage() {
   const user = getCurrentUser();
@@ -79,6 +80,17 @@ export function renderOrdersPage() {
                         <div style="font-weight: 600; color: var(--clr-secondary);">🗓️ ${order.pickupDate}</div>
                       </div>
                       <div>
+                        <div style="font-size: 0.85rem; color: var(--clr-gray-500); margin-bottom: 0.25rem;">Pickup Time Slot</div>
+                        <div style="display: flex; align-items: center; gap: 0.5rem;">
+                          <div style="font-weight: 600; color: var(--clr-saffron);">⏰ ${order.pickupTime}</div>
+                          ${order.status === 'pending' ? `
+                            <button class="edit-time-btn" data-id="${order.orderId}" style="font-size: 0.75rem; color: var(--clr-info); text-decoration: underline; padding: 0; background: none; border: none; cursor: pointer;">
+                              Edit
+                            </button>
+                          ` : ''}
+                        </div>
+                      </div>
+                      <div>
                         <div style="font-size: 0.85rem; color: var(--clr-gray-500); margin-bottom: 0.25rem;">Status</div>
                         ${(() => {
                           const status = order.status || 'pending';
@@ -132,5 +144,26 @@ export function renderOrdersPage() {
 export function initOrdersPage() {
   document.getElementById('orders-login-btn')?.addEventListener('click', () => {
     window.dispatchEvent(new CustomEvent('show-auth-modal', { detail: 'login' }));
+  });
+
+  // Edit Time Handler
+  document.querySelectorAll('.edit-time-btn').forEach(btn => {
+    btn.addEventListener('click', (e) => {
+      const orderId = btn.dataset.id;
+      const newTime = prompt('Enter new pickup time slot:\n1. 10:00 AM - 02:00 PM\n2. 02:00 PM - 06:00 PM\n3. 06:00 PM - 10:00 PM');
+      
+      let slot = '';
+      if (newTime === '1') slot = '10:00 AM - 02:00 PM';
+      else if (newTime === '2') slot = '02:00 PM - 06:00 PM';
+      else if (newTime === '3') slot = '06:00 PM - 10:00 PM';
+      else if (newTime && !['1','2','3'].includes(newTime)) slot = newTime;
+
+      if (slot) {
+        if (updateOrderPickupTime(orderId, slot)) {
+          showToast('Pickup time updated!', 'success');
+          window.dispatchEvent(new HashChangeEvent('hashchange'));
+        }
+      }
+    });
   });
 }
