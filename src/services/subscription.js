@@ -112,14 +112,36 @@ export function clearOutstandingBill(userId) {
   const subs = getSubscribers();
   const sub = subs.find(s => s.userId === userId);
   if (!sub) return { success: false, error: 'Subscriber not found' };
-  
-  sub.outstandingBalance = 0;
+
+  // Collect order IDs that are being cleared
+  const clearedOrderIds = [];
   sub.billingHistory.forEach(h => {
-    if (h.status === 'pending') h.status = 'cleared';
+    if (h.status === 'pending') {
+      h.status = 'cleared';
+      if (h.orderId && !h.orderId.startsWith('BILL-')) clearedOrderIds.push(h.orderId);
+    }
   });
+  sub.outstandingBalance = 0;
 
   saveSubscribers(subs);
-  dbClearSubscriberBills(userId).catch(err => console.warn('[DB]', err));
+
+  // Mark corresponding monthly-billing orders as delivered
+  if (clearedOrderIds.length) {
+    try {
+      const ORDERS_KEY = 'ssr_orders';
+      const orders = JSON.parse(localStorage.getItem(ORDERS_KEY) || '[]');
+      let changed = false;
+      orders.forEach(o => {
+        if (clearedOrderIds.includes(o.orderId) && o.paymentMethod === 'Monthly Billing' && o.status !== 'delivered') {
+          o.status = 'delivered';
+          changed = true;
+        }
+      });
+      if (changed) localStorage.setItem(ORDERS_KEY, JSON.stringify(orders));
+    } catch {}
+  }
+
+  dbClearSubscriberBills(userId, clearedOrderIds).catch(err => console.warn('[DB]', err));
   return { success: true };
 }
 

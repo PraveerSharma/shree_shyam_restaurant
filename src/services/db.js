@@ -328,8 +328,9 @@ export async function dbAddBillingHistory(userId, entry) {
   }
 }
 
-export async function dbClearSubscriberBills(userId) {
+export async function dbClearSubscriberBills(userId, clearedOrderIds = []) {
   await updateRow('subscribers', { user_id: userId }, { outstanding_balance: 0 });
+
   // Update all pending billing history to cleared
   const { data: sub } = await supabase
     .from('subscribers')
@@ -343,6 +344,15 @@ export async function dbClearSubscriberBills(userId) {
       .update({ status: 'cleared' })
       .eq('subscriber_id', sub.id)
       .eq('status', 'pending');
+  }
+
+  // Mark corresponding monthly-billing orders as delivered
+  if (clearedOrderIds.length) {
+    await supabase
+      .from('orders')
+      .update({ status: 'delivered' })
+      .in('order_id', clearedOrderIds)
+      .eq('payment_method', 'Monthly Billing');
   }
 }
 
