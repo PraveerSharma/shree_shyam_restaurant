@@ -171,11 +171,9 @@
   padding: var(--sp-xl) var(--sp-lg) var(--sp-2xl);
   flex-direction: column;
   gap: var(--sp-sm);
-  animation: fadeIn var(--dur-fast) var(--ease-smooth);
   overflow-y: auto;
   -webkit-overflow-scrolling: touch;
 }
-.mobile-nav.open { display: flex; }
 .mobile-nav .nav-link {
   font-size: 1.1rem;
   padding: var(--sp-md) var(--sp-sm);

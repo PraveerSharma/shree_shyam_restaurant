@@ -1121,6 +1121,18 @@
   gap: 8px;
 }
 
+/* ── Sticky Place Order (mobile) ── */
+@media (max-width: 768px) {
+  #place-order-btn {
+    position: sticky;
+    bottom: 0;
+    z-index: 10;
+    border-radius: var(--radius-md);
+    margin-top: var(--sp-md);
+    box-shadow: 0 -4px 20px rgba(0,0,0,0.1);
+  }
+}
+
 /* ── Payment Method Options ── */
 .payment-option {
   display: flex;
