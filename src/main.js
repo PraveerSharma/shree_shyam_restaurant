@@ -168,50 +168,57 @@ document.addEventListener('securitypolicyviolation', (e) => {
   console.warn('CSP Violation:', e.violatedDirective, e.blockedURI);
 });
 
-// ── Initial render ──
-handleRoute();
-
-// ── Supabase Sync (background — doesn't block initial render) ──
+// ── Imports for sync & auth ──
 import { syncAll, processRetryQueue, subscribeToOrders } from './services/db.js';
 import { showToast } from './utils/dom.js';
-import { restoreSession } from './services/auth.js';
+import { restoreSession, handleAuthCallback } from './services/auth.js';
+import { showPhoneModal } from './components/auth-modal.js';
 
-// Show sync indicator
+// ── Detect Google OAuth return BEFORE first render ──
+const isOAuthReturn = window.location.hash.includes('access_token') || window.location.href.includes('access_token');
+
+if (isOAuthReturn) {
+  // Show loading instead of 404 while processing OAuth
+  app.innerHTML = `
+    ${renderHeader()}
+    <main class="page-content page-enter">
+      <section class="section" style="text-align:center;padding:6rem 1rem;">
+        <div class="spinner" style="margin:0 auto 1rem;" aria-hidden="true"></div>
+        <p style="color:var(--clr-gray-500);">Signing you in...</p>
+      </section>
+    </main>
+    ${renderFooter()}
+  `;
+
+  handleAuthCallback().then(result => {
+    window.location.hash = '#/';
+    setTimeout(() => {
+      handleRoute();
+      if (result.success) {
+        if (result.needsPhone) {
+          showPhoneModal(result.user);
+        } else {
+          showToast(`Welcome back, ${result.user.name}!`, 'success');
+        }
+      } else {
+        showToast(result.error || 'Sign in failed', 'error');
+      }
+    }, 100);
+  }).catch(() => { window.location.hash = '#/'; handleRoute(); });
+} else {
+  // Normal flow — render immediately
+  handleRoute();
+}
+
+// ── Supabase Sync (background) ──
 const syncBar = document.createElement('div');
 syncBar.id = 'sync-bar';
 syncBar.style.cssText = 'position:fixed;top:0;left:0;height:3px;background:var(--clr-saffron);z-index:9999;transition:width 0.3s ease;width:30%;';
 document.body.appendChild(syncBar);
 
-// Process retry queue first (for any previously failed writes)
 processRetryQueue().catch(() => {});
 
-// Restore auth session — also handles Google OAuth callback
-import { handleAuthCallback } from './services/auth.js';
-import { showPhoneModal } from './components/auth-modal.js';
-
-const isOAuthReturn = window.location.hash.includes('access_token') || window.location.href.includes('access_token');
-
-if (isOAuthReturn) {
-  // Google OAuth just redirected back with tokens in the URL
-  handleAuthCallback().then(result => {
-    // Clean URL
-    window.location.hash = '#/';
-    if (result.success) {
-      if (result.needsPhone) {
-        setTimeout(() => {
-          handleRoute();
-          showPhoneModal(result.user);
-        }, 300);
-      } else {
-        showToast(`Welcome back, ${result.user.name}!`, 'success');
-        handleRoute();
-      }
-    } else {
-      showToast(result.error || 'Sign in failed', 'error');
-      handleRoute();
-    }
-  }).catch(() => { window.location.hash = '#/'; handleRoute(); });
-} else {
+if (!isOAuthReturn) {
   restoreSession().then(() => handleRoute()).catch(() => {});
 }
 
