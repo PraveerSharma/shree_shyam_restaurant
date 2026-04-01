@@ -1,6 +1,6 @@
 // ============================================
 // FIREBASE CONFIG (Auth: Google SSO only)
-// Phone OTP is now handled by custom Supabase RPC
+// Email magic link handled by Supabase Auth
 // ============================================
 
 import { initializeApp } from 'firebase/app';

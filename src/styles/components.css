@@ -640,66 +640,6 @@ textarea.form-input {
   box-shadow: none;
 }
 
-/* OTP Input Grid */
-.otp-container {
-  margin-top: var(--sp-lg);
-  padding: var(--sp-lg);
-  background: rgba(212, 115, 26, 0.05);
-  border-radius: var(--radius-lg);
-  border: 1px dashed var(--clr-saffron);
-  display: none; /* Shown via JS */
-  animation: slideDown 0.4s var(--ease-spring);
-}
-.otp-container.visible {
-  display: block;
-}
-.otp-grid {
-  display: grid;
-  grid-template-columns: repeat(6, 1fr);
-  gap: 8px;
-  margin: var(--sp-md) 0;
-}
-.otp-digit {
-  width: 100%;
-  aspect-ratio: 1;
-  text-align: center;
-  font-size: 1.5rem;
-  font-weight: 800;
-  border: 2px solid var(--clr-gray-200);
-  border-radius: var(--radius-md);
-  background: white;
-  transition: all var(--dur-fast);
-  color: var(--clr-charcoal);
-}
-.otp-digit:focus {
-  border-color: var(--clr-saffron);
-  box-shadow: 0 0 0 4px rgba(212, 115, 26, 0.15);
-  outline: none;
-  transform: translateY(-2px);
-}
-.otp-digit.success {
-  border-color: var(--clr-success);
-  background: rgba(46, 204, 113, 0.05);
-}
-.resend-timer {
-  font-size: 0.8rem;
-  color: var(--clr-gray-500);
-  text-align: center;
-  margin-top: var(--sp-sm);
-}
-.resend-btn {
-  color: var(--clr-saffron);
-  font-weight: 600;
-  background: none;
-  padding: 0;
-  font-size: 0.8rem;
-  cursor: pointer;
-}
-.resend-btn:disabled {
-  color: var(--clr-gray-400);
-  cursor: not-allowed;
-}
-
 @keyframes slideDown {
   from { opacity: 0; transform: translateY(-10px); }
   to { opacity: 1; transform: translateY(0); }
