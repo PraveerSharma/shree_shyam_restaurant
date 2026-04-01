@@ -179,24 +179,23 @@ document.addEventListener('securitypolicyviolation', (e) => {
 import { syncAll, processRetryQueue, subscribeToOrders } from './services/db.js';
 import { showToast } from './utils/dom.js';
 
-// ── Magic Link Intercept ──
-// Supabase magic links put tokens in the URL fragment (#access_token=...).
+// ── OAuth Redirect Intercept ──
+// After Google SSO, Supabase may put tokens in the URL fragment.
 // Detect and consume them before the router runs.
-async function handleMagicLinkReturn() {
+async function handleAuthRedirect() {
   const hash = window.location.hash || '';
-  if (hash.includes('access_token=') && (hash.includes('type=magiclink') || hash.includes('type=signup'))) {
+  if (hash.includes('access_token=')) {
     try {
       const { error } = await supabase.auth.getSession();
-      if (error) showToast('Sign-in link expired. Please try again.', 'error');
+      if (error) showToast('Sign-in failed. Please try again.', 'error');
     } catch {}
-    // Restore clean route
     window.location.hash = '#/';
     return true;
   }
   return false;
 }
 
-// ── Post-Auth Setup (name collection after magic link) ──
+// ── Post-Auth Setup (name collection after Google SSO) ──
 let postAuthHandled = false;
 window.addEventListener('auth-changed', (e) => {
   const user = e.detail;
@@ -211,7 +210,7 @@ window.addEventListener('auth-changed', (e) => {
 });
 
 // ── Initial render ──
-handleMagicLinkReturn().then(() => {
+handleAuthRedirect().then(() => {
   handleRoute();
 });
 

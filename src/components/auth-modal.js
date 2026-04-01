@@ -1,8 +1,8 @@
 // ============================================
-// AUTH MODAL — Email Magic Link + Google SSO
+// AUTH MODAL — Google SSO Only
 // ============================================
 
-import { signInWithGoogle, updateUserName, signInWithEmail } from '../services/auth.js';
+import { signInWithGoogle, updateUserName } from '../services/auth.js';
 import { showToast } from '../utils/dom.js';
 
 let successCallback = null;
@@ -61,14 +61,14 @@ function authComplete(result, trigger) {
 }
 
 // ============================================
-// MAIN SCREEN
+// MAIN SCREEN — Google SSO Only
 // ============================================
 
 export function showAuthModal(tab = 'login', onSuccess = null) {
   successCallback = onSuccess;
   const trigger = createOverlay(renderMain());
   bindMain(trigger);
-  setTimeout(() => document.getElementById('email-btn')?.focus(), 50);
+  setTimeout(() => document.getElementById('google-btn')?.focus(), 50);
 }
 
 function renderMain() {
@@ -80,20 +80,8 @@ function renderMain() {
     </div>
 
     <div style="display:flex; flex-direction:column; gap:0.65rem;">
-      <!-- Email Magic Link (primary) -->
-      <button id="email-btn" style="width:100%; display:flex; align-items:center; justify-content:center; gap:0.6rem; padding:0.65rem; border:2px solid var(--clr-saffron); border-radius:var(--radius-md); background:var(--clr-ivory); font-size:0.95rem; font-weight:600; color:var(--clr-saffron-dark); cursor:pointer; height:48px;">
-        <span style="font-size:1.2rem;">✉️</span>
-        Continue with Email
-      </button>
-
-      <div style="display:flex; align-items:center; gap:0.75rem; margin:0.15rem 0;">
-        <div style="flex:1; height:1px; background:var(--clr-gray-200);"></div>
-        <span style="font-size:0.72rem; color:var(--clr-gray-400);">or</span>
-        <div style="flex:1; height:1px; background:var(--clr-gray-200);"></div>
-      </div>
-
       <!-- Google SSO -->
-      <button id="google-btn" style="width:100%; display:flex; align-items:center; justify-content:center; gap:0.6rem; padding:0.65rem; border:1.5px solid var(--clr-gray-200); border-radius:var(--radius-md); background:white; font-size:0.9rem; font-weight:600; color:var(--clr-charcoal); cursor:pointer; height:46px;">
+      <button id="google-btn" style="width:100%; display:flex; align-items:center; justify-content:center; gap:0.6rem; padding:0.65rem; border:2px solid var(--clr-saffron); border-radius:var(--radius-md); background:white; font-size:0.95rem; font-weight:600; color:var(--clr-charcoal); cursor:pointer; height:48px;">
         <svg width="18" height="18" viewBox="0 0 24 24" aria-hidden="true"><path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92a5.06 5.06 0 01-2.2 3.32v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.1z" fill="#4285F4"/><path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853"/><path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z" fill="#FBBC05"/><path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" fill="#EA4335"/></svg>
         Continue with Google
       </button>
@@ -121,70 +109,12 @@ function bindMain(trigger) {
       btn.disabled = false;
       btn.innerHTML = GOOGLE_BTN_HTML;
     }
-    // Success will redirect, so no need to handling r.success here
-  });
-
-  document.getElementById('email-btn')?.addEventListener('click', () => {
-    setContent(renderEmailInput());
-    bindEmailInput(trigger);
-    setTimeout(() => document.getElementById('email-input')?.focus(), 50);
   });
 }
 
 // ============================================
-// EMAIL MAGIC LINK FLOW
+// NAME INPUT (Post-auth setup)
 // ============================================
-
-let lastEmail = '';
-
-function renderEmailInput() {
-  return `
-    <div style="text-align:center; margin-bottom:1.25rem;">
-      <div style="font-size:2rem; margin-bottom:0.4rem;">✉️</div>
-      <h2 id="auth-heading" style="margin:0 0 0.2rem; font-size:1.15rem;">Enter your email</h2>
-      <p style="color:var(--clr-gray-500); font-size:0.82rem; margin:0;">We'll send you a sign-in link — no password needed</p>
-    </div>
-    <form id="email-form" novalidate>
-      <div class="form-group" style="margin-bottom:0.75rem;">
-        <label class="form-label" for="email-input">Email Address</label>
-        <input type="email" id="email-input" class="form-input" placeholder="your@email.com" required
-               style="height:46px; font-size:0.95rem;" aria-describedby="email-err"
-               value="${lastEmail}">
-        <div class="form-error" id="email-err" aria-live="polite"></div>
-      </div>
-      <button type="submit" class="btn btn-primary" style="width:100%; height:46px; font-size:0.95rem;" id="email-send-btn">
-        Send Sign-In Link
-      </button>
-    </form>
-    <button id="email-back" style="display:block; margin:0.75rem auto 0; background:none; border:none; color:var(--clr-gray-500); font-size:0.82rem; cursor:pointer;">
-      ← Back to sign in options
-    </button>
-  `;
-}
-
-function renderEmailSent() {
-  return `
-    <div style="text-align:center;">
-      <div style="font-size:3rem; margin-bottom:0.75rem;">📬</div>
-      <h2 id="auth-heading" style="margin:0 0 0.5rem; font-size:1.15rem; color:var(--clr-charcoal);">Check your email!</h2>
-      <p style="color:var(--clr-gray-600); font-size:0.88rem; margin:0 0 0.5rem; line-height:1.5;">
-        We sent a sign-in link to<br>
-        <strong style="color:var(--clr-charcoal);">${lastEmail}</strong>
-      </p>
-      <p style="color:var(--clr-gray-500); font-size:0.78rem; margin:0 0 1.5rem; line-height:1.5;">
-        Click the link in the email to sign in.<br>Check your spam folder if you don't see it.
-      </p>
-      <div style="display:flex; flex-direction:column; gap:0.5rem;">
-        <button id="email-resend" class="btn btn-secondary" style="width:100%; height:42px; font-size:0.88rem;">
-          Resend Link
-        </button>
-        <button id="email-change" style="background:none; border:none; color:var(--clr-saffron); font-size:0.82rem; cursor:pointer; font-weight:500; padding:0.5rem;">
-          Use a different email
-        </button>
-      </div>
-    </div>
-  `;
-}
 
 function renderNameInput() {
   return `
@@ -205,61 +135,6 @@ function renderNameInput() {
       </button>
     </form>
   `;
-}
-
-function bindEmailInput(trigger) {
-  document.getElementById('email-back')?.addEventListener('click', () => { setContent(renderMain()); bindMain(trigger); });
-
-  document.getElementById('email-form')?.addEventListener('submit', async (e) => {
-    e.preventDefault();
-    const email = document.getElementById('email-input').value.trim();
-    const err = document.getElementById('email-err');
-    const btn = document.getElementById('email-send-btn');
-    err.textContent = '';
-
-    if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
-      err.textContent = 'Please enter a valid email address';
-      return;
-    }
-
-    lastEmail = email;
-    btn.disabled = true;
-    btn.textContent = 'Sending link...';
-
-    const r = await signInWithEmail(email);
-    if (r.success) {
-      setContent(renderEmailSent());
-      bindEmailSent(trigger);
-    } else {
-      err.textContent = r.error;
-      btn.disabled = false;
-      btn.textContent = 'Send Sign-In Link';
-    }
-  });
-}
-
-function bindEmailSent(trigger) {
-  document.getElementById('email-resend')?.addEventListener('click', async () => {
-    const btn = document.getElementById('email-resend');
-    btn.disabled = true;
-    btn.textContent = 'Sending...';
-    const r = await signInWithEmail(lastEmail);
-    if (r.success) {
-      showToast('New sign-in link sent!', 'success');
-      btn.textContent = 'Link Sent!';
-      setTimeout(() => { btn.textContent = 'Resend Link'; btn.disabled = false; }, 30000);
-    } else {
-      showToast(r.error, 'error');
-      btn.textContent = 'Resend Link';
-      btn.disabled = false;
-    }
-  });
-
-  document.getElementById('email-change')?.addEventListener('click', () => {
-    setContent(renderEmailInput());
-    bindEmailInput(trigger);
-    setTimeout(() => document.getElementById('email-input')?.focus(), 50);
-  });
 }
 
 function bindNameInput(trigger) {

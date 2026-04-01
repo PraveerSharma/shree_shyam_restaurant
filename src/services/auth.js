@@ -1,6 +1,6 @@
 // ============================================
 // AUTHENTICATION SERVICE
-// Google SSO (Supabase) + Email Magic Link (Supabase Auth)
+// Google SSO (Supabase) only
 // Phone number collected during checkout/subscription (no verification)
 // ============================================
 
@@ -128,31 +128,6 @@ export async function signInWithGoogle() {
 }
 
 // ============================================
-// EMAIL MAGIC LINK (Supabase Auth)
-// ============================================
-
-export async function signInWithEmail(email) {
-  if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
-    return { success: false, error: 'Please enter a valid email address.' };
-  }
-
-  try {
-    const redirectTo = window.location.origin + '/#/';
-    const { error } = await supabase.auth.signInWithOtp({
-      email,
-      options: { emailRedirectTo: redirectTo },
-    });
-    if (error) {
-      if (error.message?.includes('rate limit')) return { success: false, error: 'Too many attempts. Please wait a minute.' };
-      return { success: false, error: error.message || 'Failed to send link. Try again.' };
-    }
-    return { success: true };
-  } catch {
-    return { success: false, error: 'Something went wrong. Please try again.' };
-  }
-}
-
-// ============================================
 // PROFILE UPDATES
 // ============================================
 
@@ -174,9 +149,6 @@ export async function savePhone(phone) {
 
   const formatted = normalizePhone(phone);
 
-  const { data: dup } = await supabase.from('profiles').select('id').eq('phone', formatted).neq('id', currentAppUser.id).limit(1);
-  if (dup?.length > 0) return { success: false, error: 'This number is already linked to another account' };
-
   const { error } = await supabase.from('profiles').update({ phone: formatted }).eq('id', currentAppUser.id);
   if (error) return { success: false, error: 'Failed to save. Try again.' };
 
@@ -195,7 +167,7 @@ export async function logout() {
     if (k.startsWith('ssr_cart_')) localStorage.removeItem(k);
   });
 
-  try { await supabase.auth.signOut(); } catch {}
+  try { await supabase.auth.signOut({ scope: 'local' }); } catch {}
 
   if (currentAppUser) {
     currentAppUser = null;
