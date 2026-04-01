@@ -4,12 +4,13 @@
 // ============================================
 
 import { supabase } from '../config/supabase.js';
+import { getCurrentUser } from './auth.js';
 
 // Generate a session ID (persists for the browser tab lifetime)
 const SESSION_ID = 'sess_' + Math.random().toString(36).substring(2, 10);
 
 function getUserId() {
-  try { return JSON.parse(localStorage.getItem('ssr_session') || '{}').id || ''; } catch { return ''; }
+  return getCurrentUser()?.id || '';
 }
 
 // ── Page View Tracking ──

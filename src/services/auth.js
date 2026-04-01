@@ -11,8 +11,6 @@ import {
 } from '../config/firebase.js';
 import { refreshCartUI } from './cart.js';
 
-const PROFILE_CACHE_KEY = 'ssr_user_profile';
-
 // ── Auth State ──
 let currentAppUser = null;
 let authInitialized = false;
@@ -105,10 +103,8 @@ async function loadOrCreateProfile(fbUser) {
 firebaseAuth.onAuthStateChanged(async (fbUser) => {
   if (fbUser) {
     currentAppUser = await loadOrCreateProfile(fbUser);
-    localStorage.setItem(PROFILE_CACHE_KEY, JSON.stringify(currentAppUser));
   } else {
     currentAppUser = null;
-    localStorage.removeItem(PROFILE_CACHE_KEY);
   }
 
   if (!authInitialized) {
@@ -129,12 +125,7 @@ firebaseAuth.onAuthStateChanged(async (fbUser) => {
 // ── Public API ──
 
 export function getCurrentUser() {
-  if (currentAppUser) return currentAppUser;
-  // Before Firebase initializes, use localStorage cache for instant access
-  if (!authInitialized) {
-    try { return JSON.parse(localStorage.getItem(PROFILE_CACHE_KEY)) || null; } catch { return null; }
-  }
-  return null;
+  return currentAppUser;
 }
 
 export function isLoggedIn() { return getCurrentUser() !== null; }
@@ -226,7 +217,7 @@ export async function updateUserName(name) {
   if (error) return { success: false, error: 'Failed to save name.' };
 
   currentAppUser = { ...currentAppUser, name: name.trim() };
-  localStorage.setItem(PROFILE_CACHE_KEY, JSON.stringify(currentAppUser));
+
   window.dispatchEvent(new CustomEvent('auth-changed', { detail: currentAppUser }));
   return { success: true, user: currentAppUser };
 }
@@ -245,7 +236,7 @@ export async function savePhone(phone) {
   if (error) return { success: false, error: 'Failed to save. Try again.' };
 
   currentAppUser = { ...currentAppUser, phone: formatted };
-  localStorage.setItem(PROFILE_CACHE_KEY, JSON.stringify(currentAppUser));
+
   refreshCartUI();
   window.dispatchEvent(new CustomEvent('auth-changed', { detail: currentAppUser }));
   return { success: true, user: currentAppUser };

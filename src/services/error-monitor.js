@@ -4,6 +4,7 @@
 // ============================================
 
 import { supabase } from '../config/supabase.js';
+import { getCurrentUser } from './auth.js';
 
 const MAX_ERRORS_PER_SESSION = 10;
 let errorCount = 0;
@@ -12,9 +13,7 @@ async function logError(message, stack = '', extra = {}) {
   if (errorCount >= MAX_ERRORS_PER_SESSION) return; // Prevent flood
   errorCount++;
 
-  const user = (() => {
-    try { return JSON.parse(localStorage.getItem('ssr_session') || '{}'); } catch { return {}; }
-  })();
+  const user = getCurrentUser() || {};
 
   try {
     await supabase.from('error_logs').insert({
