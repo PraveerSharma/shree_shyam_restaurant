@@ -175,10 +175,13 @@ create policy "Users can manage own cart" on cart_items for all using (auth.uid(
 -- ============================================
 -- REALTIME (for admin order dashboard)
 -- ============================================
--- Enable realtime on orders table so admin gets live updates.
--- Go to Supabase Dashboard > Database > Replication and enable
--- the "orders" table, OR run:
+-- Enable realtime on key tables so admin and client stay in sync.
+-- Go to Supabase Dashboard > Database > Replication and enable these tables, OR run:
 alter publication supabase_realtime add table orders;
+alter publication supabase_realtime add table order_items;
+alter publication supabase_realtime add table menu_items;
+alter publication supabase_realtime add table subscribers;
+alter publication supabase_realtime add table billing_history;
 
 
 -- ============================================

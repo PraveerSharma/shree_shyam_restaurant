@@ -424,40 +424,61 @@ export async function dbLoadCart(userId) {
   }));
 }
 
-// ── Realtime: Subscribe to order changes (for admin dashboard) ──
+// ── Realtime: Subscribe to all key tables ──
+// Single channel listens to orders, menu_items, subscribers, billing_history.
+// On any change, the relevant sync function runs and a custom event is dispatched
+// so both admin and client pages can react without manual refresh.
 
 let realtimeChannel = null;
 
-export function subscribeToOrders(callback) {
-  // Only subscribe if not already connected
-  if (realtimeChannel) return realtimeChannel;
+export function startRealtime() {
+  if (realtimeChannel) return;
 
   try {
     realtimeChannel = supabase
-      .channel('orders-realtime')
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'orders' }, (payload) => {
-        console.log('[RT] Order change:', payload.eventType);
-        syncOrders().then(() => {
-          if (typeof callback === 'function') callback(payload);
-        });
+      .channel('app-realtime')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'orders' }, () => {
+        syncOrders().then(() => window.dispatchEvent(new CustomEvent('rt-orders')));
+      })
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'order_items' }, () => {
+        syncOrders().then(() => window.dispatchEvent(new CustomEvent('rt-orders')));
+      })
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'menu_items' }, () => {
+        syncMenuItems().then(() => window.dispatchEvent(new CustomEvent('rt-menu')));
+      })
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'subscribers' }, () => {
+        syncSubscribers().then(() => window.dispatchEvent(new CustomEvent('rt-subscribers')));
+      })
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'billing_history' }, () => {
+        syncSubscribers().then(() => window.dispatchEvent(new CustomEvent('rt-subscribers')));
       })
       .subscribe((status) => {
-        if (status === 'CHANNEL_ERROR') {
-          console.warn('[RT] Realtime connection failed — will use manual refresh');
+        if (status === 'SUBSCRIBED') {
+          console.log('[RT] Realtime connected');
+        }
+        if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT') {
+          console.warn('[RT] Realtime connection issue:', status);
           realtimeChannel = null;
+          // Auto-reconnect after 5s
+          setTimeout(() => startRealtime(), 5000);
         }
       });
   } catch {
     console.warn('[RT] Realtime not available');
   }
-
-  return realtimeChannel;
 }
 
-export function unsubscribeFromOrders() {
+export function stopRealtime() {
   if (realtimeChannel) {
-    realtimeChannel.unsubscribe();
+    supabase.removeChannel(realtimeChannel);
     realtimeChannel = null;
   }
 }
+
+// Backward compat — old code used these
+export function subscribeToOrders(callback) {
+  startRealtime();
+  if (callback) window.addEventListener('rt-orders', () => callback());
+}
+export function unsubscribeFromOrders() { /* noop — channel stays alive */ }
 

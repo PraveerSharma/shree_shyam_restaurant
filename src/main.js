@@ -177,7 +177,7 @@ document.addEventListener('securitypolicyviolation', (e) => {
 });
 
 // ── Imports for sync ──
-import { syncAll, processRetryQueue, subscribeToOrders } from './services/db.js';
+import { syncAll, processRetryQueue, startRealtime } from './services/db.js';
 import { showToast } from './utils/dom.js';
 
 // ── OAuth Redirect Intercept ──
@@ -266,10 +266,13 @@ syncAll().then(ok => {
   console.warn('[DB] Sync failed, using local data:', err);
 });
 
-// ── Realtime: only connect when admin page is active ──
-if (window.location.hash.includes('admin')) {
-  subscribeToOrders(() => { handleRoute(); });
-}
+// ── Realtime: connect once, listen globally ──
+// All rt-* events trigger a page re-render so admin and client stay in sync.
+startRealtime();
+
+window.addEventListener('rt-orders', () => scheduleRoute());
+window.addEventListener('rt-menu', () => scheduleRoute());
+window.addEventListener('rt-subscribers', () => scheduleRoute());
 
 // ── Service Worker Registration (PWA) ──
 if ('serviceWorker' in navigator) {

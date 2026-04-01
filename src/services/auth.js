@@ -26,6 +26,17 @@ function formatUser(profile, avatar = '') {
   };
 }
 
+function userFromSession(sbUser) {
+  const m = sbUser.user_metadata || {};
+  return formatUser({
+    id: sbUser.id,
+    name: m.full_name || m.name || '',
+    email: sbUser.email || '',
+    phone: '',
+    avatar: m.avatar_url || m.picture || '',
+  });
+}
+
 function normalizePhone(phone) {
   let clean = phone.replace(/[\s\-+]/g, '');
   if (clean.length === 10 && /^[6-9]/.test(clean)) clean = '+91' + clean;
@@ -39,16 +50,14 @@ function validatePhone(phone) {
   return /^(91)?[6-9]\d{9}$/.test(clean);
 }
 
-// ── Profile Lookup / Creation (Supabase Auth) ──
+// ── Profile Lookup / Creation (Supabase DB) ──
 
 async function loadOrCreateSupabaseProfile(sbUser) {
   const email = sbUser.email;
   const metadata = sbUser.user_metadata || {};
 
-  // 1. Check existing profile by auth ID (most reliable — RLS allows own row)
   const { data: byId } = await supabase.from('profiles').select('*').eq('id', sbUser.id).limit(1);
   if (byId?.[0]) {
-    // Update name/avatar from Google if missing locally
     const updates = {};
     if (!byId[0].name && metadata.full_name) updates.name = metadata.full_name;
     if (!byId[0].avatar && metadata.avatar_url) updates.avatar = metadata.avatar_url;
@@ -61,7 +70,6 @@ async function loadOrCreateSupabaseProfile(sbUser) {
     return formatUser(byId[0]);
   }
 
-  // 2. No profile exists — create one
   const newProfile = {
     id: sbUser.id,
     name: metadata.full_name || '',
@@ -71,42 +79,45 @@ async function loadOrCreateSupabaseProfile(sbUser) {
   };
 
   const { error } = await supabase.from('profiles').upsert(newProfile, { onConflict: 'id' });
-  if (error) {
-    console.warn('[Auth] Profile creation failed:', error.message);
-    // Still return the user data even if DB save fails — app can work with in-memory data
-  }
+  if (error) console.warn('[Auth] Profile creation failed:', error.message);
   return formatUser(newProfile);
 }
 
 // ── Supabase Auth Listener ──
+// Key design: resolve authInitPromise IMMEDIATELY from session data (no network wait).
+// Then load/create the DB profile in the background and update when ready.
 
-supabase.auth.onAuthStateChange(async (event, session) => {
+supabase.auth.onAuthStateChange((event, session) => {
   if ((event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED' || event === 'INITIAL_SESSION') && session?.user) {
-    // Only load profile if we don't already have one for this user
-    if (!currentAppUser || currentAppUser.id !== session.user.id) {
-      const sbUser = session.user;
-      try {
-        const profile = await loadOrCreateSupabaseProfile(sbUser);
-        if (profile) {
-          currentAppUser = profile;
-          refreshUserCount().catch(() => {});
-          refreshCartUI();
-          window.dispatchEvent(new CustomEvent('auth-changed', { detail: currentAppUser }));
-        }
-      } catch (err) {
-        console.warn('[Auth] Profile load failed:', err);
-        // Create a minimal user from auth data so the app doesn't break
-        currentAppUser = formatUser({
-          id: sbUser.id,
-          name: sbUser.user_metadata?.full_name || '',
-          email: sbUser.email || '',
-          phone: '',
-          avatar: sbUser.user_metadata?.avatar_url || '',
-        });
+    const sbUser = session.user;
+
+    // Step 1: Set user IMMEDIATELY from session JWT (no network call)
+    // This ensures the UI renders logged-in state instantly on refresh.
+    if (!currentAppUser || currentAppUser.id !== sbUser.id) {
+      currentAppUser = userFromSession(sbUser);
+      refreshCartUI();
+      window.dispatchEvent(new CustomEvent('auth-changed', { detail: currentAppUser }));
+    }
+
+    // Step 2: Resolve auth init so the app can render without waiting
+    if (!authInitialized) {
+      authInitialized = true;
+      authInitResolve();
+    }
+
+    // Step 3: Load full profile from DB in background (has phone, etc.)
+    loadOrCreateSupabaseProfile(sbUser).then(profile => {
+      if (profile && (profile.phone !== currentAppUser.phone || profile.name !== currentAppUser.name)) {
+        currentAppUser = profile;
         refreshCartUI();
         window.dispatchEvent(new CustomEvent('auth-changed', { detail: currentAppUser }));
       }
-    }
+    }).catch(err => {
+      console.warn('[Auth] Background profile load failed:', err);
+    });
+
+    refreshUserCount().catch(() => {});
+    return;
   }
 
   if (event === 'SIGNED_OUT') {
@@ -115,6 +126,7 @@ supabase.auth.onAuthStateChange(async (event, session) => {
     window.dispatchEvent(new CustomEvent('auth-changed', { detail: null }));
   }
 
+  // Also resolve for INITIAL_SESSION with no user (not logged in)
   if (!authInitialized) {
     authInitialized = true;
     authInitResolve();
