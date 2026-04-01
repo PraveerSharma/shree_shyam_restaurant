@@ -9,6 +9,7 @@ import { showToast, sanitizeInput } from '../utils/dom.js';
 import { SITE_CONFIG } from '../config/site.js';
 import { getCurrentUser } from '../services/auth.js';
 import { isSubscriber, subscribeUser } from '../services/subscription.js';
+import { requireVerifiedPhone } from '../components/phone-verify.js';
 
 export function renderCartPage() {
   const cart = getCart();
@@ -242,6 +243,17 @@ export function initCartPage() {
   // Checkout form
   document.getElementById('checkout-form')?.addEventListener('submit', (e) => {
     e.preventDefault();
+
+    // Require verified phone before placing order
+    const isVerified = requireVerifiedPhone((updatedUser) => {
+      // After verification, re-fill phone and re-submit
+      const phoneInput = document.getElementById('customer-phone');
+      if (phoneInput && updatedUser.phone) {
+        phoneInput.value = updatedUser.phone.replace('+91', '').trim();
+      }
+      showToast('Phone verified! You can now place your order.', 'success');
+    });
+    if (!isVerified) return;
 
     const phoneInput = document.getElementById('customer-phone');
     const phone = '+91' + phoneInput.value.trim();

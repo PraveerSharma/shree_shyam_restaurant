@@ -3,12 +3,13 @@
 // Handles order history and subscriber dashboard
 // ============================================
 
-import { getOrderHistory, updateOrderPickupTime, createQuickOrder } from '../services/orders.js';
+import { getOrderHistory, updateOrderPickupTime } from '../services/orders.js';
 import { getCurrentUser } from '../services/auth.js';
 import { formatPrice, isDueSoon, formatPhoneNumber } from '../utils/format.js';
 import { showToast } from '../utils/dom.js';
 import { isSubscriber, getSubscription, subscribeUser } from '../services/subscription.js';
 import { SITE_CONFIG } from '../config/site.js';
+import { requireVerifiedPhone } from '../components/phone-verify.js';
 
 let activeOrdersTab = 'history'; // 'history' or 'subscription'
 
@@ -210,23 +211,8 @@ function renderSubscriptionTab(user) {
       </div>
 
       <div class="sub-history-section">
-        <!-- Quick Order Form -->
-        <div style="background: #F0F9FF; padding: 2rem; border-radius: var(--radius-lg); border: 2px solid #BAE6FD; margin-bottom: 2.5rem; box-shadow: var(--shadow-sm);">
-          <div style="display: flex; align-items: center; gap: 0.75rem; margin-bottom: 1rem;">
-            <span style="font-size: 1.5rem;">⚡</span>
-            <h3 style="color: #0369A1; margin: 0;">Quick Order on Bill</h3>
-          </div>
-          <p style="font-size: 0.9rem; color: #0C4A6E; margin-bottom: 1.5rem; line-height: 1.5;">
-            Need something quickly? Just type what you want (e.g. "2 Samosas and 1 Chai") and we'll add it to your monthly bill.
-          </p>
-          <form id="quick-order-form" style="display: flex; gap: 1rem;">
-            <input type="text" class="form-input" id="quick-order-desc" placeholder="What would you like today?" required style="flex: 1; border-color: #7DD3FC;">
-            <button type="submit" class="btn btn-primary" style="background: #0EA5E9; border-color: #0EA5E9; white-space: nowrap;">Place Order</button>
-          </form>
-        </div>
-
         <h3 style="margin-bottom: 1.5rem; display: flex; align-items: center; gap: 0.5rem;">
-          📜 Billing History
+          Billing History
         </h3>
         
         ${sub.billingHistory.length === 0 ? `
@@ -281,6 +267,17 @@ export function initOrdersPage() {
   // Subscribe form
   document.getElementById('subscribe-form')?.addEventListener('submit', (e) => {
     e.preventDefault();
+
+    // Require verified phone before subscribing
+    const isVerified = requireVerifiedPhone((updatedUser) => {
+      const phoneInput = document.getElementById('sub-phone');
+      if (phoneInput && updatedUser.phone) {
+        phoneInput.value = formatPhoneNumber(updatedUser.phone);
+      }
+      showToast('Phone verified! You can now subscribe.', 'success');
+    });
+    if (!isVerified) return;
+
     const data = {
       name: document.getElementById('sub-name').value,
       phone: document.getElementById('sub-phone').value,
@@ -327,15 +324,5 @@ export function initOrdersPage() {
     });
   }
 
-  // Quick Order Handler
-  document.getElementById('quick-order-form')?.addEventListener('submit', (e) => {
-    e.preventDefault();
-    const desc = document.getElementById('quick-order-desc').value;
-    const res = createQuickOrder(user.id, desc);
-    if (res.success) {
-      showToast('Quick order placed! It will be added to your bill.', 'success');
-      window.dispatchEvent(new HashChangeEvent('hashchange'));
-    }
-  });
 
 }
