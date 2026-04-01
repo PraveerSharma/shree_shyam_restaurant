@@ -1,219 +1,16 @@
 // ============================================
 // AUTHENTICATION SERVICE
-// Google SSO via Supabase Auth + Phone collection
+// Google SSO + Firebase Phone OTP + WhatsApp OTP
+// Supabase Profiles for user data
 // ============================================
 
 import { supabase } from '../config/supabase.js';
+import { firebaseAuth, RecaptchaVerifier, signInWithPhoneNumber, signOut as fbSignOut } from '../config/firebase.js';
 import { refreshCartUI } from './cart.js';
 
 const SESSION_KEY = 'ssr_session';
 
-// ── Format Supabase user → app user ──
-
-function formatUser(supaUser, profile = null) {
-  if (!supaUser) return null;
-  return {
-    id: supaUser.id,
-    name: profile?.name || supaUser.user_metadata?.full_name || supaUser.user_metadata?.name || '',
-    phone: profile?.phone || supaUser.user_metadata?.phone || '',
-    email: supaUser.email || '',
-    avatar: supaUser.user_metadata?.avatar_url || '',
-  };
-}
-
-// ── Session cache ──
-
-function cacheSession(user) {
-  if (user) {
-    localStorage.setItem(SESSION_KEY, JSON.stringify(user));
-  } else {
-    localStorage.removeItem(SESSION_KEY);
-  }
-}
-
-// ── Google Sign In ──
-
-export async function signInWithGoogle() {
-  const { data, error } = await supabase.auth.signInWithOAuth({
-    provider: 'google',
-    options: {
-      redirectTo: window.location.origin + '/#/auth-callback',
-      queryParams: {
-        access_type: 'offline',
-        prompt: 'select_account',
-      },
-    },
-  });
-
-  if (error) {
-    return { success: false, error: error.message };
-  }
-
-  // OAuth redirects the user — no immediate return
-  return { success: true, redirecting: true };
-}
-
-// ── Handle OAuth callback (called after Google redirects back) ──
-
-export async function handleAuthCallback() {
-  const { data: { session }, error } = await supabase.auth.getSession();
-
-  if (error || !session?.user) {
-    return { success: false, error: 'Authentication failed. Please try again.' };
-  }
-
-  const user = session.user;
-
-  // Check if profile exists
-  const { data: existing } = await supabase
-    .from('profiles')
-    .select('*')
-    .eq('id', user.id)
-    .limit(1);
-
-  if (existing && existing.length > 0) {
-    const profile = existing[0];
-    if (profile.phone) {
-      // Returning user with phone — fully set up
-      const appUser = formatUser(user, profile);
-      cacheSession(appUser);
-      refreshCartUI();
-      window.dispatchEvent(new CustomEvent('auth-changed', { detail: appUser }));
-      return { success: true, user: appUser, needsPhone: false };
-    } else {
-      // User exists but no phone — needs phone
-      const appUser = formatUser(user, profile);
-      cacheSession(appUser);
-      return { success: true, user: appUser, needsPhone: true };
-    }
-  }
-
-  // New user — create profile, needs phone
-  const newProfile = {
-    id: user.id,
-    name: user.user_metadata?.full_name || user.user_metadata?.name || '',
-    phone: '',
-    email: user.email || '',
-  };
-
-  await supabase.from('profiles').upsert(newProfile, { onConflict: 'id' }).catch(() => {});
-
-  const appUser = formatUser(user, newProfile);
-  cacheSession(appUser);
-  return { success: true, user: appUser, needsPhone: true };
-}
-
-// ── Save phone number after Google sign-in ──
-
-export async function savePhone(phone) {
-  const clean = phone.replace(/[\s\-+]/g, '');
-  if (!/^(91)?[6-9]\d{9}$/.test(clean)) {
-    return { success: false, error: 'Please enter a valid 10-digit Indian mobile number' };
-  }
-
-  const formatted = clean.length === 10 ? '+91' + clean : '+' + clean;
-  const user = getCurrentUser();
-  if (!user) return { success: false, error: 'Not logged in' };
-
-  // Check phone uniqueness
-  const { data: existingPhone } = await supabase
-    .from('profiles')
-    .select('id')
-    .eq('phone', formatted)
-    .neq('id', user.id)
-    .limit(1);
-
-  if (existingPhone && existingPhone.length > 0) {
-    return { success: false, error: 'This phone number is already linked to another account' };
-  }
-
-  // Update profile
-  const { error } = await supabase
-    .from('profiles')
-    .update({ phone: formatted })
-    .eq('id', user.id);
-
-  if (error) {
-    return { success: false, error: 'Failed to save phone number. Please try again.' };
-  }
-
-  // Update cached session
-  const updated = { ...user, phone: formatted };
-  cacheSession(updated);
-  refreshCartUI();
-  window.dispatchEvent(new CustomEvent('auth-changed', { detail: updated }));
-
-  return { success: true, user: updated };
-}
-
-// ── Logout ──
-
-export async function logout() {
-  await supabase.auth.signOut().catch(() => {});
-  localStorage.removeItem(SESSION_KEY);
-  refreshCartUI();
-  window.dispatchEvent(new CustomEvent('auth-changed', { detail: null }));
-}
-
-// ── Get Current User (synchronous) ──
-
-export function getCurrentUser() {
-  try {
-    return JSON.parse(localStorage.getItem(SESSION_KEY)) || null;
-  } catch {
-    return null;
-  }
-}
-
-export function isLoggedIn() {
-  return getCurrentUser() !== null;
-}
-
-// ── Restore session on app init ──
-
-export async function restoreSession() {
-  refreshUserCount().catch(() => {});
-
-  const { data: { session } } = await supabase.auth.getSession();
-  if (session?.user) {
-    // Fetch profile from Supabase
-    const { data: profiles } = await supabase
-      .from('profiles')
-      .select('*')
-      .eq('id', session.user.id)
-      .limit(1);
-
-    const profile = profiles?.[0] || null;
-    const user = formatUser(session.user, profile);
-    cacheSession(user);
-    return user;
-  }
-
-  localStorage.removeItem(SESSION_KEY);
-  return null;
-}
-
-// ── Admin Metrics ──
-
-let cachedUserCount = 0;
-
-export function getAllUsersCount() {
-  return cachedUserCount;
-}
-
-export async function refreshUserCount() {
-  const { count } = await supabase
-    .from('profiles')
-    .select('*', { count: 'exact', head: true });
-  cachedUserCount = count || 0;
-  return cachedUserCount;
-}
-
-// ── WhatsApp OTP Flow ──
-
-function generateOTP() {
-  return Math.floor(100000 + Math.random() * 900000).toString();
-}
+// ── Helpers ──
 
 function normalizePhone(phone) {
   let clean = phone.replace(/[\s\-+]/g, '');
@@ -223,127 +20,289 @@ function normalizePhone(phone) {
   return clean;
 }
 
-export async function sendWhatsAppOTP(phone, name = '') {
+function validatePhone(phone) {
   const clean = phone.replace(/[\s\-+]/g, '');
-  if (!/^(91)?[6-9]\d{9}$/.test(clean)) {
-    return { success: false, error: 'Please enter a valid 10-digit Indian mobile number' };
-  }
+  return /^(91)?[6-9]\d{9}$/.test(clean);
+}
 
-  const formatted = normalizePhone(clean);
-  const code = generateOTP();
-  const expiresAt = new Date(Date.now() + 5 * 60 * 1000).toISOString(); // 5 min expiry
+function formatUser(profile) {
+  if (!profile) return null;
+  return {
+    id: profile.id || '',
+    name: profile.name || '',
+    phone: profile.phone || '',
+    email: profile.email || '',
+    avatar: profile.avatar || '',
+  };
+}
 
-  // Clean up old OTPs for this phone
-  await supabase.from('phone_otps').delete().eq('phone', formatted);
+function cacheSession(user) {
+  if (user) localStorage.setItem(SESSION_KEY, JSON.stringify(user));
+  else localStorage.removeItem(SESSION_KEY);
+}
 
-  // Store OTP
-  const { error } = await supabase.from('phone_otps').insert({
-    phone: formatted,
-    code,
-    name: name || '',
-    expires_at: expiresAt,
+// ============================================
+// 1. GOOGLE SSO (via Supabase Auth)
+// ============================================
+
+export async function signInWithGoogle() {
+  const { error } = await supabase.auth.signInWithOAuth({
+    provider: 'google',
+    options: {
+      redirectTo: window.location.origin + '/#/auth-callback',
+      queryParams: { access_type: 'offline', prompt: 'select_account' },
+    },
   });
+  if (error) return { success: false, error: error.message };
+  return { success: true, redirecting: true };
+}
 
-  if (error) {
-    return { success: false, error: 'Failed to generate OTP. Please try again.' };
+export async function handleAuthCallback() {
+  const { data: { session }, error } = await supabase.auth.getSession();
+  if (error || !session?.user) return { success: false, error: 'Authentication failed.' };
+
+  const user = session.user;
+  const { data: existing } = await supabase.from('profiles').select('*').eq('id', user.id).limit(1);
+
+  if (existing?.length > 0 && existing[0].phone) {
+    const appUser = formatUser({ ...existing[0], avatar: user.user_metadata?.avatar_url });
+    cacheSession(appUser);
+    refreshCartUI();
+    window.dispatchEvent(new CustomEvent('auth-changed', { detail: appUser }));
+    return { success: true, user: appUser, needsPhone: false };
   }
 
-  // Build WhatsApp link
-  const restaurantWA = '918690756828';
-  const message = `My Shree Shyam Restaurant verification code is: ${code}`;
-  const waLink = `https://wa.me/${restaurantWA}?text=${encodeURIComponent(message)}`;
+  // New or incomplete — upsert profile, needs phone
+  await supabase.from('profiles').upsert({
+    id: user.id,
+    name: user.user_metadata?.full_name || user.user_metadata?.name || '',
+    phone: existing?.[0]?.phone || '',
+    email: user.email || '',
+  }, { onConflict: 'id' }).catch(() => {});
 
+  const appUser = formatUser({
+    id: user.id,
+    name: user.user_metadata?.full_name || '',
+    phone: '', email: user.email || '',
+    avatar: user.user_metadata?.avatar_url || '',
+  });
+  cacheSession(appUser);
+  return { success: true, user: appUser, needsPhone: true };
+}
+
+export async function savePhone(phone) {
+  if (!validatePhone(phone)) return { success: false, error: 'Enter a valid 10-digit mobile number' };
+  const formatted = normalizePhone(phone);
+  const user = getCurrentUser();
+  if (!user) return { success: false, error: 'Not signed in' };
+
+  const { data: dup } = await supabase.from('profiles').select('id').eq('phone', formatted).neq('id', user.id).limit(1);
+  if (dup?.length > 0) return { success: false, error: 'This number is already linked to another account' };
+
+  const { error } = await supabase.from('profiles').update({ phone: formatted }).eq('id', user.id);
+  if (error) return { success: false, error: 'Failed to save. Try again.' };
+
+  const updated = { ...user, phone: formatted };
+  cacheSession(updated);
+  refreshCartUI();
+  window.dispatchEvent(new CustomEvent('auth-changed', { detail: updated }));
+  return { success: true, user: updated };
+}
+
+// ============================================
+// 2. FIREBASE PHONE OTP
+// ============================================
+
+let recaptchaVerifier = null;
+let confirmationResult = null;
+
+export function setupRecaptcha(containerId) {
+  if (recaptchaVerifier) { recaptchaVerifier.clear(); recaptchaVerifier = null; }
+  recaptchaVerifier = new RecaptchaVerifier(firebaseAuth, containerId, { size: 'invisible' });
+  return recaptchaVerifier;
+}
+
+export async function sendFirebaseOTP(phone) {
+  if (!validatePhone(phone)) return { success: false, error: 'Enter a valid 10-digit mobile number' };
+  const formatted = normalizePhone(phone);
+
+  try {
+    if (!recaptchaVerifier) return { success: false, error: 'reCAPTCHA not ready. Try again.' };
+    confirmationResult = await signInWithPhoneNumber(firebaseAuth, formatted, recaptchaVerifier);
+    return { success: true, phone: formatted };
+  } catch (err) {
+    recaptchaVerifier = null;
+    if (err.code === 'auth/too-many-requests') return { success: false, error: 'Too many attempts. Try later.' };
+    if (err.code === 'auth/invalid-phone-number') return { success: false, error: 'Invalid phone number.' };
+    return { success: false, error: 'Failed to send OTP. Try again.' };
+  }
+}
+
+export async function verifyFirebaseOTP(otp, name = '') {
+  if (!confirmationResult) return { success: false, error: 'No OTP sent. Request a new one.' };
+  if (!otp || otp.length !== 6) return { success: false, error: 'Enter the 6-digit OTP' };
+
+  try {
+    const result = await confirmationResult.confirm(otp);
+    const phone = result.user.phoneNumber || '';
+
+    // Check Supabase profile
+    const { data: existing } = await supabase.from('profiles').select('*').eq('phone', phone).limit(1);
+
+    if (existing?.length > 0) {
+      const appUser = formatUser(existing[0]);
+      cacheSession(appUser);
+      refreshCartUI();
+      window.dispatchEvent(new CustomEvent('auth-changed', { detail: appUser }));
+      confirmationResult = null;
+      return { success: true, user: appUser, isNew: false };
+    }
+
+    // New user — need name
+    if (!name || name.trim().length < 2) {
+      return { success: false, needsName: true, error: 'Enter your name' };
+    }
+
+    const profile = {
+      id: 'fb_' + result.user.uid,
+      name: name.trim(),
+      phone, email: '',
+    };
+    const { error: insErr } = await supabase.from('profiles').insert(profile);
+    if (insErr?.message?.includes('phone')) return { success: false, error: 'This number is already registered.' };
+    if (insErr) return { success: false, error: 'Registration failed. Try again.' };
+
+    const appUser = formatUser(profile);
+    cacheSession(appUser);
+    refreshCartUI();
+    window.dispatchEvent(new CustomEvent('auth-changed', { detail: appUser }));
+    confirmationResult = null;
+    return { success: true, user: appUser, isNew: true };
+  } catch (err) {
+    if (err.code === 'auth/invalid-verification-code') return { success: false, error: 'Incorrect OTP.' };
+    if (err.code === 'auth/code-expired') return { success: false, error: 'OTP expired. Request a new one.' };
+    return { success: false, error: 'Verification failed. Try again.' };
+  }
+}
+
+// ============================================
+// 3. WHATSAPP OTP (DIY — free)
+// ============================================
+
+function generateOTP() { return Math.floor(100000 + Math.random() * 900000).toString(); }
+
+export async function sendWhatsAppOTP(phone, name = '') {
+  if (!validatePhone(phone)) return { success: false, error: 'Enter a valid 10-digit mobile number' };
+  const formatted = normalizePhone(phone);
+
+  const code = generateOTP();
+  const expiresAt = new Date(Date.now() + 5 * 60 * 1000).toISOString();
+
+  await supabase.from('phone_otps').delete().eq('phone', formatted);
+  const { error } = await supabase.from('phone_otps').insert({ phone: formatted, code, name, expires_at: expiresAt });
+  if (error) return { success: false, error: 'Failed to generate OTP.' };
+
+  const waLink = `https://wa.me/918690756828?text=${encodeURIComponent(`My Shree Shyam verification code is: ${code}`)}`;
   return { success: true, code, waLink, phone: formatted };
 }
 
 export async function verifyWhatsAppOTP(phone, code, name = '') {
-  const formatted = normalizePhone(phone.replace(/[\s\-+]/g, ''));
+  const formatted = normalizePhone(phone);
+  if (!code || code.length !== 6) return { success: false, error: 'Enter the 6-digit code' };
 
-  if (!code || code.length !== 6) {
-    return { success: false, error: 'Please enter the 6-digit code' };
-  }
+  const { data: otps } = await supabase.from('phone_otps').select('*')
+    .eq('phone', formatted).eq('code', code).gt('expires_at', new Date().toISOString()).limit(1);
+  if (!otps?.length) return { success: false, error: 'Invalid or expired code.' };
 
-  // Look up OTP
-  const { data: otps } = await supabase
-    .from('phone_otps')
-    .select('*')
-    .eq('phone', formatted)
-    .eq('code', code)
-    .gt('expires_at', new Date().toISOString())
-    .limit(1);
-
-  if (!otps || otps.length === 0) {
-    return { success: false, error: 'Invalid or expired code. Please request a new one.' };
-  }
-
-  // OTP valid — check if user exists
-  const { data: existing } = await supabase
-    .from('profiles')
-    .select('*')
-    .eq('phone', formatted)
-    .limit(1);
+  const { data: existing } = await supabase.from('profiles').select('*').eq('phone', formatted).limit(1);
 
   let profile;
-
-  if (existing && existing.length > 0) {
+  if (existing?.length > 0) {
     profile = existing[0];
   } else {
-    // New user — need name
-    const sanitizedName = (name || '').trim();
-    if (!sanitizedName || sanitizedName.length < 2) {
-      return { success: false, error: 'Please enter your name', needsName: true };
-    }
-
-    const newProfile = {
-      id: 'wa_' + Date.now().toString(36) + Math.random().toString(36).slice(2, 6),
-      name: sanitizedName,
-      phone: formatted,
-      email: '',
-    };
-
-    const { error: insertError } = await supabase.from('profiles').insert(newProfile);
-    if (insertError) {
-      if (insertError.message.includes('phone')) {
-        return { success: false, error: 'This phone number is already registered.' };
-      }
-      return { success: false, error: 'Registration failed. Please try again.' };
-    }
-    profile = newProfile;
+    if (!name || name.trim().length < 2) return { success: false, error: 'Enter your name', needsName: true };
+    profile = { id: 'wa_' + Date.now().toString(36) + Math.random().toString(36).slice(2, 6), name: name.trim(), phone: formatted, email: '' };
+    const { error: insErr } = await supabase.from('profiles').insert(profile);
+    if (insErr?.message?.includes('phone')) return { success: false, error: 'Number already registered.' };
+    if (insErr) return { success: false, error: 'Registration failed.' };
   }
 
-  // Clean up used OTP
   await supabase.from('phone_otps').delete().eq('phone', formatted);
-
-  // Set session
-  const user = {
-    id: profile.id,
-    name: profile.name || name || '',
-    phone: profile.phone || formatted,
-    email: profile.email || '',
-  };
-
+  const user = formatUser(profile);
   cacheSession(user);
   refreshCartUI();
   window.dispatchEvent(new CustomEvent('auth-changed', { detail: user }));
-
-  return { success: true, user, isNew: !existing || existing.length === 0 };
+  return { success: true, user, isNew: !existing?.length };
 }
 
-// ── Listen for auth state changes ──
+// ============================================
+// COMMON
+// ============================================
 
+export async function logout() {
+  try { await supabase.auth.signOut(); } catch {}
+  try { await fbSignOut(firebaseAuth); } catch {}
+  localStorage.removeItem(SESSION_KEY);
+  refreshCartUI();
+  window.dispatchEvent(new CustomEvent('auth-changed', { detail: null }));
+}
+
+export function getCurrentUser() {
+  try { return JSON.parse(localStorage.getItem(SESSION_KEY)) || null; } catch { return null; }
+}
+
+export function isLoggedIn() { return getCurrentUser() !== null; }
+
+export async function restoreSession() {
+  refreshUserCount().catch(() => {});
+
+  // Check Supabase session (Google SSO)
+  const { data: { session } } = await supabase.auth.getSession();
+  if (session?.user) {
+    const { data: profiles } = await supabase.from('profiles').select('*').eq('id', session.user.id).limit(1);
+    if (profiles?.[0]) {
+      const user = formatUser({ ...profiles[0], avatar: session.user.user_metadata?.avatar_url });
+      cacheSession(user);
+      return user;
+    }
+  }
+
+  // Check Firebase session (Phone OTP)
+  return new Promise((resolve) => {
+    const unsub = firebaseAuth.onAuthStateChanged(async (fbUser) => {
+      unsub();
+      if (fbUser?.phoneNumber) {
+        const { data } = await supabase.from('profiles').select('*').eq('phone', fbUser.phoneNumber).limit(1);
+        if (data?.[0]) { cacheSession(formatUser(data[0])); resolve(formatUser(data[0])); return; }
+      }
+      // Check localStorage cache (WhatsApp OTP sessions)
+      const cached = getCurrentUser();
+      if (cached?.phone) {
+        const { data } = await supabase.from('profiles').select('*').eq('phone', cached.phone).limit(1);
+        if (data?.[0]) { cacheSession(formatUser(data[0])); resolve(formatUser(data[0])); return; }
+      }
+      localStorage.removeItem(SESSION_KEY);
+      resolve(null);
+    });
+  });
+}
+
+let cachedUserCount = 0;
+export function getAllUsersCount() { return cachedUserCount; }
+export async function refreshUserCount() {
+  const { count } = await supabase.from('profiles').select('*', { count: 'exact', head: true });
+  cachedUserCount = count || 0;
+}
+
+// Supabase auth state listener (for Google SSO)
 supabase.auth.onAuthStateChange(async (event, session) => {
   if (event === 'SIGNED_IN' && session?.user) {
-    const { data: profiles } = await supabase
-      .from('profiles')
-      .select('*')
-      .eq('id', session.user.id)
-      .limit(1);
-
-    const profile = profiles?.[0] || null;
-    const user = formatUser(session.user, profile);
-    cacheSession(user);
-    refreshCartUI();
-    window.dispatchEvent(new CustomEvent('auth-changed', { detail: user }));
+    const { data: profiles } = await supabase.from('profiles').select('*').eq('id', session.user.id).limit(1);
+    if (profiles?.[0]) {
+      cacheSession(formatUser({ ...profiles[0], avatar: session.user.user_metadata?.avatar_url }));
+      refreshCartUI();
+      window.dispatchEvent(new CustomEvent('auth-changed', { detail: formatUser(profiles[0]) }));
+    }
   } else if (event === 'SIGNED_OUT') {
     localStorage.removeItem(SESSION_KEY);
     refreshCartUI();
