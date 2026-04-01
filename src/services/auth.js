@@ -186,56 +186,6 @@ export async function verifyFirebaseOTP(otp, name = '') {
 }
 
 // ============================================
-// 3. WHATSAPP OTP (DIY — free)
-// ============================================
-
-function generateOTP() { return Math.floor(100000 + Math.random() * 900000).toString(); }
-
-export async function sendWhatsAppOTP(phone, name = '') {
-  if (!validatePhone(phone)) return { success: false, error: 'Enter a valid 10-digit mobile number' };
-  const formatted = normalizePhone(phone);
-
-  const code = generateOTP();
-  const expiresAt = new Date(Date.now() + 5 * 60 * 1000).toISOString();
-
-  await supabase.from('phone_otps').delete().eq('phone', formatted);
-  const { error } = await supabase.from('phone_otps').insert({ phone: formatted, code, name, expires_at: expiresAt });
-  if (error) return { success: false, error: 'Failed to generate OTP.' };
-
-  const waLink = `https://wa.me/918690756828?text=${encodeURIComponent(`My Shree Shyam verification code is: ${code}`)}`;
-  return { success: true, code, waLink, phone: formatted };
-}
-
-export async function verifyWhatsAppOTP(phone, code, name = '') {
-  const formatted = normalizePhone(phone);
-  if (!code || code.length !== 6) return { success: false, error: 'Enter the 6-digit code' };
-
-  const { data: otps } = await supabase.from('phone_otps').select('*')
-    .eq('phone', formatted).eq('code', code).gt('expires_at', new Date().toISOString()).limit(1);
-  if (!otps?.length) return { success: false, error: 'Invalid or expired code.' };
-
-  const { data: existing } = await supabase.from('profiles').select('*').eq('phone', formatted).limit(1);
-
-  let profile;
-  if (existing?.length > 0) {
-    profile = existing[0];
-  } else {
-    if (!name || name.trim().length < 2) return { success: false, error: 'Enter your name', needsName: true };
-    profile = { id: 'wa_' + Date.now().toString(36) + Math.random().toString(36).slice(2, 6), name: name.trim(), phone: formatted, email: '' };
-    const { error: insErr } = await supabase.from('profiles').insert(profile);
-    if (insErr?.message?.includes('phone')) return { success: false, error: 'Number already registered.' };
-    if (insErr) return { success: false, error: 'Registration failed.' };
-  }
-
-  await supabase.from('phone_otps').delete().eq('phone', formatted);
-  const user = formatUser(profile);
-  cacheSession(user);
-  refreshCartUI();
-  window.dispatchEvent(new CustomEvent('auth-changed', { detail: user }));
-  return { success: true, user, isNew: !existing?.length };
-}
-
-// ============================================
 // COMMON
 // ============================================
 
