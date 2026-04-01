@@ -209,6 +209,8 @@ async function syncSubscribers() {
   localStorage.setItem('ssr_subscribers', JSON.stringify(formatted));
 }
 
+export async function fetchMenuFromSupabase() { return syncMenuItems(); }
+
 async function syncMenuItems() {
   const items = await fetchFromSupabase('menu_items', { order: ['sort_order', true] });
   if (!items) return;

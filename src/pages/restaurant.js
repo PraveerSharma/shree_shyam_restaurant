@@ -104,7 +104,13 @@ export function renderRestaurantPage() {
 }
 
 export function initRestaurantPage() {
-  renderProductsGrid(getFilteredProducts(), 'rest-products-grid');
+  const products = getFilteredProducts();
+  if (products.length === 0) {
+    const grid = document.getElementById('rest-products-grid');
+    if (grid) grid.innerHTML = '<div style="text-align:center;padding:3rem;color:var(--clr-gray-500);grid-column:1/-1;">Loading menu items...</div>';
+  } else {
+    renderProductsGrid(products, 'rest-products-grid');
+  }
 
   // Category tabs
   document.querySelectorAll('#rest-category-tabs .category-tab').forEach(tab => {

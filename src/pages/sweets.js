@@ -104,8 +104,14 @@ export function renderSweetsPage() {
 }
 
 export function initSweetsPage() {
-  // Render products
-  renderProductsGrid(getFilteredProducts(), 'sweets-products-grid');
+  // Render products (may be empty if Supabase sync hasn't completed yet)
+  const products = getFilteredProducts();
+  if (products.length === 0) {
+    const grid = document.getElementById('sweets-products-grid');
+    if (grid) grid.innerHTML = '<div style="text-align:center;padding:3rem;color:var(--clr-gray-500);grid-column:1/-1;">Loading menu items...</div>';
+  } else {
+    renderProductsGrid(products, 'sweets-products-grid');
+  }
 
   // Category tabs
   document.querySelectorAll('#sweet-category-tabs .category-tab').forEach(tab => {

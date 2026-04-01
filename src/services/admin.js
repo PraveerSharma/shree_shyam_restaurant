@@ -3,11 +3,9 @@
 // Item/price management with localStorage
 // ============================================
 
-import { DEFAULT_SWEETS } from '../config/sweets-data.js';
-import { DEFAULT_RESTAURANT_ITEMS } from '../config/restaurant-data.js';
 import { SITE_CONFIG } from '../config/site.js';
 import { sanitizeInput } from '../utils/dom.js';
-import { dbSaveMenuItem, dbDeleteMenuItem, dbSaveAllMenuItems } from './db.js';
+import { dbSaveMenuItem, dbDeleteMenuItem, dbSaveAllMenuItems, fetchMenuFromSupabase } from './db.js';
 
 const SWEETS_OVERRIDE_KEY = 'ssr_sweets_custom';
 const RESTAURANT_OVERRIDE_KEY = 'ssr_restaurant_custom';
@@ -44,21 +42,21 @@ export function adminLogout() {
   sessionStorage.removeItem(ADMIN_SESSION_KEY);
 }
 
-// Get items (with overrides)
+// Get items from localStorage cache (populated by Supabase sync on app init)
 export function getSweetsItems() {
   try {
-    const custom = JSON.parse(localStorage.getItem(SWEETS_OVERRIDE_KEY));
-    if (custom && Array.isArray(custom)) return custom;
-  } catch { /* use defaults */ }
-  return [...DEFAULT_SWEETS];
+    const items = JSON.parse(localStorage.getItem(SWEETS_OVERRIDE_KEY));
+    if (items && Array.isArray(items)) return items;
+  } catch { /* empty */ }
+  return [];
 }
 
 export function getRestaurantItems() {
   try {
-    const custom = JSON.parse(localStorage.getItem(RESTAURANT_OVERRIDE_KEY));
-    if (custom && Array.isArray(custom)) return custom;
-  } catch { /* use defaults */ }
-  return [...DEFAULT_RESTAURANT_ITEMS];
+    const items = JSON.parse(localStorage.getItem(RESTAURANT_OVERRIDE_KEY));
+    if (items && Array.isArray(items)) return items;
+  } catch { /* empty */ }
+  return [];
 }
 
 // Update item
@@ -117,10 +115,10 @@ export function deleteItem(type, itemId) {
   return true;
 }
 
-// Reset to defaults
-export function resetToDefaults(type) {
+// Reset: re-fetch from Supabase (the DB is the source of truth)
+export async function resetToDefaults(type) {
   const key = type === 'sweets' ? SWEETS_OVERRIDE_KEY : RESTAURANT_OVERRIDE_KEY;
   localStorage.removeItem(key);
-  const defaults = type === 'sweets' ? DEFAULT_SWEETS : DEFAULT_RESTAURANT_ITEMS;
-  dbSaveAllMenuItems(defaults, type).catch(err => console.warn('[DB]', err));
+  // Pull fresh from Supabase
+  await fetchMenuFromSupabase();
 }
