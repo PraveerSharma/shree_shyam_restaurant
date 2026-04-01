@@ -16,6 +16,12 @@
   .info-grid {
     grid-template-columns: 1fr 1fr;
   }
+  .offerings-grid {
+    grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+  }
+  .visit-grid {
+    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  }
   .info-card:last-child {
     grid-column: 1 / -1;
     max-width: 450px;
@@ -83,6 +89,23 @@
   }
   .info-card:last-child {
     max-width: 100%;
+  }
+
+  .offerings-grid {
+    grid-template-columns: 1fr;
+  }
+  .offering-img {
+    height: 180px;
+  }
+  .visit-grid {
+    grid-template-columns: 1fr;
+    gap: 1rem;
+  }
+  .highlights-row {
+    gap: 1rem;
+  }
+  .highlight-item {
+    font-size: 0.78rem;
   }
   
   .cta-buttons {

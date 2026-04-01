@@ -90,82 +90,191 @@
   animation: fadeInUp 0.8s var(--ease-smooth) 0.6s both;
 }
 
-/* ── INFO CARDS SECTION ── */
-.info-section {
+/* ── HIGHLIGHTS STRIP ── */
+.home-highlights {
+  background: var(--clr-charcoal);
+  padding: 1.25rem 0;
+}
+.highlights-row {
+  display: flex;
+  justify-content: center;
+  gap: 2rem;
+  flex-wrap: wrap;
+}
+.highlight-item {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  color: rgba(255,255,255,0.85);
+  font-size: 0.85rem;
+  font-weight: 500;
+}
+.highlight-icon {
+  font-size: 1.1rem;
+}
+
+/* ── SECTION HEADER ── */
+.section-header {
+  text-align: center;
+  margin-bottom: 2.5rem;
+}
+.section-tag {
+  display: inline-block;
+  padding: 4px 14px;
+  background: rgba(212, 115, 26, 0.1);
+  color: var(--clr-saffron);
+  font-size: 0.75rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  border-radius: var(--radius-full);
+  margin-bottom: 0.75rem;
+}
+.section-header h2 {
+  font-size: clamp(1.5rem, 4vw, 2.2rem);
+  color: var(--clr-charcoal);
+  margin-bottom: 0.5rem;
+}
+.section-header p {
+  color: var(--clr-gray-500);
+  font-size: 0.95rem;
+  max-width: 500px;
+  margin: 0 auto;
+}
+
+/* ── OFFERINGS GRID ── */
+.home-offerings {
   padding: var(--sp-section) 0;
   background: var(--clr-cream);
 }
-.info-grid {
+.offerings-grid {
   display: grid;
   grid-template-columns: repeat(3, 1fr);
-  gap: var(--sp-xl);
+  gap: 1.5rem;
 }
-.info-card {
+.offering-card {
   background: white;
   border-radius: var(--radius-lg);
-  padding: var(--sp-2xl) var(--sp-xl);
-  text-align: center;
-  box-shadow: var(--shadow-sm);
-  transition: all var(--dur-normal) var(--ease-smooth);
-  border: 1px solid rgba(0,0,0,0.04);
-}
-.info-card:hover {
-  transform: translateY(-4px);
-  box-shadow: var(--shadow-lg);
-  border-color: rgba(212, 115, 26, 0.15);
-}
-.info-card-icon {
-  width: 64px;
-  height: 64px;
-  margin: 0 auto var(--sp-lg);
-  background: rgba(212, 115, 26, 0.1);
-  border-radius: var(--radius-lg);
+  overflow: hidden;
+  border: 1px solid var(--clr-gray-100);
+  transition: all 0.25s ease;
+  text-decoration: none;
   display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 1.8rem;
+  flex-direction: column;
 }
-.info-card h3 {
-  font-family: var(--ff-heading);
-  font-size: var(--fs-h4);
-  margin-bottom: var(--sp-sm);
+.offering-card:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 12px 32px rgba(0,0,0,0.08);
+  border-color: var(--clr-saffron-light);
+}
+.offering-img {
+  height: 200px;
+  overflow: hidden;
+}
+.offering-img img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  transition: transform 0.4s ease;
+}
+.offering-card:hover .offering-img img {
+  transform: scale(1.05);
+}
+.offering-body {
+  padding: 1.25rem;
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+}
+.offering-body h3 {
+  font-size: 1.1rem;
   color: var(--clr-charcoal);
+  margin-bottom: 0.4rem;
 }
-.info-card p {
-  font-size: var(--fs-small);
+.offering-body p {
+  font-size: 0.82rem;
   color: var(--clr-gray-500);
-  line-height: 1.7;
+  line-height: 1.6;
+  flex: 1;
 }
-.info-card a {
-  color: var(--clr-saffron);
+.offering-link {
+  display: inline-block;
+  margin-top: 0.75rem;
+  font-size: 0.82rem;
   font-weight: 600;
-  transition: color var(--dur-fast);
+  color: var(--clr-saffron);
+  transition: color 0.2s;
 }
-.info-card a:hover { color: var(--clr-saffron-dark); }
+.offering-card:hover .offering-link {
+  color: var(--clr-saffron-dark);
+}
 
+/* ── VISIT US ── */
+.home-visit {
+  padding: var(--sp-section) 0;
+  background: white;
+}
+.visit-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 1.25rem;
+  margin-bottom: 2rem;
+}
+.visit-card {
+  text-align: center;
+  padding: 1.5rem;
+  border-radius: var(--radius-lg);
+  border: 1px solid var(--clr-gray-100);
+  background: var(--clr-gray-50);
+}
+.visit-icon {
+  font-size: 1.75rem;
+  margin-bottom: 0.75rem;
+}
+.visit-card h3 {
+  font-size: 1rem;
+  color: var(--clr-charcoal);
+  margin-bottom: 0.4rem;
+}
+.visit-card p {
+  font-size: 0.82rem;
+  color: var(--clr-gray-500);
+  line-height: 1.6;
+}
+.visit-link {
+  display: inline-block;
+  margin-top: 0.5rem;
+  font-size: 0.82rem;
+  font-weight: 600;
+  color: var(--clr-saffron);
+}
+.visit-badge-open {
+  display: inline-block;
+  margin-top: 0.5rem;
+  padding: 3px 10px;
+  background: #D1FAE5;
+  color: #065F46;
+  font-size: 0.72rem;
+  font-weight: 600;
+  border-radius: 50px;
+}
+.visit-map-wrapper {
+  border-radius: var(--radius-lg);
+  overflow: hidden;
+  border: 1px solid var(--clr-gray-200);
+  box-shadow: var(--shadow-sm);
+}
 .map-embed {
   width: 100%;
-  height: 200px;
+  height: 280px;
   border: none;
-  border-radius: var(--radius-md);
-  margin-top: var(--sp-md);
+  display: block;
 }
 
-/* ── CTA Section ── */
-.cta-section {
+/* ── FINAL CTA ── */
+.home-cta {
   padding: var(--sp-3xl) 0;
   background: var(--grad-warm);
-  text-align: center;
-}
-.cta-section h2 {
-  font-size: var(--fs-h2);
-  color: var(--clr-charcoal);
-  margin-bottom: var(--sp-sm);
-}
-.cta-section p {
-  color: var(--clr-gray-500);
-  margin-bottom: var(--sp-xl);
-  font-size: 1.05rem;
 }
 .cta-buttons {
   display: flex;
