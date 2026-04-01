@@ -745,11 +745,12 @@ export function initAdminPage() {
 
   // Reset
   document.getElementById('admin-reset-btn')?.addEventListener('click', () => {
-    showConfirm(`Reset all ${activeTab} items to defaults? Custom changes will be lost.`, () => {
-      resetToDefaults(activeTab);
-      showToast('Reset to defaults', 'info');
+    showConfirm(`Re-sync ${activeTab} items from database? Local changes will be overwritten.`, async () => {
+      showToast('Syncing from database...', 'info');
+      await resetToDefaults(activeTab);
+      showToast('Menu synced from database', 'success');
       window.dispatchEvent(new HashChangeEvent('hashchange'));
-    });
+    }, 'Yes, Sync');
   });
 
   // Manual Order Toggle (within Orders tab)
@@ -974,32 +975,23 @@ export function initAdminPage() {
 
     // Delegated actions for subscriber list
     document.querySelector('.subscribers-dashboard')?.addEventListener('click', (e) => {
+      // Clickable list item (whole row navigates to detail)
+      const listItem = e.target.closest('.sub-list-item');
+      if (listItem && listItem.dataset.id) {
+        selectedSubscriberId = listItem.dataset.id;
+        window.dispatchEvent(new HashChangeEvent('hashchange'));
+        return;
+      }
+
+      // Button actions (empty state add button)
       const btn = e.target.closest('button');
       if (!btn) return;
       const id = btn.dataset.id;
       if (!id) return;
 
-      if (btn.classList.contains('view-sub-btn') || btn.classList.contains('quick-add-bill-btn')) {
+      if (btn.classList.contains('view-sub-btn')) {
         selectedSubscriberId = id;
         window.dispatchEvent(new HashChangeEvent('hashchange'));
-      }
-
-      if (btn.classList.contains('clear-sub-btn')) {
-        showConfirm('Clear all outstanding bills for this subscriber?', () => {
-          if (clearOutstandingBill(id).success) {
-            showToast('Account balance cleared', 'success');
-            window.dispatchEvent(new HashChangeEvent('hashchange'));
-          }
-        });
-      }
-
-      if (btn.classList.contains('share-sub-btn')) {
-        const sub = getSubscribers().find(s => s.userId === id);
-        if (sub) {
-          const text = generateBillSummary(sub);
-          const url = `https://wa.me/${sub.phone.replace(/[\s\-\+]/g, '').replace(/^91/, '91')}?text=${encodeURIComponent(text)}`;
-          window.open(url, '_blank');
-        }
       }
     });
 
@@ -1011,21 +1003,12 @@ export function initAdminPage() {
       if (!id) return;
 
       if (btn.classList.contains('clear-sub-btn')) {
-        showConfirm('Clear all outstanding bills for this subscriber?', () => {
+        showConfirm('Mark all bills as paid for this subscriber?', () => {
           if (clearOutstandingBill(id).success) {
-            showToast('Account balance cleared', 'success');
+            showToast('All bills marked as paid', 'success');
             window.dispatchEvent(new HashChangeEvent('hashchange'));
           }
-        });
-      }
-
-      if (btn.classList.contains('share-sub-btn')) {
-        const sub = getSubscribers().find(s => s.userId === id);
-        if (sub) {
-          const text = generateBillSummary(sub);
-          const url = `https://wa.me/${sub.phone.replace(/[\s\-\+]/g, '').replace(/^91/, '91')}?text=${encodeURIComponent(text)}`;
-          window.open(url, '_blank');
-        }
+        }, 'Yes, Mark Paid');
       }
     });
 
@@ -1194,70 +1177,49 @@ function renderSubscribersDashboard() {
 
   const subs = getSubscribers();
   const totalOutstanding = subs.reduce((sum, s) => sum + (s.outstandingBalance || 0), 0);
+  const totalCollected = getTotalClearedRevenue();
   const filtered = filterSubscribers(subs, subSearchQuery);
 
   return `
     <div class="subscribers-dashboard page-enter">
-      <!-- Stats Row -->
-      <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 1rem; margin-bottom: 2rem;">
-        <div class="sub-stat-card">
-          <div class="stat-icon" style="background: #D1FAE5; color: #065F46;">💰</div>
-          <div class="stat-label">Revenue (Cleared)</div>
-          <div class="stat-value" style="color: var(--clr-veg);">${formatPrice(getTotalClearedRevenue())}</div>
+      <!-- Header: Stats inline with title -->
+      <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 1.5rem; flex-wrap: wrap; gap: 1rem;">
+        <div>
+          <h2 style="margin: 0 0 0.25rem 0; font-size: 1.25rem; color: var(--clr-charcoal);">Monthly Billing</h2>
+          <p style="margin: 0; font-size: 0.85rem; color: var(--clr-gray-500);">${subs.length} subscriber${subs.length !== 1 ? 's' : ''} · ${formatPrice(totalCollected)} collected · <span style="color: var(--clr-error); font-weight: 600;">${formatPrice(totalOutstanding)} pending</span></p>
         </div>
-        <div class="sub-stat-card">
-          <div class="stat-icon" style="background: #FEE2E2; color: #991B1B;">📊</div>
-          <div class="stat-label">Outstanding</div>
-          <div class="stat-value" style="color: var(--clr-error);">${formatPrice(totalOutstanding)}</div>
-        </div>
-        <div class="sub-stat-card">
-          <div class="stat-icon" style="background: #DBEAFE; color: #1E40AF;">👥</div>
-          <div class="stat-label">Subscribers</div>
-          <div class="stat-value" style="color: var(--clr-info);">${subs.length}</div>
-        </div>
+        <button class="btn btn-primary btn-sm" id="add-sub-btn" style="white-space: nowrap;">+ Add Subscriber</button>
       </div>
 
-      <!-- Search & Add -->
-      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem; gap: 1rem; flex-wrap: wrap;">
-        <div style="position: relative; flex: 1; min-width: 200px; max-width: 400px;">
-          <span style="position: absolute; left: 1rem; top: 50%; transform: translateY(-50%); color: var(--clr-gray-400); pointer-events: none;">🔍</span>
-          <input type="text" id="sub-search" class="form-input" placeholder="Search name, phone, or address..." value="${subSearchQuery}" style="padding-left: 2.5rem; padding-right: 2.5rem;">
-          <button id="sub-search-clear" style="position: absolute; right: 0.75rem; top: 50%; transform: translateY(-50%); background: none; border: none; color: var(--clr-gray-400); cursor: pointer; font-size: 1.1rem; padding: 2px; line-height: 1; display: ${subSearchQuery ? 'block' : 'none'};">✕</button>
-        </div>
-        <div style="display: flex; align-items: center; gap: 0.75rem;">
-          <span id="sub-search-count" style="font-size: 0.8rem; color: var(--clr-gray-500);">${subSearchQuery ? `${filtered.length} of ${subs.length}` : ''}</span>
-          <button class="btn btn-primary" id="add-sub-btn" style="white-space: nowrap;">+ New Subscriber</button>
-        </div>
-      </div>
-
-      <!-- Add Form -->
+      <!-- Add Form (collapsed by default) -->
       ${showAddSubForm ? `
-        <div class="add-sub-form">
-          <h3>Add New Subscriber</h3>
-          <form id="new-sub-form">
-            <div class="form-row">
-              <div class="form-group" style="margin: 0;">
-                <label class="form-label">Full Name</label>
-                <input type="text" class="form-input" id="new-sub-name" required placeholder="E.g. Rajesh Kumar">
-              </div>
-              <div class="form-group" style="margin: 0;">
-                <label class="form-label">Phone Number</label>
-                <input type="tel" class="form-input" id="new-sub-phone" required placeholder="98XXXXXXXX">
-              </div>
-              <div class="form-group" style="margin: 0;">
-                <label class="form-label">Address</label>
-                <input type="text" class="form-input" id="new-sub-address" placeholder="E.g. Vaishali Nagar">
-              </div>
+        <div style="background: white; border: 1px solid var(--clr-gray-200); border-radius: var(--radius-lg); padding: 1.25rem; margin-bottom: 1.5rem;">
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
+            <h3 style="margin: 0; font-size: 1rem; color: var(--clr-charcoal);">New Subscriber</h3>
+            <button type="button" style="background: none; border: none; color: var(--clr-gray-400); cursor: pointer; font-size: 1.2rem;" id="cancel-sub-btn">✕</button>
+          </div>
+          <form id="new-sub-form" style="display: flex; flex-direction: column; gap: 0.75rem;">
+            <input type="text" class="form-input" id="new-sub-name" required placeholder="Full name">
+            <div class="form-row-2col">
+              <input type="tel" class="form-input" id="new-sub-phone" required placeholder="Phone number">
+              <input type="text" class="form-input" id="new-sub-address" placeholder="Address (optional)">
             </div>
-            <div class="form-actions">
-              <button type="button" class="btn btn-ghost" id="cancel-sub-btn">Cancel</button>
-              <button type="submit" class="btn btn-primary">Save Subscriber</button>
-            </div>
+            <button type="submit" class="btn btn-primary" style="align-self: flex-end;">Save</button>
           </form>
         </div>
       ` : ''}
 
-      <!-- Subscriber Cards -->
+      <!-- Search -->
+      ${subs.length > 0 ? `
+        <div style="position: relative; margin-bottom: 1rem; max-width: 100%;">
+          <span style="position: absolute; left: 0.75rem; top: 50%; transform: translateY(-50%); color: var(--clr-gray-400); pointer-events: none; font-size: 0.85rem;">🔍</span>
+          <input type="text" id="sub-search" class="form-input" placeholder="Search subscribers..." value="${subSearchQuery}" style="padding-left: 2.2rem; padding-right: 2rem; height: 38px; font-size: 0.85rem;">
+          ${subSearchQuery ? `<button id="sub-search-clear" style="position: absolute; right: 0.5rem; top: 50%; transform: translateY(-50%); background: none; border: none; color: var(--clr-gray-400); cursor: pointer; font-size: 1rem; line-height: 1;">✕</button>` : ''}
+        </div>
+        ${subSearchQuery ? `<div id="sub-search-count" style="font-size: 0.8rem; color: var(--clr-gray-500); margin-bottom: 0.75rem;">${filtered.length} result${filtered.length !== 1 ? 's' : ''}</div>` : ''}
+      ` : ''}
+
+      <!-- Subscriber List -->
       <div id="sub-cards-container">
         ${renderSubscriberCards(filtered, subSearchQuery, subs.length)}
       </div>
@@ -1282,39 +1244,31 @@ function renderSubscriberCards(filtered, query, totalCount) {
       <div class="empty-state">
         <div class="empty-icon">👥</div>
         <h2>${query ? 'No results found' : 'No subscribers yet'}</h2>
-        <p>${query ? `No subscribers match "${query}"` : 'Add your first regular subscriber to start managing monthly billing.'}</p>
-        ${!query ? '<button class="btn btn-primary" id="add-sub-btn-empty">+ Add First Subscriber</button>' : ''}
+        <p>${query ? `No match for "${query}"` : 'Add your first subscriber to start managing monthly billing.'}</p>
+        ${!query ? '<button class="btn btn-primary" id="add-sub-btn-empty">+ Add Subscriber</button>' : ''}
       </div>
     `;
   }
 
+  // Render as a clean list (not grid cards) — more scannable
   return `
-    <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 1rem;">
-      ${filtered.map(sub => `
-        <div class="sub-card" data-sub-id="${sub.userId}">
-          <div class="sub-card-header">
-            <div style="display: flex; gap: 0.75rem; align-items: center;">
-              <div class="sub-avatar">${sub.name.charAt(0).toUpperCase()}</div>
-              <div>
-                <div class="sub-name">${sub.name}</div>
-                <div class="sub-meta">📞 ${formatPhoneNumber(sub.phone)} ${sub.address ? `· 📍 ${sub.address}` : ''}</div>
-              </div>
-            </div>
-            <div class="sub-balance" style="color: ${sub.outstandingBalance > 0 ? 'var(--clr-error)' : 'var(--clr-veg)'};">
-              ${formatPrice(sub.outstandingBalance)}
-            </div>
+    <div style="display: flex; flex-direction: column; gap: 0.5rem;">
+      ${filtered.map(sub => {
+        const hasBalance = sub.outstandingBalance > 0;
+        return `
+        <div class="sub-list-item view-sub-btn" data-id="${sub.userId}" style="display: flex; align-items: center; gap: 1rem; padding: 0.85rem 1rem; background: white; border: 1px solid var(--clr-gray-200); border-radius: var(--radius-md); cursor: pointer; transition: all 0.15s ease;" onmouseover="this.style.borderColor='var(--clr-saffron-light)';this.style.boxShadow='0 2px 8px rgba(212,115,26,0.08)'" onmouseout="this.style.borderColor='var(--clr-gray-200)';this.style.boxShadow='none'">
+          <div class="sub-avatar" style="width: 38px; height: 38px; font-size: 0.9rem; flex-shrink: 0;">${sub.name.charAt(0).toUpperCase()}</div>
+          <div style="flex: 1; min-width: 0;">
+            <div style="font-weight: 600; font-size: 0.95rem; color: var(--clr-charcoal); overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">${sub.name}</div>
+            <div style="font-size: 0.75rem; color: var(--clr-gray-500); overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">${formatPhoneNumber(sub.phone)}${sub.address ? ` · ${sub.address}` : ''}</div>
           </div>
-          <div style="font-size: 0.75rem; color: var(--clr-gray-400); margin-bottom: 0.5rem;">Joined ${new Date(sub.joinedAt).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })}</div>
-          <div class="sub-card-actions">
-            <button class="btn btn-sm btn-outline view-sub-btn" data-id="${sub.userId}">View Details</button>
-            <button class="btn btn-sm btn-outline quick-add-bill-btn" data-id="${sub.userId}">+ Add Bill</button>
-            <button class="btn btn-sm share-sub-btn" data-id="${sub.userId}" style="background: #E6F4EA; color: #1E7E34; border: 1px solid #C2E7CB;">Share</button>
-            ${sub.outstandingBalance > 0 ? `
-              <button class="btn btn-sm clear-sub-btn" data-id="${sub.userId}" style="background: var(--clr-info); color: white; border: none;">Clear All</button>
-            ` : ''}
+          <div style="text-align: right; flex-shrink: 0;">
+            <div style="font-weight: 700; font-size: 1rem; color: ${hasBalance ? 'var(--clr-error)' : 'var(--clr-veg)'};">${formatPrice(sub.outstandingBalance)}</div>
+            ${hasBalance ? `<div style="font-size: 0.65rem; color: var(--clr-gray-400);">pending</div>` : `<div style="font-size: 0.65rem; color: var(--clr-veg);">clear</div>`}
           </div>
+          <div style="color: var(--clr-gray-300); font-size: 1.1rem; flex-shrink: 0;">›</div>
         </div>
-      `).join('')}
+      `}).join('')}
     </div>
   `;
 }
@@ -1345,92 +1299,87 @@ function renderSubscriberDetail() {
     return renderSubscribersDashboard();
   }
 
-  const pendingCount = sub.billingHistory.filter(h => h.status === 'pending' || h.status === 'pending_price').length;
+  const pendingItems = sub.billingHistory.filter(h => h.status === 'pending' || h.status === 'pending_price');
+  const clearedItems = sub.billingHistory.filter(h => h.status === 'cleared');
+  const hasBalance = sub.outstandingBalance > 0;
+  const waLink = sub.phone ? `https://wa.me/${sub.phone.replace(/[\s\-\+]/g, '').replace(/^91/, '91')}` : '';
 
   return `
     <div class="subscriber-detail page-enter">
-      <button class="btn btn-ghost btn-sm" id="back-to-subs-btn" style="margin-bottom: 1rem;">← Back to Subscribers</button>
+      <button class="btn btn-ghost btn-sm" id="back-to-subs-btn" style="margin-bottom: 0.75rem; font-size: 0.85rem;">← All Subscribers</button>
 
-      <!-- Profile Header -->
-      <div style="background: white; border: 1px solid var(--clr-gray-200); border-radius: var(--radius-lg); padding: 1.5rem; margin-bottom: 1.5rem; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 1rem;">
-        <div style="display: flex; gap: 1rem; align-items: center;">
-          <div class="sub-avatar" style="width: 56px; height: 56px; font-size: 1.4rem;">${sub.name.charAt(0).toUpperCase()}</div>
-          <div>
-            <h2 style="margin: 0; font-size: 1.5rem; color: var(--clr-charcoal);">${sub.name}</h2>
-            <div style="display: flex; gap: 1.5rem; color: var(--clr-gray-500); font-size: 0.9rem; margin-top: 4px; flex-wrap: wrap;">
-              <span>📞 ${formatPhoneNumber(sub.phone)}</span>
-              ${sub.address ? `<span>📍 ${sub.address}</span>` : ''}
+      <!-- Profile Card -->
+      <div style="background: white; border: 1px solid var(--clr-gray-200); border-radius: var(--radius-lg); padding: 1.25rem; margin-bottom: 1.25rem;">
+        <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 1rem;">
+          <div style="display: flex; gap: 0.75rem; align-items: center;">
+            <div class="sub-avatar" style="width: 48px; height: 48px; font-size: 1.2rem;">${sub.name.charAt(0).toUpperCase()}</div>
+            <div>
+              <h2 style="margin: 0; font-size: 1.2rem; color: var(--clr-charcoal);">${sub.name}</h2>
+              <div style="font-size: 0.8rem; color: var(--clr-gray-500); margin-top: 2px;">
+                ${formatPhoneNumber(sub.phone)}${sub.address ? ` · ${sub.address}` : ''}
+              </div>
             </div>
           </div>
+          <div style="text-align: right;">
+            <div style="font-size: 1.5rem; font-weight: 800; color: ${hasBalance ? 'var(--clr-error)' : 'var(--clr-veg)'}; line-height: 1;">${formatPrice(sub.outstandingBalance)}</div>
+            <div style="font-size: 0.7rem; color: var(--clr-gray-400); margin-top: 2px;">${hasBalance ? `${pendingItems.length} unpaid` : 'all clear'}</div>
+          </div>
         </div>
-        <div style="text-align: right;">
-          <div style="font-size: 0.75rem; color: var(--clr-gray-500); text-transform: uppercase; letter-spacing: 0.04em;">Outstanding</div>
-          <div style="font-size: 2rem; font-weight: 800; color: ${sub.outstandingBalance > 0 ? 'var(--clr-error)' : 'var(--clr-veg)'}; line-height: 1.2;">${formatPrice(sub.outstandingBalance)}</div>
-          ${sub.outstandingBalance > 0 ? `<div style="font-size: 0.75rem; color: var(--clr-gray-400); margin-top: 2px;">${pendingCount} pending item${pendingCount !== 1 ? 's' : ''}</div>` : ''}
+
+        <!-- Quick Actions (inline) -->
+        <div style="display: flex; gap: 0.5rem; margin-top: 1rem; padding-top: 0.75rem; border-top: 1px solid var(--clr-gray-100); flex-wrap: wrap;">
+          ${waLink ? `<a href="${waLink}?text=${encodeURIComponent(generateBillSummary(sub))}" target="_blank" rel="noopener" class="btn btn-sm" style="background: #E6F4EA; color: #1E7E34; border: 1px solid #C2E7CB; text-decoration: none; font-size: 0.78rem;">Share Bill</a>` : ''}
+          ${hasBalance ? `<button class="btn btn-sm clear-sub-btn" data-id="${sub.userId}" style="background: #EFF6FF; color: #1D4ED8; border: 1px solid #BFDBFE; font-size: 0.78rem;">Mark All Paid</button>` : ''}
         </div>
       </div>
 
-      <!-- Actions Row -->
-      <div class="sub-detail-actions">
-        <div style="background: white; padding: 1.25rem; border-radius: var(--radius-lg); border: 1px solid var(--clr-gray-200);">
-          <h3 style="margin-bottom: 1rem; font-size: 1rem; color: var(--clr-charcoal);">Add Bill Item</h3>
-          <form id="add-manual-bill-form" data-id="${sub.userId}" style="display: flex; flex-direction: column; gap: 0.75rem;">
-            <input type="text" class="form-input" id="manual-bill-desc" placeholder="Description (e.g. Event Catering)" required>
-            <div style="display: flex; gap: 0.5rem;">
-              <input type="number" class="form-input" id="manual-bill-amount" placeholder="Amount (₹)" step="0.01" required style="flex: 1;">
-              <button type="submit" class="btn btn-primary">Add</button>
-            </div>
-          </form>
-        </div>
-        <div style="background: var(--clr-gray-50); padding: 1.25rem; border-radius: var(--radius-lg); border: 1px solid var(--clr-gray-200); display: flex; flex-direction: column; justify-content: center; align-items: center; gap: 0.75rem; text-align: center;">
-          <p style="font-size: 0.85rem; color: var(--clr-gray-500); margin: 0;">Share balance summary via WhatsApp</p>
-          <button class="btn share-sub-btn" data-id="${sub.userId}" style="background: #E6F4EA; color: #1E7E34; border: 1px solid #C2E7CB;">📤 Share on WhatsApp</button>
-          ${sub.outstandingBalance > 0 ? `
-            <button class="btn btn-sm clear-sub-btn" data-id="${sub.userId}" style="background: var(--clr-info); color: white; border: none; margin-top: 4px;">Clear Full Balance</button>
-          ` : ''}
-        </div>
+      <!-- Add Bill (compact inline form) -->
+      <div style="background: white; border: 1px solid var(--clr-gray-200); border-radius: var(--radius-lg); padding: 1rem; margin-bottom: 1.25rem;">
+        <form id="add-manual-bill-form" data-id="${sub.userId}" style="display: flex; gap: 0.5rem; align-items: center; flex-wrap: wrap;">
+          <span style="font-size: 0.85rem; font-weight: 600; color: var(--clr-charcoal); white-space: nowrap;">Add charge:</span>
+          <input type="text" class="form-input" id="manual-bill-desc" placeholder="What for?" required style="flex: 2; min-width: 120px; height: 36px; font-size: 0.85rem;">
+          <input type="number" class="form-input" id="manual-bill-amount" placeholder="₹ Amount" step="0.01" required style="flex: 1; min-width: 90px; height: 36px; font-size: 0.85rem;">
+          <button type="submit" class="btn btn-primary btn-sm" style="height: 36px; white-space: nowrap;">+ Add</button>
+        </form>
       </div>
 
       <!-- Billing History -->
-      <div class="admin-table-container" style="padding: 1.25rem;">
-        <h3 style="margin-bottom: 1rem; font-size: 1rem; color: var(--clr-charcoal);">Billing History</h3>
-        <table class="admin-table">
-          <thead>
-            <tr>
-              <th>Date</th>
-              <th>Description</th>
-              <th>Amount</th>
-              <th>Status</th>
-            </tr>
-          </thead>
-          <tbody>
-            ${sub.billingHistory.length === 0 ? `
-              <tr><td colspan="4" style="text-align: center; padding: 2.5rem; color: var(--clr-gray-400);">No billing history yet.</td></tr>
-            ` : sub.billingHistory.map(h => `
-              <tr>
-                <td style="white-space: nowrap;">${new Date(h.date).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })}</td>
-                <td>
-                  <div style="font-weight: 600;">${h.description || 'Manual Entry'}</div>
-                  <div style="font-size: 0.7rem; color: var(--clr-gray-400); font-family: var(--ff-accent);">${h.orderId}</div>
+      <div style="background: white; border: 1px solid var(--clr-gray-200); border-radius: var(--radius-lg); overflow: hidden;">
+        <div style="padding: 1rem 1.25rem 0.75rem; border-bottom: 1px solid var(--clr-gray-100);">
+          <h3 style="margin: 0; font-size: 0.95rem; color: var(--clr-charcoal);">History</h3>
+        </div>
+
+        ${sub.billingHistory.length === 0 ? `
+          <div style="text-align: center; padding: 2.5rem; color: var(--clr-gray-400); font-size: 0.9rem;">
+            No billing entries yet. Add a charge above.
+          </div>
+        ` : `
+          <div style="max-height: 400px; overflow-y: auto;">
+            ${sub.billingHistory.map(h => {
+              const isPending = h.status === 'pending' || h.status === 'pending_price';
+              return `
+              <div style="display: flex; align-items: center; gap: 0.75rem; padding: 0.75rem 1.25rem; border-bottom: 1px solid var(--clr-gray-100);">
+                <div style="width: 8px; height: 8px; border-radius: 50%; background: ${isPending ? 'var(--clr-error)' : 'var(--clr-veg)'}; flex-shrink: 0;"></div>
+                <div style="flex: 1; min-width: 0;">
+                  <div style="font-weight: 600; font-size: 0.85rem; color: var(--clr-charcoal); overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">${h.description || 'Charge'}</div>
+                  <div style="font-size: 0.7rem; color: var(--clr-gray-400);">${new Date(h.date).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' })} · ${h.orderId}</div>
                   ${h.status === 'pending_price' ? `
-                    <div style="margin-top: 6px; display: flex; gap: 4px; align-items: center;">
-                      <input type="number" class="price-input form-input" data-order-id="${h.orderId}" placeholder="₹ Price" style="width: 90px; padding: 4px 8px; font-size: 0.85rem;">
-                      <button class="btn btn-sm btn-primary approve-bill-btn" data-user-id="${sub.userId}" data-order-id="${h.orderId}">Set Price</button>
+                    <div style="margin-top: 4px; display: flex; gap: 4px; align-items: center;">
+                      <input type="number" class="price-input form-input" data-order-id="${h.orderId}" placeholder="₹" style="width: 70px; padding: 3px 6px; font-size: 0.8rem; height: 28px;">
+                      <button class="btn btn-sm btn-primary approve-bill-btn" data-user-id="${sub.userId}" data-order-id="${h.orderId}" style="height: 28px; font-size: 0.75rem; padding: 0 8px;">Set</button>
                     </div>
                   ` : ''}
-                </td>
-                <td style="font-weight: 700; color: ${h.status === 'pending' || h.status === 'pending_price' ? 'var(--clr-error)' : 'var(--clr-veg)'};">
-                  ${h.status === 'pending_price' ? '---' : formatPrice(h.amount)}
-                </td>
-                <td>
-                  <span class="badge ${h.status === 'pending' || h.status === 'pending_price' ? 'badge-warning' : 'badge-success'}">
-                    ${h.status === 'pending_price' ? 'Needs Price' : (h.status === 'pending' ? 'Outstanding' : 'Cleared')}
-                  </span>
-                </td>
-              </tr>
-            `).join('')}
-          </tbody>
-        </table>
+                </div>
+                <div style="font-weight: 700; font-size: 0.9rem; color: ${isPending ? 'var(--clr-charcoal)' : 'var(--clr-gray-400)'}; white-space: nowrap; ${!isPending ? 'text-decoration: line-through;' : ''}">
+                  ${h.status === 'pending_price' ? '—' : formatPrice(h.amount)}
+                </div>
+                <span class="badge ${isPending ? 'badge-warning' : 'badge-success'}" style="font-size: 0.65rem; padding: 2px 8px;">
+                  ${h.status === 'pending_price' ? 'Price?' : (isPending ? 'Due' : 'Paid')}
+                </span>
+              </div>
+            `}).join('')}
+          </div>
+        `}
       </div>
     </div>
   `;
