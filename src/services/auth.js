@@ -209,6 +209,126 @@ export async function refreshUserCount() {
   return cachedUserCount;
 }
 
+// ── WhatsApp OTP Flow ──
+
+function generateOTP() {
+  return Math.floor(100000 + Math.random() * 900000).toString();
+}
+
+function normalizePhone(phone) {
+  let clean = phone.replace(/[\s\-+]/g, '');
+  if (clean.length === 10 && /^[6-9]/.test(clean)) clean = '+91' + clean;
+  else if (clean.startsWith('91') && clean.length === 12) clean = '+' + clean;
+  else if (!clean.startsWith('+')) clean = '+' + clean;
+  return clean;
+}
+
+export async function sendWhatsAppOTP(phone, name = '') {
+  const clean = phone.replace(/[\s\-+]/g, '');
+  if (!/^(91)?[6-9]\d{9}$/.test(clean)) {
+    return { success: false, error: 'Please enter a valid 10-digit Indian mobile number' };
+  }
+
+  const formatted = normalizePhone(clean);
+  const code = generateOTP();
+  const expiresAt = new Date(Date.now() + 5 * 60 * 1000).toISOString(); // 5 min expiry
+
+  // Clean up old OTPs for this phone
+  await supabase.from('phone_otps').delete().eq('phone', formatted);
+
+  // Store OTP
+  const { error } = await supabase.from('phone_otps').insert({
+    phone: formatted,
+    code,
+    name: name || '',
+    expires_at: expiresAt,
+  });
+
+  if (error) {
+    return { success: false, error: 'Failed to generate OTP. Please try again.' };
+  }
+
+  // Build WhatsApp link
+  const restaurantWA = '918690756828';
+  const message = `My Shree Shyam Restaurant verification code is: ${code}`;
+  const waLink = `https://wa.me/${restaurantWA}?text=${encodeURIComponent(message)}`;
+
+  return { success: true, code, waLink, phone: formatted };
+}
+
+export async function verifyWhatsAppOTP(phone, code, name = '') {
+  const formatted = normalizePhone(phone.replace(/[\s\-+]/g, ''));
+
+  if (!code || code.length !== 6) {
+    return { success: false, error: 'Please enter the 6-digit code' };
+  }
+
+  // Look up OTP
+  const { data: otps } = await supabase
+    .from('phone_otps')
+    .select('*')
+    .eq('phone', formatted)
+    .eq('code', code)
+    .gt('expires_at', new Date().toISOString())
+    .limit(1);
+
+  if (!otps || otps.length === 0) {
+    return { success: false, error: 'Invalid or expired code. Please request a new one.' };
+  }
+
+  // OTP valid — check if user exists
+  const { data: existing } = await supabase
+    .from('profiles')
+    .select('*')
+    .eq('phone', formatted)
+    .limit(1);
+
+  let profile;
+
+  if (existing && existing.length > 0) {
+    profile = existing[0];
+  } else {
+    // New user — need name
+    const sanitizedName = (name || '').trim();
+    if (!sanitizedName || sanitizedName.length < 2) {
+      return { success: false, error: 'Please enter your name', needsName: true };
+    }
+
+    const newProfile = {
+      id: 'wa_' + Date.now().toString(36) + Math.random().toString(36).slice(2, 6),
+      name: sanitizedName,
+      phone: formatted,
+      email: '',
+    };
+
+    const { error: insertError } = await supabase.from('profiles').insert(newProfile);
+    if (insertError) {
+      if (insertError.message.includes('phone')) {
+        return { success: false, error: 'This phone number is already registered.' };
+      }
+      return { success: false, error: 'Registration failed. Please try again.' };
+    }
+    profile = newProfile;
+  }
+
+  // Clean up used OTP
+  await supabase.from('phone_otps').delete().eq('phone', formatted);
+
+  // Set session
+  const user = {
+    id: profile.id,
+    name: profile.name || name || '',
+    phone: profile.phone || formatted,
+    email: profile.email || '',
+  };
+
+  cacheSession(user);
+  refreshCartUI();
+  window.dispatchEvent(new CustomEvent('auth-changed', { detail: user }));
+
+  return { success: true, user, isNew: !existing || existing.length === 0 };
+}
+
 // ── Listen for auth state changes ──
 
 supabase.auth.onAuthStateChange(async (event, session) => {
