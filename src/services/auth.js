@@ -45,47 +45,67 @@ async function loadOrCreateSupabaseProfile(sbUser) {
   const email = sbUser.email;
   const metadata = sbUser.user_metadata || {};
 
-  // 1. Check existing profile by email
-  const { data } = await supabase.from('profiles').select('*').eq('email', email).limit(1);
-  if (data?.[0]) {
+  // 1. Check existing profile by auth ID (most reliable — RLS allows own row)
+  const { data: byId } = await supabase.from('profiles').select('*').eq('id', sbUser.id).limit(1);
+  if (byId?.[0]) {
+    // Update name/avatar from Google if missing locally
     const updates = {};
-    if (!data[0].name && metadata.full_name) updates.name = metadata.full_name;
-    if (!data[0].avatar && metadata.avatar_url) updates.avatar = metadata.avatar_url;
-    
+    if (!byId[0].name && metadata.full_name) updates.name = metadata.full_name;
+    if (!byId[0].avatar && metadata.avatar_url) updates.avatar = metadata.avatar_url;
+    if (!byId[0].email && email) updates.email = email;
+
     if (Object.keys(updates).length) {
-      await supabase.from('profiles').update(updates).eq('id', data[0].id).catch(() => {});
-      Object.assign(data[0], updates);
+      await supabase.from('profiles').update(updates).eq('id', sbUser.id).catch(() => {});
+      Object.assign(byId[0], updates);
     }
-    return formatUser(data[0]);
+    return formatUser(byId[0]);
   }
 
-  // 2. Check by Supabase auth ID
-  const { data: byId } = await supabase.from('profiles').select('*').eq('id', sbUser.id).limit(1);
-  if (byId?.[0]) return formatUser(byId[0]);
-
-  // 3. Create new profile
-  const newProfile = { 
-    id: sbUser.id, 
-    name: metadata.full_name || '', 
-    phone: '', 
-    email,
+  // 2. No profile exists — create one
+  const newProfile = {
+    id: sbUser.id,
+    name: metadata.full_name || '',
+    phone: '',
+    email: email || '',
     avatar: metadata.avatar_url || ''
   };
-  await supabase.from('profiles').upsert(newProfile, { onConflict: 'id' }).catch(() => {});
+
+  const { error } = await supabase.from('profiles').upsert(newProfile, { onConflict: 'id' });
+  if (error) {
+    console.warn('[Auth] Profile creation failed:', error.message);
+    // Still return the user data even if DB save fails — app can work with in-memory data
+  }
   return formatUser(newProfile);
 }
 
 // ── Supabase Auth Listener ──
 
 supabase.auth.onAuthStateChange(async (event, session) => {
-  if ((event === 'SIGNED_IN' || event === 'INITIAL_SESSION') && session?.user) {
-    const sbUser = session.user;
-    const profile = await loadOrCreateSupabaseProfile(sbUser);
-    if (profile) {
-      currentAppUser = profile;
-      refreshUserCount().catch(() => {});
-      refreshCartUI();
-      window.dispatchEvent(new CustomEvent('auth-changed', { detail: currentAppUser }));
+  if ((event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED' || event === 'INITIAL_SESSION') && session?.user) {
+    // Only load profile if we don't already have one for this user
+    if (!currentAppUser || currentAppUser.id !== session.user.id) {
+      const sbUser = session.user;
+      try {
+        const profile = await loadOrCreateSupabaseProfile(sbUser);
+        if (profile) {
+          currentAppUser = profile;
+          refreshUserCount().catch(() => {});
+          refreshCartUI();
+          window.dispatchEvent(new CustomEvent('auth-changed', { detail: currentAppUser }));
+        }
+      } catch (err) {
+        console.warn('[Auth] Profile load failed:', err);
+        // Create a minimal user from auth data so the app doesn't break
+        currentAppUser = formatUser({
+          id: sbUser.id,
+          name: sbUser.user_metadata?.full_name || '',
+          email: sbUser.email || '',
+          phone: '',
+          avatar: sbUser.user_metadata?.avatar_url || '',
+        });
+        refreshCartUI();
+        window.dispatchEvent(new CustomEvent('auth-changed', { detail: currentAppUser }));
+      }
     }
   }
 

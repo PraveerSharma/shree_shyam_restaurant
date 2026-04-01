@@ -180,28 +180,40 @@ import { syncAll, processRetryQueue, subscribeToOrders } from './services/db.js'
 import { showToast } from './utils/dom.js';
 
 // ── OAuth Redirect Intercept ──
-// After Google SSO, Supabase puts tokens in the URL (hash or query params).
-// Let the SDK process them via detectSessionInUrl, then clean up.
+// After Google SSO, Supabase redirects back with tokens in the URL.
+// The SDK's detectSessionInUrl handles token exchange automatically.
+// We just need to detect the redirect, wait for auth to settle, then clean the URL.
 async function handleAuthRedirect() {
   const hash = window.location.hash || '';
   const search = window.location.search || '';
 
-  // Supabase v2 may return tokens as hash fragment or query params
   const hasAuthTokens = hash.includes('access_token=') || hash.includes('refresh_token=')
-    || search.includes('code=');
+    || search.includes('code=') || hash.includes('error=') || search.includes('error=');
 
-  if (hasAuthTokens) {
+  if (!hasAuthTokens) return false;
+
+  // The Supabase SDK (with detectSessionInUrl: true) will automatically
+  // process the tokens from the URL during init. We wait for it to finish
+  // by polling getSession until it either succeeds or we timeout.
+  let session = null;
+  for (let i = 0; i < 20; i++) {
     try {
-      // Let Supabase SDK exchange the tokens and establish the session
       const { data, error } = await supabase.auth.getSession();
-      if (error) showToast('Sign-in failed. Please try again.', 'error');
+      if (data?.session) { session = data.session; break; }
+      if (error) { showToast('Sign-in failed. Please try again.', 'error'); break; }
     } catch {}
-    // Clean URL: remove tokens from hash and query params
-    window.history.replaceState(null, '', window.location.pathname);
-    window.location.hash = '#/';
-    return true;
+    await new Promise(r => setTimeout(r, 250));
   }
-  return false;
+
+  // Check for OAuth error in URL
+  if (hash.includes('error=') || search.includes('error=')) {
+    showToast('Sign-in was cancelled or failed. Please try again.', 'error');
+  }
+
+  // Clean URL: remove tokens/codes from hash and query params
+  window.history.replaceState(null, '', window.location.pathname);
+  window.location.hash = '#/';
+  return true;
 }
 
 // ── Post-Auth Setup (name collection after Google SSO) ──
