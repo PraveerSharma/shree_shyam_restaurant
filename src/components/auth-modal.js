@@ -1,360 +1,400 @@
 // ============================================
-// AUTH MODAL COMPONENT
-// Login / Register / Forgot Password modal
+// AUTH MODAL — Phone OTP Login/Register
 // ============================================
 
-import { login, register, resetPassword } from '../services/auth.js';
+import { sendOTP, verifyOTP, setupRecaptcha } from '../services/auth.js';
 import { showToast } from '../utils/dom.js';
 
-let currentTab = 'login';
 let successCallback = null;
+let currentStep = 'phone'; // 'phone' | 'otp' | 'name'
+let phoneNumber = '';
+let isNewUser = false;
 
 export function showAuthModal(tab = 'login', onSuccess = null) {
-  currentTab = tab;
   successCallback = onSuccess;
-  
-  // Remove existing modal
+  currentStep = 'phone';
+  phoneNumber = '';
+  isNewUser = false;
+
+  // Remove existing
   const existing = document.getElementById('auth-modal-overlay');
   if (existing) existing.remove();
 
   const overlay = document.createElement('div');
   overlay.className = 'modal-overlay';
   overlay.id = 'auth-modal-overlay';
-  
+
   overlay.innerHTML = `
-    <div class="modal" id="auth-modal" role="dialog" aria-modal="true" aria-labelledby="auth-modal-heading">
+    <div class="modal" id="auth-modal" role="dialog" aria-modal="true" aria-labelledby="auth-heading">
       <button class="modal-close" id="auth-modal-close" aria-label="Close dialog">&times;</button>
-
-      <div class="auth-tabs" id="auth-tabs-bar" role="tablist" aria-label="Authentication">
-        <button class="auth-tab ${tab === 'login' ? 'active' : ''}" data-tab="login" role="tab" aria-selected="${tab === 'login'}">Login</button>
-        <button class="auth-tab ${tab === 'register' ? 'active' : ''}" data-tab="register" role="tab" aria-selected="${tab === 'register'}">Register</button>
-      </div>
-
       <div id="auth-form-container">
-        ${tab === 'login' ? renderLoginForm() : renderRegisterForm()}
+        ${renderPhoneStep()}
       </div>
     </div>
   `;
 
-  // Store trigger element for focus restoration
   const triggerElement = document.activeElement;
-
   document.body.appendChild(overlay);
   document.body.style.overflow = 'hidden';
 
-  // Hide background content from screen readers
   const appRoot = document.getElementById('app');
   if (appRoot) appRoot.setAttribute('aria-hidden', 'true');
 
-  // Focus the close button on open
-  setTimeout(() => document.getElementById('auth-modal-close')?.focus(), 50);
+  setTimeout(() => document.getElementById('phone-input')?.focus(), 50);
 
-  // Events
+  // Close handlers
   overlay.addEventListener('click', (e) => {
     if (e.target === overlay) closeAuthModal(triggerElement);
   });
-
   document.getElementById('auth-modal-close').addEventListener('click', () => closeAuthModal(triggerElement));
 
-  // Tab switching
-  overlay.querySelectorAll('.auth-tab').forEach(tabBtn => {
-    tabBtn.addEventListener('click', () => {
-      currentTab = tabBtn.dataset.tab;
-      overlay.querySelectorAll('.auth-tab').forEach(t => {
-        t.classList.remove('active');
-        t.setAttribute('aria-selected', 'false');
-      });
-      tabBtn.classList.add('active');
-      tabBtn.setAttribute('aria-selected', 'true');
-      document.getElementById('auth-tabs-bar').style.display = '';
-      document.getElementById('auth-form-container').innerHTML =
-        currentTab === 'login' ? renderLoginForm() : renderRegisterForm();
-      initFormHandlers();
-    });
-  });
-
-  initFormHandlers();
-
-  // Focus trap + Escape key
+  // Focus trap + Escape
   const keyHandler = (e) => {
     if (e.key === 'Escape') {
       closeAuthModal(triggerElement);
       document.removeEventListener('keydown', keyHandler);
       return;
     }
-    // Focus trap: cycle focus within modal
     if (e.key === 'Tab') {
       const modal = document.getElementById('auth-modal');
       if (!modal) return;
-      const focusable = modal.querySelectorAll('button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])');
-      if (focusable.length === 0) return;
-      const first = focusable[0];
-      const last = focusable[focusable.length - 1];
-      if (e.shiftKey && document.activeElement === first) {
-        e.preventDefault();
-        last.focus();
-      } else if (!e.shiftKey && document.activeElement === last) {
-        e.preventDefault();
-        first.focus();
-      }
+      const focusable = modal.querySelectorAll('button, input, [tabindex]:not([tabindex="-1"])');
+      if (!focusable.length) return;
+      const first = focusable[0], last = focusable[focusable.length - 1];
+      if (e.shiftKey && document.activeElement === first) { e.preventDefault(); last.focus(); }
+      else if (!e.shiftKey && document.activeElement === last) { e.preventDefault(); first.focus(); }
     }
   };
   document.addEventListener('keydown', keyHandler);
+
+  initFormHandlers(triggerElement);
 }
 
-function renderLoginForm() {
+function renderPhoneStep() {
   return `
-    <form id="login-form" novalidate>
-      <h2 class="modal-title" id="auth-modal-heading">Welcome Back</h2>
-      <p class="modal-subtitle">Login to your account to continue</p>
+    <div style="text-align: center; margin-bottom: 1.5rem;">
+      <div style="font-size: 2.5rem; margin-bottom: 0.5rem;">📱</div>
+      <h2 id="auth-heading" style="margin: 0 0 0.25rem 0; font-size: 1.3rem; color: var(--clr-charcoal);">Login or Register</h2>
+      <p style="color: var(--clr-gray-500); font-size: 0.85rem; margin: 0;">Enter your mobile number to continue</p>
+    </div>
 
+    <form id="phone-form" novalidate>
       <div class="form-group">
-        <label class="form-label" for="login-email">Email Address</label>
-        <input class="form-input" type="email" id="login-email" placeholder="your@gmail.com" required autocomplete="email" aria-describedby="login-email-error">
-        <div class="form-hint">Only Gmail addresses accepted</div>
-        <div class="form-error" id="login-email-error" aria-live="polite"></div>
-      </div>
-
-      <div class="form-group">
-        <label class="form-label" for="login-password">Password</label>
-        <input class="form-input" type="password" id="login-password" placeholder="Enter your password" required autocomplete="current-password" aria-describedby="login-password-error">
-        <div class="form-error" id="login-password-error" aria-live="polite"></div>
-      </div>
-      
-      <div class="form-error" id="login-general-error" style="margin-bottom:1rem;"></div>
-      
-      <button type="submit" class="btn btn-primary" style="width:100%;" id="login-submit">Login</button>
-      
-      <div class="forgot-password-link">
-        <a href="#" id="show-forgot-password">Forgot Password?</a>
-      </div>
-    </form>
-  `;
-}
-
-function renderRegisterForm() {
-  return `
-    <form id="register-form" novalidate>
-      <h2 class="modal-title">Create Account</h2>
-      <p class="modal-subtitle">Join us for a delightful experience</p>
-      
-      <div class="form-group">
-        <label class="form-label" for="reg-name">Full Name</label>
-        <input class="form-input" type="text" id="reg-name" placeholder="Your name" required autocomplete="name" maxlength="100">
-        <div class="form-error" id="reg-name-error"></div>
-      </div>
-      
-      <div class="form-group">
-        <label class="form-label" for="reg-phone">Phone Number</label>
-        <div class="phone-input-group">
-          <span class="phone-prefix">+91</span>
-          <input class="form-input" type="tel" id="reg-phone" placeholder="86907 56828" required autocomplete="tel" maxlength="10">
+        <label class="form-label" for="phone-input">Mobile Number</label>
+        <div style="display: flex; align-items: center; gap: 0; border: 1.5px solid var(--clr-gray-200); border-radius: var(--radius-md); overflow: hidden; transition: border-color 0.2s;" id="phone-input-wrapper">
+          <span style="padding: 0 0.75rem; font-weight: 600; color: var(--clr-gray-600); background: var(--clr-gray-100); height: 46px; display: flex; align-items: center; font-size: 0.95rem; border-right: 1px solid var(--clr-gray-200);">+91</span>
+          <input type="tel" id="phone-input" placeholder="Enter 10-digit number" maxlength="10" required autocomplete="tel"
+                 style="border: none; padding: 0 0.75rem; height: 46px; flex: 1; font-size: 1rem; outline: none; width: 100%;"
+                 aria-describedby="phone-error">
         </div>
-        <div class="form-error" id="reg-phone-error"></div>
+        <div class="form-error" id="phone-error" aria-live="polite"></div>
       </div>
-      
-      <div class="form-group">
-        <label class="form-label" for="reg-email">Email Address</label>
-        <input class="form-input" type="email" id="reg-email" placeholder="your@gmail.com" required autocomplete="email">
-        <div class="form-hint">Only Gmail addresses accepted</div>
-        <div class="form-error" id="reg-email-error"></div>
-      </div>
-      
-      <div class="form-group">
-        <label class="form-label" for="reg-password">Password</label>
-        <input class="form-input" type="password" id="reg-password" placeholder="Min 6 characters" required autocomplete="new-password" minlength="6" maxlength="128">
-        <div class="form-error" id="reg-password-error"></div>
-      </div>
-      
-      <div class="form-error" id="reg-general-error" style="margin-bottom:1rem;"></div>
-      
-      <button type="submit" class="btn btn-primary" style="width:100%;" id="register-submit">Create Account</button>
+
+      <button type="submit" class="btn btn-primary" style="width: 100%; height: 46px; font-size: 1rem; margin-top: 0.5rem;" id="send-otp-btn">
+        Send OTP
+      </button>
+      <div id="recaptcha-container"></div>
     </form>
+
+    <p style="text-align: center; font-size: 0.75rem; color: var(--clr-gray-400); margin-top: 1.25rem; line-height: 1.5;">
+      By continuing, you agree to our <a href="#/terms" style="color: var(--clr-saffron);">Terms</a> & <a href="#/privacy" style="color: var(--clr-saffron);">Privacy Policy</a>
+    </p>
   `;
 }
 
-function renderForgotPasswordForm() {
+function renderOTPStep() {
+  const masked = phoneNumber.slice(0, 3) + '****' + phoneNumber.slice(-3);
   return `
-    <form id="forgot-form" novalidate>
-      <h2 class="modal-title">🔐 Reset Password</h2>
-      <p class="modal-subtitle">Enter your registered email and phone number to verify your identity</p>
-      
+    <div style="text-align: center; margin-bottom: 1.5rem;">
+      <div style="font-size: 2.5rem; margin-bottom: 0.5rem;">🔐</div>
+      <h2 id="auth-heading" style="margin: 0 0 0.25rem 0; font-size: 1.3rem; color: var(--clr-charcoal);">Verify OTP</h2>
+      <p style="color: var(--clr-gray-500); font-size: 0.85rem; margin: 0;">Sent to <strong>+91 ${masked}</strong></p>
+    </div>
+
+    <form id="otp-form" novalidate>
       <div class="form-group">
-        <label class="form-label" for="forgot-email">Registered Email</label>
-        <input class="form-input" type="email" id="forgot-email" placeholder="your@gmail.com" required autocomplete="email">
-        <div class="form-hint">Enter the Gmail address you registered with</div>
-        <div class="form-error" id="forgot-email-error"></div>
+        <label class="form-label" for="otp-input">Enter 6-digit OTP</label>
+        <input type="text" id="otp-input" class="form-input" placeholder="------" maxlength="6" required autocomplete="one-time-code" inputmode="numeric" pattern="[0-9]*"
+               style="text-align: center; font-size: 1.5rem; letter-spacing: 0.5rem; font-weight: 700; height: 52px;"
+               aria-describedby="otp-error">
+        <div class="form-error" id="otp-error" aria-live="polite"></div>
       </div>
-      
+
+      <button type="submit" class="btn btn-primary" style="width: 100%; height: 46px; font-size: 1rem; margin-top: 0.5rem;" id="verify-otp-btn">
+        Verify & Continue
+      </button>
+    </form>
+
+    <div style="text-align: center; margin-top: 1rem;">
+      <button id="change-phone-btn" style="background: none; border: none; color: var(--clr-saffron); font-size: 0.85rem; cursor: pointer; font-weight: 600;">
+        Change number
+      </button>
+      <span style="color: var(--clr-gray-300); margin: 0 0.5rem;">|</span>
+      <button id="resend-otp-btn" style="background: none; border: none; color: var(--clr-gray-500); font-size: 0.85rem; cursor: pointer;" disabled>
+        Resend OTP <span id="resend-timer"></span>
+      </button>
+    </div>
+    <div id="recaptcha-container"></div>
+  `;
+}
+
+function renderNameStep() {
+  return `
+    <div style="text-align: center; margin-bottom: 1.5rem;">
+      <div style="font-size: 2.5rem; margin-bottom: 0.5rem;">👋</div>
+      <h2 id="auth-heading" style="margin: 0 0 0.25rem 0; font-size: 1.3rem; color: var(--clr-charcoal);">Welcome!</h2>
+      <p style="color: var(--clr-gray-500); font-size: 0.85rem; margin: 0;">Tell us your name to complete registration</p>
+    </div>
+
+    <form id="name-form" novalidate>
       <div class="form-group">
-        <label class="form-label" for="forgot-phone">Registered Phone Number</label>
-        <input class="form-input" type="tel" id="forgot-phone" placeholder="+91 86907 56828" required autocomplete="tel" maxlength="15">
-        <div class="form-hint">Must match the phone number on your account</div>
-        <div class="form-error" id="forgot-phone-error"></div>
+        <label class="form-label" for="name-input">Your Name</label>
+        <input type="text" id="name-input" class="form-input" placeholder="E.g. Rajesh Kumar" required autocomplete="name"
+               style="height: 46px; font-size: 1rem;"
+               aria-describedby="name-error">
+        <div class="form-error" id="name-error" aria-live="polite"></div>
       </div>
-      
-      <div class="form-group">
-        <label class="form-label" for="forgot-new-password">New Password</label>
-        <input class="form-input" type="password" id="forgot-new-password" placeholder="Min 6 characters" required autocomplete="new-password" minlength="6" maxlength="128">
-        <div class="form-error" id="forgot-new-password-error"></div>
-      </div>
-      
-      <div class="form-group">
-        <label class="form-label" for="forgot-confirm-password">Confirm New Password</label>
-        <input class="form-input" type="password" id="forgot-confirm-password" placeholder="Re-enter new password" required autocomplete="new-password" minlength="6" maxlength="128">
-        <div class="form-error" id="forgot-confirm-password-error"></div>
-      </div>
-      
-      <div class="form-error" id="forgot-general-error" style="margin-bottom:1rem;"></div>
-      
-      <button type="submit" class="btn btn-primary" style="width:100%;" id="forgot-submit">Reset Password</button>
-      
-      <div class="forgot-password-link">
-        <a href="#" id="back-to-login">← Back to Login</a>
-      </div>
+
+      <button type="submit" class="btn btn-primary" style="width: 100%; height: 46px; font-size: 1rem; margin-top: 0.5rem;" id="save-name-btn">
+        Get Started
+      </button>
     </form>
   `;
 }
 
-function showForgotPasswordView() {
-  // Hide tabs
-  const tabsBar = document.getElementById('auth-tabs-bar');
-  if (tabsBar) tabsBar.style.display = 'none';
+function initFormHandlers(triggerElement) {
+  const container = document.getElementById('auth-form-container');
+  if (!container) return;
 
-  document.getElementById('auth-form-container').innerHTML = renderForgotPasswordForm();
-  initFormHandlers();
+  // Phone step
+  if (currentStep === 'phone') {
+    // Focus styles for the custom phone wrapper
+    const input = document.getElementById('phone-input');
+    const wrapper = document.getElementById('phone-input-wrapper');
+    if (input && wrapper) {
+      input.addEventListener('focus', () => wrapper.style.borderColor = 'var(--clr-saffron)');
+      input.addEventListener('blur', () => wrapper.style.borderColor = 'var(--clr-gray-200)');
+      // Only allow digits
+      input.addEventListener('input', () => { input.value = input.value.replace(/\D/g, ''); });
+    }
+
+    document.getElementById('phone-form')?.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const phoneInput = document.getElementById('phone-input');
+      const errorEl = document.getElementById('phone-error');
+      const btn = document.getElementById('send-otp-btn');
+      const rawPhone = phoneInput.value.trim();
+
+      errorEl.textContent = '';
+
+      if (rawPhone.length !== 10 || !/^[6-9]\d{9}$/.test(rawPhone)) {
+        errorEl.textContent = 'Please enter a valid 10-digit mobile number';
+        return;
+      }
+
+      phoneNumber = rawPhone;
+      btn.disabled = true;
+      btn.textContent = 'Sending OTP...';
+
+      try {
+        setupRecaptcha('recaptcha-container');
+        const result = await sendOTP(rawPhone);
+
+        if (result.success) {
+          currentStep = 'otp';
+          container.innerHTML = renderOTPStep();
+          initFormHandlers(triggerElement);
+          setTimeout(() => document.getElementById('otp-input')?.focus(), 50);
+          startResendTimer();
+        } else {
+          errorEl.textContent = result.error;
+          btn.disabled = false;
+          btn.textContent = 'Send OTP';
+        }
+      } catch (err) {
+        errorEl.textContent = 'Something went wrong. Please try again.';
+        btn.disabled = false;
+        btn.textContent = 'Send OTP';
+      }
+    });
+  }
+
+  // OTP step
+  if (currentStep === 'otp') {
+    const otpInput = document.getElementById('otp-input');
+    if (otpInput) {
+      otpInput.addEventListener('input', () => { otpInput.value = otpInput.value.replace(/\D/g, ''); });
+    }
+
+    document.getElementById('otp-form')?.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const otp = document.getElementById('otp-input').value.trim();
+      const errorEl = document.getElementById('otp-error');
+      const btn = document.getElementById('verify-otp-btn');
+
+      errorEl.textContent = '';
+
+      if (otp.length !== 6) {
+        errorEl.textContent = 'Please enter the 6-digit OTP';
+        return;
+      }
+
+      btn.disabled = true;
+      btn.textContent = 'Verifying...';
+
+      const result = await verifyOTP(otp);
+
+      if (result.success) {
+        if (result.isNew) {
+          // New user — needs name
+          currentStep = 'name';
+          isNewUser = true;
+          container.innerHTML = renderNameStep();
+          initFormHandlers(triggerElement);
+          setTimeout(() => document.getElementById('name-input')?.focus(), 50);
+        } else {
+          // Existing user — done
+          showToast(`Welcome back, ${result.user.name}!`, 'success');
+          closeAuthModal(triggerElement);
+          if (typeof successCallback === 'function') {
+            successCallback(result.user);
+            successCallback = null;
+          } else {
+            window.dispatchEvent(new HashChangeEvent('hashchange'));
+          }
+        }
+      } else if (result.needsName) {
+        // OTP verified but profile needs name
+        currentStep = 'name';
+        isNewUser = true;
+        container.innerHTML = renderNameStep();
+        initFormHandlers(triggerElement);
+        setTimeout(() => document.getElementById('name-input')?.focus(), 50);
+      } else {
+        errorEl.textContent = result.error;
+        btn.disabled = false;
+        btn.textContent = 'Verify & Continue';
+      }
+    });
+
+    document.getElementById('change-phone-btn')?.addEventListener('click', () => {
+      currentStep = 'phone';
+      container.innerHTML = renderPhoneStep();
+      initFormHandlers(triggerElement);
+      setTimeout(() => document.getElementById('phone-input')?.focus(), 50);
+    });
+
+    document.getElementById('resend-otp-btn')?.addEventListener('click', async () => {
+      const btn = document.getElementById('resend-otp-btn');
+      btn.disabled = true;
+      btn.textContent = 'Sending...';
+
+      setupRecaptcha('recaptcha-container');
+      const result = await sendOTP(phoneNumber);
+
+      if (result.success) {
+        showToast('New OTP sent!', 'success');
+        startResendTimer();
+      } else {
+        showToast(result.error, 'error');
+        btn.disabled = false;
+        btn.textContent = 'Resend OTP';
+      }
+    });
+  }
+
+  // Name step (new user registration)
+  if (currentStep === 'name') {
+    document.getElementById('name-form')?.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const name = document.getElementById('name-input').value.trim();
+      const errorEl = document.getElementById('name-error');
+      const btn = document.getElementById('save-name-btn');
+
+      errorEl.textContent = '';
+
+      if (!name || name.length < 2) {
+        errorEl.textContent = 'Please enter your name (at least 2 characters)';
+        return;
+      }
+
+      btn.disabled = true;
+      btn.textContent = 'Setting up...';
+
+      // Re-verify with name
+      const result = await verifyOTP(null, name);
+
+      if (result.success) {
+        showToast(`Welcome, ${result.user.name}!`, 'success');
+        closeAuthModal(triggerElement);
+        if (typeof successCallback === 'function') {
+          successCallback(result.user);
+          successCallback = null;
+        } else {
+          window.dispatchEvent(new HashChangeEvent('hashchange'));
+        }
+      } else {
+        // OTP expired — user already verified via Firebase, save name directly
+        const user = getCurrentUserFromFirebase();
+        if (user) {
+          const { supabase: sb } = await import('../config/supabase.js');
+          await sb.from('profiles').upsert({
+            id: user.uid,
+            name,
+            phone: user.phoneNumber,
+            email: '',
+            firebase_uid: user.uid,
+          }, { onConflict: 'id' });
+
+          const profile = { id: user.uid, name, phone: user.phoneNumber, email: '' };
+          localStorage.setItem('ssr_session', JSON.stringify(profile));
+          window.dispatchEvent(new CustomEvent('auth-changed', { detail: profile }));
+
+          showToast(`Welcome, ${name}!`, 'success');
+          closeAuthModal(triggerElement);
+          if (typeof successCallback === 'function') {
+            successCallback(profile);
+            successCallback = null;
+          } else {
+            window.dispatchEvent(new HashChangeEvent('hashchange'));
+          }
+        } else {
+          errorEl.textContent = 'Session expired. Please start over.';
+          btn.disabled = false;
+          btn.textContent = 'Get Started';
+        }
+      }
+    });
+  }
 }
 
-function initFormHandlers() {
-  const loginForm = document.getElementById('login-form');
-  const registerForm = document.getElementById('register-form');
-  const forgotForm = document.getElementById('forgot-form');
+function getCurrentUserFromFirebase() {
+  return firebaseAuth?.currentUser || null;
+}
 
-  // LOGIN
-  loginForm?.addEventListener('submit', async (e) => {
-    e.preventDefault();
-    const email = document.getElementById('login-email').value;
-    const password = document.getElementById('login-password').value;
-    
-    document.querySelectorAll('#login-form .form-error').forEach(el => el.textContent = '');
-    document.querySelectorAll('#login-form .form-input').forEach(el => el.classList.remove('error'));
+import { firebaseAuth as fbAuth } from '../config/firebase.js';
+const firebaseAuthRef = fbAuth;
 
-    const submitBtn = document.getElementById('login-submit');
-    const originalText = submitBtn.textContent;
-    submitBtn.disabled = true;
-    submitBtn.textContent = 'Verifying...';
+function startResendTimer() {
+  let seconds = 30;
+  const timerEl = document.getElementById('resend-timer');
+  const btn = document.getElementById('resend-otp-btn');
+  if (!timerEl || !btn) return;
 
-    const result = await login(email, password);
-    if (result.success) {
-      showToast(`Welcome back, ${result.user.name}!`, 'success');
-      closeAuthModal();
-      if (typeof successCallback === 'function') {
-        successCallback(result.user);
-        successCallback = null;
-      } else {
-        // Only redirect to home if no callback wants to keep the user on current page
-        window.location.hash = '#/';
-      }
+  btn.disabled = true;
+  timerEl.textContent = `(${seconds}s)`;
+
+  const interval = setInterval(() => {
+    seconds--;
+    if (seconds <= 0) {
+      clearInterval(interval);
+      timerEl.textContent = '';
+      btn.disabled = false;
+      btn.style.color = 'var(--clr-saffron)';
     } else {
-      submitBtn.disabled = false;
-      submitBtn.textContent = originalText;
-      document.getElementById('login-general-error').textContent = result.error;
+      timerEl.textContent = `(${seconds}s)`;
     }
-  });
-
-  // "Forgot Password?" link
-  document.getElementById('show-forgot-password')?.addEventListener('click', (e) => {
-    e.preventDefault();
-    showForgotPasswordView();
-  });
-
-  // REGISTER
-  registerForm?.addEventListener('submit', async (e) => {
-    e.preventDefault();
-    const name = document.getElementById('reg-name').value;
-    const phone = '+91' + document.getElementById('reg-phone').value.trim();
-    const email = document.getElementById('reg-email').value;
-    const password = document.getElementById('reg-password').value;
-
-    document.querySelectorAll('#register-form .form-error').forEach(el => el.textContent = '');
-    document.querySelectorAll('#register-form .form-input').forEach(el => el.classList.remove('error'));
-
-    const submitBtn = document.getElementById('register-submit');
-    const originalText = submitBtn.textContent;
-    submitBtn.disabled = true;
-    submitBtn.textContent = 'Creating Account...';
-
-    const result = await register({ name, phone, email, password });
-    if (result.success) {
-      showToast(`Welcome, ${result.user.name}! Account created.`, 'success');
-      closeAuthModal();
-      if (typeof successCallback === 'function') {
-        successCallback(result.user);
-        successCallback = null;
-      } else {
-        window.location.hash = '#/';
-      }
-    } else {
-      submitBtn.disabled = false;
-      submitBtn.textContent = originalText;
-      document.getElementById('reg-general-error').textContent = result.error;
-    }
-  });
-
-  // FORGOT PASSWORD
-  forgotForm?.addEventListener('submit', async (e) => {
-    e.preventDefault();
-    const email = document.getElementById('forgot-email').value;
-    const phone = document.getElementById('forgot-phone').value;
-    const newPassword = document.getElementById('forgot-new-password').value;
-    const confirmPassword = document.getElementById('forgot-confirm-password').value;
-
-    document.querySelectorAll('#forgot-form .form-error').forEach(el => el.textContent = '');
-    document.querySelectorAll('#forgot-form .form-input').forEach(el => el.classList.remove('error'));
-
-    // Validate passwords match
-    if (newPassword !== confirmPassword) {
-      document.getElementById('forgot-confirm-password-error').textContent = 'Passwords do not match';
-      document.getElementById('forgot-confirm-password').classList.add('error');
-      return;
-    }
-
-    const submitBtn = document.getElementById('forgot-submit');
-    const originalText = submitBtn.textContent;
-    submitBtn.disabled = true;
-    submitBtn.textContent = 'Resetting...';
-
-    const result = await resetPassword(email, phone, newPassword);
-    if (result.success) {
-      showToast('Password reset successfully! You can now login.', 'success');
-      // Go back to login view
-      const tabsBar = document.getElementById('auth-tabs-bar');
-      if (tabsBar) tabsBar.style.display = '';
-      currentTab = 'login';
-      const tabs = document.querySelectorAll('.auth-tab');
-      tabs.forEach(t => t.classList.remove('active'));
-      tabs[0]?.classList.add('active');
-      document.getElementById('auth-form-container').innerHTML = renderLoginForm();
-      initFormHandlers();
-    } else {
-      submitBtn.disabled = false;
-      submitBtn.textContent = originalText;
-      document.getElementById('forgot-general-error').textContent = result.error;
-    }
-  });
-
-  // "Back to Login" link
-  document.getElementById('back-to-login')?.addEventListener('click', (e) => {
-    e.preventDefault();
-    const tabsBar = document.getElementById('auth-tabs-bar');
-    if (tabsBar) tabsBar.style.display = '';
-    currentTab = 'login';
-    const tabs = document.querySelectorAll('.auth-tab');
-    tabs.forEach(t => t.classList.remove('active'));
-    tabs[0]?.classList.add('active');
-    document.getElementById('auth-form-container').innerHTML = renderLoginForm();
-    initFormHandlers();
-  });
+  }, 1000);
 }
 
 export function closeAuthModal(triggerElement = null) {
@@ -364,11 +404,11 @@ export function closeAuthModal(triggerElement = null) {
     setTimeout(() => {
       overlay.remove();
       document.body.style.overflow = '';
-      // Restore background visibility for screen readers
       const appRoot = document.getElementById('app');
       if (appRoot) appRoot.removeAttribute('aria-hidden');
-      // Restore focus to trigger element
       if (triggerElement && typeof triggerElement.focus === 'function') triggerElement.focus();
     }, 200);
   }
+  currentStep = 'phone';
+  successCallback = null;
 }
