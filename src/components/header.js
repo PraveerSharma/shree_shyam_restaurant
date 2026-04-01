@@ -62,8 +62,7 @@ export function renderHeader() {
               Admin Mode
             </span>
           ` : `
-            <button class="btn btn-ghost btn-sm" id="login-btn">Login</button>
-            <button class="btn btn-primary btn-sm" id="register-btn">Register</button>
+            <button class="btn btn-primary btn-sm" id="login-btn">Sign In</button>
           `}
 
           <button class="hamburger" id="hamburger" aria-label="Open menu" aria-expanded="false" aria-controls="mobile-nav">
@@ -93,8 +92,7 @@ export function renderHeader() {
         ` : adminActive ? `
           <span style="font-size: 0.9rem; font-weight: 600; color: var(--clr-saffron);">👨‍💼 Currently Admin</span>
         ` : `
-          <button class="btn btn-ghost btn-sm" id="mobile-login-btn">Login</button>
-          <button class="btn btn-primary btn-sm" id="mobile-register-btn">Register</button>
+          <button class="btn btn-primary btn-sm" id="mobile-login-btn">Sign In</button>
         `}
       </div>
     </div>
@@ -140,17 +138,20 @@ export function initHeader() {
     });
   });
 
-  // Auth buttons — bind BOTH desktop and mobile buttons independently
+  // Auth buttons
   const desktopLoginBtn = document.getElementById('login-btn');
-  const desktopRegisterBtn = document.getElementById('register-btn');
   const desktopLogoutBtn = document.getElementById('logout-btn');
   const mobileLoginBtn = document.getElementById('mobile-login-btn');
-  const mobileRegisterBtn = document.getElementById('mobile-register-btn');
   const mobileLogoutBtn = document.getElementById('mobile-logout-btn');
 
   const closeMobileMenu = () => {
     hamburger?.classList.remove('active');
     mobileNav?.classList.remove('open');
+    if (hamburger) {
+      hamburger.setAttribute('aria-expanded', 'false');
+      hamburger.setAttribute('aria-label', 'Open menu');
+    }
+    if (mobileNav) mobileNav.setAttribute('aria-hidden', 'true');
     document.body.style.overflow = '';
   };
 
@@ -158,13 +159,6 @@ export function initHeader() {
     btn?.addEventListener('click', () => {
       closeMobileMenu();
       window.dispatchEvent(new CustomEvent('show-auth-modal', { detail: 'login' }));
-    });
-  });
-
-  [desktopRegisterBtn, mobileRegisterBtn].forEach(btn => {
-    btn?.addEventListener('click', () => {
-      closeMobileMenu();
-      window.dispatchEvent(new CustomEvent('show-auth-modal', { detail: 'register' }));
     });
   });
 

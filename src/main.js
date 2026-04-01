@@ -88,6 +88,35 @@ function renderPage(route) {
       pageContent = renderTermsPage();
       pageTitle = 'Terms & Conditions - Shree Shyam Restaurant';
       break;
+    case 'auth-callback':
+      // Google OAuth redirects here — handle in background, show loading
+      pageContent = `
+        <main class="page-content page-enter">
+          <section class="section" style="text-align:center;padding:6rem 1rem;">
+            <div class="spinner" style="margin:0 auto 1rem;" aria-hidden="true"></div>
+            <p style="color:var(--clr-gray-500);">Signing you in...</p>
+          </section>
+        </main>
+      `;
+      pageTitle = 'Signing In...';
+      initFn = async () => {
+        const { handleAuthCallback } = await import(/* @vite-ignore */ './services/auth.js');
+        const { showPhoneModal } = await import(/* @vite-ignore */ './components/auth-modal.js');
+        const result = await handleAuthCallback();
+        if (result.success) {
+          if (result.needsPhone) {
+            window.location.hash = '#/';
+            setTimeout(() => showPhoneModal(result.user), 300);
+          } else {
+            showToast(`Welcome back, ${result.user.name}!`, 'success');
+            window.location.hash = '#/';
+          }
+        } else {
+          showToast(result.error || 'Sign in failed', 'error');
+          window.location.hash = '#/';
+        }
+      };
+      break;
     default:
       pageContent = `
         <main class="page-content page-enter">

@@ -19,9 +19,9 @@ export function renderOrdersPage() {
       <main class="page-content page-enter">
         <section class="section">
           <div class="container" style="text-align:center; padding: 4rem 2rem;">
-            <h2>Please login to view your orders</h2>
-            <p>Order history and subscriptions are available for registered users only.</p>
-            <button class="btn btn-primary" style="margin-top:2rem;" id="orders-login-btn">Login Now</button>
+            <h2>Sign in to view your orders</h2>
+            <p>Order history and subscriptions are available for signed-in users.</p>
+            <button class="btn btn-primary" style="margin-top:2rem;" id="orders-login-btn">Sign In</button>
           </div>
         </section>
       </main>

@@ -1,44 +1,27 @@
 // ============================================
 // AUTHENTICATION SERVICE
-// Firebase Phone OTP + Supabase Profiles
+// Google SSO via Supabase Auth + Phone collection
 // ============================================
 
-import { firebaseAuth, RecaptchaVerifier, signInWithPhoneNumber, signOut } from '../config/firebase.js';
 import { supabase } from '../config/supabase.js';
-import { sanitizeInput } from '../utils/dom.js';
-import { formatPhoneNumber } from '../utils/format.js';
 import { refreshCartUI } from './cart.js';
 
 const SESSION_KEY = 'ssr_session';
 
-// ── Validation ──
+// ── Format Supabase user → app user ──
 
-function validatePhone(phone) {
-  const clean = phone.replace(/[\s\-+]/g, '');
-  // 10 digits or 12 digits starting with 91
-  return /^(91)?[6-9]\d{9}$/.test(clean);
-}
-
-function normalizePhone(phone) {
-  let clean = phone.replace(/[\s\-+]/g, '');
-  if (clean.length === 10 && /^[6-9]/.test(clean)) clean = '91' + clean;
-  if (!clean.startsWith('+')) clean = '+' + clean;
-  return clean; // returns "+91XXXXXXXXXX"
-}
-
-// ── Format user for app ──
-
-function formatUser(profile) {
-  if (!profile) return null;
+function formatUser(supaUser, profile = null) {
+  if (!supaUser) return null;
   return {
-    id: profile.id,
-    name: profile.name || '',
-    phone: profile.phone || '',
-    email: profile.email || '',
+    id: supaUser.id,
+    name: profile?.name || supaUser.user_metadata?.full_name || supaUser.user_metadata?.name || '',
+    phone: profile?.phone || supaUser.user_metadata?.phone || '',
+    email: supaUser.email || '',
+    avatar: supaUser.user_metadata?.avatar_url || '',
   };
 }
 
-// ── Session cache (synchronous reads for UI) ──
+// ── Session cache ──
 
 function cacheSession(user) {
   if (user) {
@@ -48,140 +31,125 @@ function cacheSession(user) {
   }
 }
 
-// ── reCAPTCHA setup (required by Firebase Phone Auth) ──
+// ── Google Sign In ──
 
-let recaptchaVerifier = null;
-let confirmationResult = null;
-
-export function setupRecaptcha(buttonId) {
-  if (recaptchaVerifier) {
-    recaptchaVerifier.clear();
-    recaptchaVerifier = null;
-  }
-  recaptchaVerifier = new RecaptchaVerifier(firebaseAuth, buttonId, {
-    size: 'invisible',
-    callback: () => {
-      // reCAPTCHA solved
+export async function signInWithGoogle() {
+  const { data, error } = await supabase.auth.signInWithOAuth({
+    provider: 'google',
+    options: {
+      redirectTo: window.location.origin + '/#/auth-callback',
+      queryParams: {
+        access_type: 'offline',
+        prompt: 'select_account',
+      },
     },
   });
-  return recaptchaVerifier;
+
+  if (error) {
+    return { success: false, error: error.message };
+  }
+
+  // OAuth redirects the user — no immediate return
+  return { success: true, redirecting: true };
 }
 
-// ── Send OTP ──
+// ── Handle OAuth callback (called after Google redirects back) ──
 
-export async function sendOTP(phone) {
+export async function handleAuthCallback() {
+  const { data: { session }, error } = await supabase.auth.getSession();
+
+  if (error || !session?.user) {
+    return { success: false, error: 'Authentication failed. Please try again.' };
+  }
+
+  const user = session.user;
+
+  // Check if profile exists
+  const { data: existing } = await supabase
+    .from('profiles')
+    .select('*')
+    .eq('id', user.id)
+    .limit(1);
+
+  if (existing && existing.length > 0) {
+    const profile = existing[0];
+    if (profile.phone) {
+      // Returning user with phone — fully set up
+      const appUser = formatUser(user, profile);
+      cacheSession(appUser);
+      refreshCartUI();
+      window.dispatchEvent(new CustomEvent('auth-changed', { detail: appUser }));
+      return { success: true, user: appUser, needsPhone: false };
+    } else {
+      // User exists but no phone — needs phone
+      const appUser = formatUser(user, profile);
+      cacheSession(appUser);
+      return { success: true, user: appUser, needsPhone: true };
+    }
+  }
+
+  // New user — create profile, needs phone
+  const newProfile = {
+    id: user.id,
+    name: user.user_metadata?.full_name || user.user_metadata?.name || '',
+    phone: '',
+    email: user.email || '',
+  };
+
+  await supabase.from('profiles').upsert(newProfile, { onConflict: 'id' }).catch(() => {});
+
+  const appUser = formatUser(user, newProfile);
+  cacheSession(appUser);
+  return { success: true, user: appUser, needsPhone: true };
+}
+
+// ── Save phone number after Google sign-in ──
+
+export async function savePhone(phone) {
   const clean = phone.replace(/[\s\-+]/g, '');
-  if (!validatePhone(clean)) {
+  if (!/^(91)?[6-9]\d{9}$/.test(clean)) {
     return { success: false, error: 'Please enter a valid 10-digit Indian mobile number' };
   }
 
-  const formatted = normalizePhone(clean);
+  const formatted = clean.length === 10 ? '+91' + clean : '+' + clean;
+  const user = getCurrentUser();
+  if (!user) return { success: false, error: 'Not logged in' };
 
-  try {
-    if (!recaptchaVerifier) {
-      return { success: false, error: 'reCAPTCHA not initialized. Please try again.' };
-    }
+  // Check phone uniqueness
+  const { data: existingPhone } = await supabase
+    .from('profiles')
+    .select('id')
+    .eq('phone', formatted)
+    .neq('id', user.id)
+    .limit(1);
 
-    confirmationResult = await signInWithPhoneNumber(firebaseAuth, formatted, recaptchaVerifier);
-    return { success: true };
-  } catch (error) {
-    console.error('[Auth] OTP send failed:', error);
-    // Reset recaptcha on failure
-    recaptchaVerifier = null;
-
-    if (error.code === 'auth/too-many-requests') {
-      return { success: false, error: 'Too many attempts. Please try again later.' };
-    }
-    if (error.code === 'auth/invalid-phone-number') {
-      return { success: false, error: 'Invalid phone number format.' };
-    }
-    return { success: false, error: 'Failed to send OTP. Please try again.' };
-  }
-}
-
-// ── Verify OTP ──
-
-export async function verifyOTP(otp, name = '') {
-  if (!confirmationResult) {
-    return { success: false, error: 'No OTP was sent. Please request a new one.' };
+  if (existingPhone && existingPhone.length > 0) {
+    return { success: false, error: 'This phone number is already linked to another account' };
   }
 
-  if (!otp || otp.length !== 6) {
-    return { success: false, error: 'Please enter the 6-digit OTP' };
+  // Update profile
+  const { error } = await supabase
+    .from('profiles')
+    .update({ phone: formatted })
+    .eq('id', user.id);
+
+  if (error) {
+    return { success: false, error: 'Failed to save phone number. Please try again.' };
   }
 
-  try {
-    const result = await confirmationResult.confirm(otp);
-    const fbUser = result.user;
-    const phone = fbUser.phoneNumber || '';
+  // Update cached session
+  const updated = { ...user, phone: formatted };
+  cacheSession(updated);
+  refreshCartUI();
+  window.dispatchEvent(new CustomEvent('auth-changed', { detail: updated }));
 
-    // Check if profile exists in Supabase
-    const { data: existing } = await supabase
-      .from('profiles')
-      .select('*')
-      .eq('phone', phone)
-      .limit(1);
-
-    let profile;
-
-    if (existing && existing.length > 0) {
-      // Existing user — login
-      profile = existing[0];
-      // Update Firebase UID if changed
-      if (profile.firebase_uid !== fbUser.uid) {
-        await supabase.from('profiles').update({ firebase_uid: fbUser.uid }).eq('id', profile.id);
-      }
-    } else {
-      // New user — register
-      const sanitizedName = sanitizeInput(name).trim();
-      if (!sanitizedName || sanitizedName.length < 2) {
-        return { success: false, error: 'Please enter your name (at least 2 characters)', needsName: true };
-      }
-
-      const newProfile = {
-        id: fbUser.uid,
-        name: sanitizedName,
-        phone: phone,
-        email: '',
-        firebase_uid: fbUser.uid,
-      };
-
-      const { error: insertError } = await supabase.from('profiles').insert(newProfile);
-
-      if (insertError) {
-        if (insertError.message.includes('profiles_phone_unique')) {
-          return { success: false, error: 'This phone number is already registered with another account.' };
-        }
-        console.error('[Auth] Profile insert failed:', insertError);
-        return { success: false, error: 'Registration failed. Please try again.' };
-      }
-
-      profile = newProfile;
-    }
-
-    const user = formatUser(profile);
-    cacheSession(user);
-    refreshCartUI();
-    window.dispatchEvent(new CustomEvent('auth-changed', { detail: user }));
-    confirmationResult = null;
-
-    return { success: true, user, isNew: !existing || existing.length === 0 };
-  } catch (error) {
-    console.error('[Auth] OTP verify failed:', error);
-    if (error.code === 'auth/invalid-verification-code') {
-      return { success: false, error: 'Incorrect OTP. Please check and try again.' };
-    }
-    if (error.code === 'auth/code-expired') {
-      return { success: false, error: 'OTP has expired. Please request a new one.' };
-    }
-    return { success: false, error: 'Verification failed. Please try again.' };
-  }
+  return { success: true, user: updated };
 }
 
 // ── Logout ──
 
 export async function logout() {
-  try { await signOut(firebaseAuth); } catch {}
+  await supabase.auth.signOut().catch(() => {});
   localStorage.removeItem(SESSION_KEY);
   refreshCartUI();
   window.dispatchEvent(new CustomEvent('auth-changed', { detail: null }));
@@ -204,33 +172,25 @@ export function isLoggedIn() {
 // ── Restore session on app init ──
 
 export async function restoreSession() {
-  // Refresh user count for admin
   refreshUserCount().catch(() => {});
 
-  // Check Firebase auth state
-  return new Promise((resolve) => {
-    const unsubscribe = firebaseAuth.onAuthStateChanged(async (fbUser) => {
-      unsubscribe();
-      if (fbUser && fbUser.phoneNumber) {
-        // Verify profile exists
-        const { data } = await supabase
-          .from('profiles')
-          .select('*')
-          .eq('phone', fbUser.phoneNumber)
-          .limit(1);
+  const { data: { session } } = await supabase.auth.getSession();
+  if (session?.user) {
+    // Fetch profile from Supabase
+    const { data: profiles } = await supabase
+      .from('profiles')
+      .select('*')
+      .eq('id', session.user.id)
+      .limit(1);
 
-        if (data && data.length > 0) {
-          const user = formatUser(data[0]);
-          cacheSession(user);
-          resolve(user);
-          return;
-        }
-      }
-      // No valid session
-      localStorage.removeItem(SESSION_KEY);
-      resolve(null);
-    });
-  });
+    const profile = profiles?.[0] || null;
+    const user = formatUser(session.user, profile);
+    cacheSession(user);
+    return user;
+  }
+
+  localStorage.removeItem(SESSION_KEY);
+  return null;
 }
 
 // ── Admin Metrics ──
@@ -248,3 +208,25 @@ export async function refreshUserCount() {
   cachedUserCount = count || 0;
   return cachedUserCount;
 }
+
+// ── Listen for auth state changes ──
+
+supabase.auth.onAuthStateChange(async (event, session) => {
+  if (event === 'SIGNED_IN' && session?.user) {
+    const { data: profiles } = await supabase
+      .from('profiles')
+      .select('*')
+      .eq('id', session.user.id)
+      .limit(1);
+
+    const profile = profiles?.[0] || null;
+    const user = formatUser(session.user, profile);
+    cacheSession(user);
+    refreshCartUI();
+    window.dispatchEvent(new CustomEvent('auth-changed', { detail: user }));
+  } else if (event === 'SIGNED_OUT') {
+    localStorage.removeItem(SESSION_KEY);
+    refreshCartUI();
+    window.dispatchEvent(new CustomEvent('auth-changed', { detail: null }));
+  }
+});
