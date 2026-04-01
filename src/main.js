@@ -13,6 +13,7 @@ import { renderHeader, initHeader, updateActiveLink, updateCartBadge } from './c
 import { renderFooter } from './components/footer.js';
 import { trackPageView } from './services/analytics.js';
 import { showAuthModal, showPostAuthSetup } from './components/auth-modal.js';
+import { waitForAuth } from './services/auth.js';
 import { supabase } from './config/supabase.js';
 import { initScrollReveal } from './utils/animations.js';
 
@@ -231,7 +232,15 @@ window.addEventListener('auth-changed', (e) => {
 });
 
 // ── Initial render ──
-handleAuthRedirect().then(() => {
+// Wait for Supabase to restore session from storage before first render,
+// so the page doesn't flash a logged-out state on refresh.
+handleAuthRedirect().then(async (wasRedirect) => {
+  if (!wasRedirect) {
+    await Promise.race([
+      waitForAuth(),
+      new Promise(r => setTimeout(r, 2000)) // 2s timeout so page isn't blocked forever
+    ]);
+  }
   handleRoute();
 });
 
