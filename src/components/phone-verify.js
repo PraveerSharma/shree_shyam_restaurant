@@ -184,36 +184,26 @@ function bindOTPStep() {
     btn.disabled = true;
     btn.textContent = 'Verifying...';
 
-    // Verify OTP via Firebase
-    const r = await verifyFirebaseOTP(otp, getCurrentUser()?.name || 'User');
+    // Verify OTP via Firebase (verifyOnly mode — don't create new profile)
+    const r = await verifyFirebaseOTP(otp, '', true);
 
     if (r.success) {
-      // Phone verified via Firebase — now save to Supabase profile
+      // Phone verified — save to existing user's Supabase profile
       const formatted = '+91' + pvPhone;
-      const user = getCurrentUser();
+      const saveResult = await savePhone(pvPhone);
 
-      if (user?.id) {
-        // Save phone to Supabase profile (for Google SSO users)
-        await savePhone(pvPhone).catch(() => {});
+      if (saveResult.success) {
+        closeVerify();
+        showToast('Phone number verified!', 'success');
+        if (typeof verifyCallback === 'function') {
+          verifyCallback(saveResult.user);
+          verifyCallback = null;
+        }
+      } else {
+        err.textContent = saveResult.error || 'Failed to save phone. Try again.';
+        btn.disabled = false;
+        btn.textContent = 'Verify';
       }
-
-      // Update localStorage session with verified phone
-      const updated = { ...getCurrentUser(), phone: formatted };
-      localStorage.setItem('ssr_session', JSON.stringify(updated));
-      window.dispatchEvent(new CustomEvent('auth-changed', { detail: updated }));
-
-      closeVerify();
-      showToast('Phone number verified!', 'success');
-
-      if (typeof verifyCallback === 'function') {
-        verifyCallback(updated);
-        verifyCallback = null;
-      }
-    } else if (r.needsName) {
-      // Already handled — verifyFirebaseOTP creates profile with name
-      err.textContent = 'Please try again.';
-      btn.disabled = false;
-      btn.textContent = 'Verify';
     } else {
       err.textContent = r.error;
       btn.disabled = false;

@@ -137,17 +137,23 @@ function renderPage(route) {
   setTimeout(() => initScrollReveal(), 100);
 }
 
-// ── Router ──
+// ── Router (debounced to prevent rapid-fire re-renders) ──
+let routeTimer = null;
 function handleRoute() {
   const route = getRoute();
   renderPage(route);
+}
+
+function scheduleRoute() {
+  if (routeTimer) clearTimeout(routeTimer);
+  routeTimer = setTimeout(() => { routeTimer = null; handleRoute(); }, 30);
 }
 
 window.addEventListener('hashchange', handleRoute);
 
 // ── Global Events ──
 window.addEventListener('auth-changed', () => {
-  handleRoute(); // Re-render to update header
+  scheduleRoute(); // Re-render to update header (debounced)
 });
 
 window.addEventListener('cart-updated', () => {
@@ -219,7 +225,7 @@ document.body.appendChild(syncBar);
 processRetryQueue().catch(() => {});
 
 if (!isOAuthReturn) {
-  restoreSession().then(() => handleRoute()).catch(() => {});
+  restoreSession().then(() => scheduleRoute()).catch(() => {});
 }
 
 syncAll().then(ok => {
@@ -227,7 +233,7 @@ syncAll().then(ok => {
   setTimeout(() => syncBar.remove(), 400);
   if (ok) {
     console.log('[DB] Synced with Supabase');
-    handleRoute(); // Re-render with server data
+    scheduleRoute(); // Re-render with server data (debounced)
   } else {
     showToast('Using offline data. Some features may be limited.', 'info');
   }

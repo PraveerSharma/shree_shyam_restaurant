@@ -43,8 +43,11 @@ window.addEventListener('storage', (e) => {
     forceLogoutThisTab();
   }
   if (e.key === SESSION_KEY && !e.newValue) {
-    // Session was cleared by another tab
-    forceLogoutThisTab();
+    // Session was cleared by another tab — only logout if we don't own the lock
+    // (prevents cascade: Tab A claims → Tab B logs out → removes SESSION_KEY → Tab A sees removal and also logs out)
+    if (localStorage.getItem(TAB_LOCK_KEY) !== MY_TAB_TOKEN) {
+      forceLogoutThisTab();
+    }
   }
 });
 
@@ -52,9 +55,8 @@ function forceLogoutThisTab() {
   localStorage.removeItem(SESSION_KEY);
   sessionStorage.removeItem(TAB_TOKEN_KEY);
   refreshCartUI();
+  // auth-changed listener in main.js triggers handleRoute for re-render
   window.dispatchEvent(new CustomEvent('auth-changed', { detail: null }));
-  // Re-render to show logged-out state
-  window.dispatchEvent(new HashChangeEvent('hashchange'));
 }
 
 function claimSession() {
@@ -176,6 +178,7 @@ export async function savePhone(phone) {
 
 let recaptchaVerifier = null;
 let confirmationResult = null;
+let pendingPhoneUser = null; // { phone, uid } — stored after OTP verified but name still needed
 
 export function setupRecaptcha(containerId) {
   if (recaptchaVerifier) { recaptchaVerifier.clear(); recaptchaVerifier = null; }
@@ -199,13 +202,43 @@ export async function sendFirebaseOTP(phone) {
   }
 }
 
-export async function verifyFirebaseOTP(otp, name = '') {
+export async function verifyFirebaseOTP(otp, name = '', verifyOnly = false) {
+  // ── Phase 2: Name collection for pending user (OTP already verified) ──
+  if (pendingPhoneUser && name && name.trim().length >= 2) {
+    const profile = {
+      id: 'fb_' + pendingPhoneUser.uid,
+      name: name.trim(),
+      phone: pendingPhoneUser.phone,
+      email: '',
+    };
+    const { error: insErr } = await supabase.from('profiles').insert(profile);
+    if (insErr?.message?.includes('phone')) return { success: false, error: 'This number is already registered.' };
+    if (insErr) return { success: false, error: 'Registration failed. Try again.' };
+
+    const appUser = formatUser(profile);
+    cacheSession(appUser);
+    refreshCartUI();
+    window.dispatchEvent(new CustomEvent('auth-changed', { detail: appUser }));
+    pendingPhoneUser = null;
+    confirmationResult = null;
+    return { success: true, user: appUser, isNew: true };
+  }
+
+  // ── Phase 1: OTP verification ──
   if (!confirmationResult) return { success: false, error: 'No OTP sent. Request a new one.' };
   if (!otp || otp.length !== 6) return { success: false, error: 'Enter the 6-digit OTP' };
 
   try {
     const result = await confirmationResult.confirm(otp);
     const phone = result.user.phoneNumber || '';
+
+    // Verify-only mode: just confirm OTP, don't touch Supabase profiles
+    // Used by phone-verify.js for existing users adding their phone
+    if (verifyOnly) {
+      confirmationResult = null;
+      pendingPhoneUser = null;
+      return { success: true, phone, verified: true };
+    }
 
     // Check Supabase profile
     const { data: existing } = await supabase.from('profiles').select('*').eq('phone', phone).limit(1);
@@ -216,14 +249,17 @@ export async function verifyFirebaseOTP(otp, name = '') {
       refreshCartUI();
       window.dispatchEvent(new CustomEvent('auth-changed', { detail: appUser }));
       confirmationResult = null;
+      pendingPhoneUser = null;
       return { success: true, user: appUser, isNew: false };
     }
 
-    // New user — need name
+    // New user — need name. Store verified Firebase user for Phase 2.
     if (!name || name.trim().length < 2) {
+      pendingPhoneUser = { phone, uid: result.user.uid };
       return { success: false, needsName: true, error: 'Enter your name' };
     }
 
+    // Name was provided alongside OTP (e.g. phone-verify.js flow)
     const profile = {
       id: 'fb_' + result.user.uid,
       name: name.trim(),
@@ -238,6 +274,7 @@ export async function verifyFirebaseOTP(otp, name = '') {
     refreshCartUI();
     window.dispatchEvent(new CustomEvent('auth-changed', { detail: appUser }));
     confirmationResult = null;
+    pendingPhoneUser = null;
     return { success: true, user: appUser, isNew: true };
   } catch (err) {
     if (err.code === 'auth/invalid-verification-code') return { success: false, error: 'Incorrect OTP.' };
@@ -273,13 +310,6 @@ export async function logout() {
 
 export function getCurrentUser() {
   try {
-    // Check if this tab owns the session
-    const lock = localStorage.getItem(TAB_LOCK_KEY);
-    const myToken = sessionStorage.getItem(TAB_TOKEN_KEY);
-    if (lock && lock !== MY_TAB_TOKEN && !myToken) {
-      // Another tab owns the session — this tab is not logged in
-      return null;
-    }
     return JSON.parse(localStorage.getItem(SESSION_KEY)) || null;
   } catch { return null; }
 }
@@ -288,17 +318,6 @@ export function isLoggedIn() { return getCurrentUser() !== null; }
 
 export async function restoreSession() {
   refreshUserCount().catch(() => {});
-
-  // ── Single-tab enforcement ──
-  // Check if another tab already owns the session
-  const existingLock = localStorage.getItem(TAB_LOCK_KEY);
-  const myToken = sessionStorage.getItem(TAB_TOKEN_KEY);
-
-  if (existingLock && existingLock !== MY_TAB_TOKEN && !myToken) {
-    // Another tab owns the session — this is a new tab, don't restore
-    localStorage.removeItem(SESSION_KEY);
-    return null;
-  }
 
   // Check Supabase session (Google SSO)
   const { data: { session } } = await supabase.auth.getSession();
