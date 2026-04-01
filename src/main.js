@@ -88,35 +88,6 @@ function renderPage(route) {
       pageContent = renderTermsPage();
       pageTitle = 'Terms & Conditions - Shree Shyam Restaurant';
       break;
-    case 'auth-callback':
-      // Google OAuth redirects here — handle in background, show loading
-      pageContent = `
-        <main class="page-content page-enter">
-          <section class="section" style="text-align:center;padding:6rem 1rem;">
-            <div class="spinner" style="margin:0 auto 1rem;" aria-hidden="true"></div>
-            <p style="color:var(--clr-gray-500);">Signing you in...</p>
-          </section>
-        </main>
-      `;
-      pageTitle = 'Signing In...';
-      initFn = async () => {
-        const { handleAuthCallback } = await import(/* @vite-ignore */ './services/auth.js');
-        const { showPhoneModal } = await import(/* @vite-ignore */ './components/auth-modal.js');
-        const result = await handleAuthCallback();
-        if (result.success) {
-          if (result.needsPhone) {
-            window.location.hash = '#/';
-            setTimeout(() => showPhoneModal(result.user), 300);
-          } else {
-            showToast(`Welcome back, ${result.user.name}!`, 'success');
-            window.location.hash = '#/';
-          }
-        } else {
-          showToast(result.error || 'Sign in failed', 'error');
-          window.location.hash = '#/';
-        }
-      };
-      break;
     default:
       pageContent = `
         <main class="page-content page-enter">
@@ -214,8 +185,35 @@ document.body.appendChild(syncBar);
 // Process retry queue first (for any previously failed writes)
 processRetryQueue().catch(() => {});
 
-// Restore auth session from Supabase JWT
-restoreSession().then(() => handleRoute()).catch(() => {});
+// Restore auth session — also handles Google OAuth callback
+import { handleAuthCallback } from './services/auth.js';
+import { showPhoneModal } from './components/auth-modal.js';
+
+const isOAuthReturn = window.location.hash.includes('access_token') || window.location.href.includes('access_token');
+
+if (isOAuthReturn) {
+  // Google OAuth just redirected back with tokens in the URL
+  handleAuthCallback().then(result => {
+    // Clean URL
+    window.location.hash = '#/';
+    if (result.success) {
+      if (result.needsPhone) {
+        setTimeout(() => {
+          handleRoute();
+          showPhoneModal(result.user);
+        }, 300);
+      } else {
+        showToast(`Welcome back, ${result.user.name}!`, 'success');
+        handleRoute();
+      }
+    } else {
+      showToast(result.error || 'Sign in failed', 'error');
+      handleRoute();
+    }
+  }).catch(() => { window.location.hash = '#/'; handleRoute(); });
+} else {
+  restoreSession().then(() => handleRoute()).catch(() => {});
+}
 
 syncAll().then(ok => {
   syncBar.style.width = '100%';
