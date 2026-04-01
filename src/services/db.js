@@ -388,19 +388,29 @@ export async function dbSaveAllMenuItems(items, menuType) {
 // ── Cart sync (for logged-in users) ──
 
 export async function dbSyncCart(userId, cart) {
-  // Delete existing cart items for user
+  if (!userId) return;
+
+  // Delete all existing cart items for this user first
   await supabase.from('cart_items').delete().eq('user_id', userId);
 
+  // Small delay to ensure delete completes before insert
+  await new Promise(r => setTimeout(r, 100));
+
   if (cart.length) {
-    await insertRow('cart_items', cart.map(item => ({
-      user_id: userId,
-      item_id: item.id,
-      item_name: item.name,
-      price: item.price,
-      unit: item.unit || '',
-      quantity: item.quantity,
-      image: item.image || '',
-    })));
+    // Use upsert to avoid conflict errors
+    const { error } = await supabase.from('cart_items').upsert(
+      cart.map(item => ({
+        user_id: userId,
+        item_id: item.id,
+        item_name: item.name,
+        price: item.price,
+        unit: item.unit || '',
+        quantity: item.quantity,
+        image: item.image || '',
+      })),
+      { onConflict: 'user_id,item_id' }
+    );
+    if (error) console.warn('[DB] cart sync:', error.message);
   }
 }
 
@@ -422,18 +432,27 @@ export async function dbLoadCart(userId) {
 let realtimeChannel = null;
 
 export function subscribeToOrders(callback) {
-  if (realtimeChannel) realtimeChannel.unsubscribe();
+  // Only subscribe if not already connected
+  if (realtimeChannel) return realtimeChannel;
 
-  realtimeChannel = supabase
-    .channel('orders-realtime')
-    .on('postgres_changes', { event: '*', schema: 'public', table: 'orders' }, (payload) => {
-      console.log('[RT] Order change:', payload.eventType);
-      // Re-sync orders to localStorage then notify
-      syncOrders().then(() => {
-        if (typeof callback === 'function') callback(payload);
+  try {
+    realtimeChannel = supabase
+      .channel('orders-realtime')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'orders' }, (payload) => {
+        console.log('[RT] Order change:', payload.eventType);
+        syncOrders().then(() => {
+          if (typeof callback === 'function') callback(payload);
+        });
+      })
+      .subscribe((status) => {
+        if (status === 'CHANNEL_ERROR') {
+          console.warn('[RT] Realtime connection failed — will use manual refresh');
+          realtimeChannel = null;
+        }
       });
-    })
-    .subscribe();
+  } catch {
+    console.warn('[RT] Realtime not available');
+  }
 
   return realtimeChannel;
 }

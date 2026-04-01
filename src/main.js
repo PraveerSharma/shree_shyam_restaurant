@@ -231,13 +231,10 @@ syncAll().then(ok => {
   console.warn('[DB] Sync failed, using local data:', err);
 });
 
-// ── Realtime: auto-refresh admin orders dashboard when new orders arrive ──
-subscribeToOrders(() => {
-  // Only re-render if currently on admin orders tab
-  if (window.location.hash.includes('admin')) {
-    handleRoute();
-  }
-});
+// ── Realtime: only connect when admin page is active ──
+if (window.location.hash.includes('admin')) {
+  subscribeToOrders(() => { handleRoute(); });
+}
 
 // ── Service Worker Registration (PWA) ──
 if ('serviceWorker' in navigator) {
