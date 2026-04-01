@@ -1,0 +1,174 @@
+- generic [active] [ref=e1]:
+  - link "Skip to main content" [ref=e2] [cursor=pointer]:
+    - /url: "#main-content"
+  - generic [ref=e3]:
+    - banner [ref=e584]:
+      - generic [ref=e585]:
+        - link "Shree Shyam Restaurant Logo Shree Shyam Restaurant Est. Golaghat, Assam" [ref=e586] [cursor=pointer]:
+          - /url: "#/"
+          - img "Shree Shyam Restaurant Logo" [ref=e587]
+          - generic [ref=e588]:
+            - text: Shree Shyam
+            - text: Restaurant
+            - generic [ref=e589]: Est. Golaghat, Assam
+        - navigation "Main navigation" [ref=e590]:
+          - generic [ref=e591]:
+            - link "Home" [ref=e592] [cursor=pointer]:
+              - /url: "#/"
+            - link "Sweets & Snacks" [ref=e593] [cursor=pointer]:
+              - /url: "#/sweets"
+            - link "Restaurant" [ref=e594] [cursor=pointer]:
+              - /url: "#/restaurant"
+        - generic [ref=e595]:
+          - link "View Cart, 0 items" [ref=e596] [cursor=pointer]:
+            - /url: "#/cart"
+            - img [ref=e597]
+            - text: Cart
+          - button "Sign In" [ref=e600] [cursor=pointer]
+    - main [ref=e601]:
+      - generic [ref=e602]:
+        - img [ref=e604]
+        - generic [ref=e606]:
+          - img [ref=e607]
+          - generic [ref=e608]: Est. 2005 · Golaghat, Assam
+          - heading "Shree Shyam Restaurant" [level=1] [ref=e609]:
+            - text: Shree Shyam
+            - generic [ref=e610]: Restaurant
+          - paragraph [ref=e611]: Authentic vegetarian sweets, snacks & thalis — made with pure ghee and generations of tradition.
+          - generic [ref=e612]:
+            - link "Order Sweets" [ref=e613] [cursor=pointer]:
+              - /url: "#/sweets"
+            - link "Dine-In Menu" [ref=e614] [cursor=pointer]:
+              - /url: "#/restaurant"
+      - generic [ref=e617]:
+        - generic [ref=e618]:
+          - generic [ref=e619]: 🌿
+          - generic [ref=e620]: 100% Pure Veg
+        - generic [ref=e621]:
+          - generic [ref=e622]: 🧈
+          - generic [ref=e623]: Made with Desi Ghee
+        - generic [ref=e624]:
+          - generic [ref=e625]: 🏠
+          - generic [ref=e626]: Serving Since 2005
+        - generic [ref=e627]:
+          - generic [ref=e628]: 📦
+          - generic [ref=e629]: Pickup & Delivery
+      - generic [ref=e631]:
+        - generic [ref=e632]:
+          - generic [ref=e633]: What We Offer
+          - heading "A Taste for Every Occasion" [level=2] [ref=e634]
+          - paragraph [ref=e635]: From festive sweets to everyday thalis, we've got Golaghat covered.
+        - generic [ref=e636]:
+          - link "Sweets Sweets & Mithai Gulab Jamun, Kaju Barfi, Rasgulla, Peda, Ladoo and more — freshly made every day. Browse Sweets →" [ref=e637] [cursor=pointer]:
+            - /url: "#/sweets"
+            - img "Sweets" [ref=e639]
+            - generic [ref=e640]:
+              - heading "Sweets & Mithai" [level=3] [ref=e641]
+              - paragraph [ref=e642]: Gulab Jamun, Kaju Barfi, Rasgulla, Peda, Ladoo and more — freshly made every day.
+              - generic [ref=e643]: Browse Sweets →
+          - link "Snacks Snacks & Namkeen Samosa, Bhujia, Mathri, Nankhatai, Namak Pare — perfect with chai or as gifts. Browse Snacks →" [ref=e644] [cursor=pointer]:
+            - /url: "#/sweets"
+            - img "Snacks" [ref=e646]
+            - generic [ref=e647]:
+              - heading "Snacks & Namkeen" [level=3] [ref=e648]
+              - paragraph [ref=e649]: Samosa, Bhujia, Mathri, Nankhatai, Namak Pare — perfect with chai or as gifts.
+              - generic [ref=e650]: Browse Snacks →
+          - 'link "Thali Restaurant & Thalis Full dine-in menu: Paneer Tikka, Dal Makhani, Butter Naan, and complete thali options. Explore Menu →" [ref=e651] [cursor=pointer]':
+            - /url: "#/restaurant"
+            - img "Thali" [ref=e653]
+            - generic [ref=e654]:
+              - heading "Restaurant & Thalis" [level=3] [ref=e655]
+              - paragraph [ref=e656]: "Full dine-in menu: Paneer Tikka, Dal Makhani, Butter Naan, and complete thali options."
+              - generic [ref=e657]: Explore Menu →
+      - generic [ref=e659]:
+        - generic [ref=e660]:
+          - generic [ref=e661]: Visit Us
+          - heading "We'd Love to See You" [level=2] [ref=e662]
+        - generic [ref=e663]:
+          - generic [ref=e664]:
+            - generic [ref=e665]: 📍
+            - heading "Location" [level=3] [ref=e666]
+            - paragraph [ref=e667]: NRL Road, Telagaram, Golaghat, Assam 785699
+            - link "Get Directions →" [ref=e668] [cursor=pointer]:
+              - /url: https://share.google/XMipNElHF5Ap7e8QQ
+          - generic [ref=e669]:
+            - generic [ref=e670]: 🕐
+            - heading "Hours" [level=3] [ref=e671]
+            - paragraph [ref=e672]:
+              - text: Monday - Sunday
+              - strong [ref=e673]: 10:00 AM — 11:00 PM
+            - generic [ref=e674]: Open Now
+          - generic [ref=e675]:
+            - generic [ref=e676]: 📞
+            - heading "Contact" [level=3] [ref=e677]
+            - paragraph [ref=e678]:
+              - link "+91 86907 56828" [ref=e679] [cursor=pointer]:
+                - /url: tel:+918690756828
+            - generic [ref=e680]:
+              - link "Call Us" [ref=e681] [cursor=pointer]:
+                - /url: tel:+918690756828
+              - link "WhatsApp" [ref=e682] [cursor=pointer]:
+                - /url: https://wa.me/+918690756828
+        - iframe [ref=e684]:
+          
+      - generic [ref=e686]:
+        - heading "Ready to Order?" [level=2] [ref=e687]
+        - paragraph [ref=e688]: Fresh sweets and hot meals — just a few clicks away.
+        - generic [ref=e689]:
+          - link "🍬 Sweets & Snacks" [ref=e690] [cursor=pointer]:
+            - /url: "#/sweets"
+          - link "🍛 Restaurant Menu" [ref=e691] [cursor=pointer]:
+            - /url: "#/restaurant"
+    - contentinfo [ref=e692]:
+      - generic [ref=e693]:
+        - generic [ref=e694]:
+          - generic [ref=e695]:
+            - heading "📍 Shree Shyam Restaurant" [level=3] [ref=e696]
+            - paragraph [ref=e697]: 🏠 NRL Road, Telagaram, Golaghat, Assam 785699
+            - paragraph [ref=e698]:
+              - text: 📞
+              - link "+91 86907 56828" [ref=e699] [cursor=pointer]:
+                - /url: tel:+918690756828
+            - paragraph [ref=e700]:
+              - text: 💬
+              - link "WhatsApp Us" [ref=e701] [cursor=pointer]:
+                - /url: https://wa.me/+918690756828
+            - paragraph [ref=e702]: "🕐 Monday - Sunday: 10:00 AM - 11:00 PM"
+          - navigation "Footer navigation" [ref=e703]:
+            - heading "Quick Links" [level=3] [ref=e704]
+            - link "Home" [ref=e705] [cursor=pointer]:
+              - /url: "#/"
+            - link "Sweets & Snacks" [ref=e706] [cursor=pointer]:
+              - /url: "#/sweets"
+            - link "Restaurant Menu" [ref=e707] [cursor=pointer]:
+              - /url: "#/restaurant"
+            - link "Cart & Checkout" [ref=e708] [cursor=pointer]:
+              - /url: "#/cart"
+            - link "Privacy Policy" [ref=e709] [cursor=pointer]:
+              - /url: "#/privacy"
+            - link "Terms & Conditions" [ref=e710] [cursor=pointer]:
+              - /url: "#/terms"
+          - generic [ref=e711]:
+            - heading "Connect With Us" [level=3] [ref=e712]
+            - paragraph [ref=e713]: Follow us on social media for daily specials, new items, and festive offers!
+            - generic [ref=e714]:
+              - link "Instagram" [ref=e715] [cursor=pointer]:
+                - /url: https://instagram.com/shreeshyamrestaurant
+                - img [ref=e716]
+              - link "Facebook" [ref=e718] [cursor=pointer]:
+                - /url: https://facebook.com/shreeshyamrestaurant
+                - img [ref=e719]
+              - link "Google Maps" [ref=e721] [cursor=pointer]:
+                - /url: https://share.google/XMipNElHF5Ap7e8QQ
+                - img [ref=e722]
+        - generic [ref=e724]:
+          - paragraph [ref=e725]: © 2026 Shree Shyam Restaurant. All rights reserved.
+          - paragraph [ref=e726]:
+            - link "Privacy Policy" [ref=e727] [cursor=pointer]:
+              - /url: "#/privacy"
+            - text: "|"
+            - link "Terms & Conditions" [ref=e728] [cursor=pointer]:
+              - /url: "#/terms"
+            - text: "|"
+            - link "Admin" [ref=e729] [cursor=pointer]:
+              - /url: "#/admin"

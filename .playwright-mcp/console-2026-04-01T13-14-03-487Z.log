@@ -1,0 +1,2 @@
+[     757ms] [ERROR] Failed to load resource: the server responded with a status of 404 () @ https://shree-shyam-delights.firebaseapp.com/__/firebase/init.json:0
+[    1270ms] [ERROR] Failed to load resource: the server responded with a status of 400 () @ https://www.googleapis.com/identitytoolkit/v3/relyingparty/createAuthUri?key=AIzaSyCBM4QHW2ziofgeOhpSNKpVXzkqspfglM0:0

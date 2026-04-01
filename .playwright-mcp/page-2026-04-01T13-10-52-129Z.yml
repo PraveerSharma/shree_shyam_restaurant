@@ -1,0 +1,90 @@
+- generic [active] [ref=e1]:
+  - link "Skip to main content" [ref=e2] [cursor=pointer]:
+    - /url: "#main-content"
+  - generic [ref=e3]:
+    - banner [ref=e519]:
+      - generic [ref=e520]:
+        - link "Shree Shyam Restaurant Logo Shree Shyam Restaurant Est. Golaghat, Assam" [ref=e521] [cursor=pointer]:
+          - /url: "#/"
+          - img "Shree Shyam Restaurant Logo" [ref=e522]
+          - generic [ref=e523]:
+            - text: Shree Shyam
+            - text: Restaurant
+            - generic [ref=e524]: Est. Golaghat, Assam
+        - navigation "Main navigation" [ref=e525]:
+          - generic [ref=e526]:
+            - link "Home" [ref=e527] [cursor=pointer]:
+              - /url: "#/"
+            - link "Sweets & Snacks" [ref=e528] [cursor=pointer]:
+              - /url: "#/sweets"
+            - link "Restaurant" [ref=e529] [cursor=pointer]:
+              - /url: "#/restaurant"
+        - generic [ref=e530]:
+          - link "View Cart, 0 items" [ref=e531] [cursor=pointer]:
+            - /url: "#/cart"
+            - img [ref=e532]
+            - text: Cart
+          - button "Sign In" [ref=e535] [cursor=pointer]
+    - main [ref=e536]:
+      - generic [ref=e539]:
+        - generic [ref=e540]: 🛒
+        - heading "Your Cart is Empty" [level=2] [ref=e541]
+        - paragraph [ref=e542]: Looks like you haven't added anything yet. Explore our delicious menu!
+        - generic [ref=e543]:
+          - link "🍬 Browse Sweets" [ref=e544] [cursor=pointer]:
+            - /url: "#/sweets"
+          - link "🍛 Restaurant Menu" [ref=e545] [cursor=pointer]:
+            - /url: "#/restaurant"
+    - contentinfo [ref=e546]:
+      - generic [ref=e547]:
+        - generic [ref=e548]:
+          - generic [ref=e549]:
+            - heading "📍 Shree Shyam Restaurant" [level=3] [ref=e550]
+            - paragraph [ref=e551]: 🏠 NRL Road, Telagaram, Golaghat, Assam 785699
+            - paragraph [ref=e552]:
+              - text: 📞
+              - link "+91 86907 56828" [ref=e553] [cursor=pointer]:
+                - /url: tel:+918690756828
+            - paragraph [ref=e554]:
+              - text: 💬
+              - link "WhatsApp Us" [ref=e555] [cursor=pointer]:
+                - /url: https://wa.me/+918690756828
+            - paragraph [ref=e556]: "🕐 Monday - Sunday: 10:00 AM - 11:00 PM"
+          - navigation "Footer navigation" [ref=e557]:
+            - heading "Quick Links" [level=3] [ref=e558]
+            - link "Home" [ref=e559] [cursor=pointer]:
+              - /url: "#/"
+            - link "Sweets & Snacks" [ref=e560] [cursor=pointer]:
+              - /url: "#/sweets"
+            - link "Restaurant Menu" [ref=e561] [cursor=pointer]:
+              - /url: "#/restaurant"
+            - link "Cart & Checkout" [ref=e562] [cursor=pointer]:
+              - /url: "#/cart"
+            - link "Privacy Policy" [ref=e563] [cursor=pointer]:
+              - /url: "#/privacy"
+            - link "Terms & Conditions" [ref=e564] [cursor=pointer]:
+              - /url: "#/terms"
+          - generic [ref=e565]:
+            - heading "Connect With Us" [level=3] [ref=e566]
+            - paragraph [ref=e567]: Follow us on social media for daily specials, new items, and festive offers!
+            - generic [ref=e568]:
+              - link "Instagram" [ref=e569] [cursor=pointer]:
+                - /url: https://instagram.com/shreeshyamrestaurant
+                - img [ref=e570]
+              - link "Facebook" [ref=e572] [cursor=pointer]:
+                - /url: https://facebook.com/shreeshyamrestaurant
+                - img [ref=e573]
+              - link "Google Maps" [ref=e575] [cursor=pointer]:
+                - /url: https://share.google/XMipNElHF5Ap7e8QQ
+                - img [ref=e576]
+        - generic [ref=e578]:
+          - paragraph [ref=e579]: © 2026 Shree Shyam Restaurant. All rights reserved.
+          - paragraph [ref=e580]:
+            - link "Privacy Policy" [ref=e581] [cursor=pointer]:
+              - /url: "#/privacy"
+            - text: "|"
+            - link "Terms & Conditions" [ref=e582] [cursor=pointer]:
+              - /url: "#/terms"
+            - text: "|"
+            - link "Admin" [ref=e583] [cursor=pointer]:
+              - /url: "#/admin"

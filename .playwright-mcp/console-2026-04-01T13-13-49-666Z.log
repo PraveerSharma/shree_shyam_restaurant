@@ -1,0 +1,3 @@
+[    1583ms] [LOG] [DB] Synced with Supabase @ http://localhost:3000/src/main.js:197
+[  177251ms] [LOG] Failed to initialize reCAPTCHA Enterprise config. Triggering the reCAPTCHA v2 verification. @ http://localhost:3000/node_modules/.vite/deps/firebase_auth.js?v=e111e1e6:6497
+[  180829ms] [ERROR] Failed to load resource: the server responded with a status of 400 () @ https://identitytoolkit.googleapis.com/v1/accounts:sendVerificationCode?key=AIzaSyCBM4QHW2ziofgeOhpSNKpVXzkqspfglM0:0

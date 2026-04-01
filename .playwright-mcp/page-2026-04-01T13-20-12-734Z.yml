@@ -1,0 +1,232 @@
+- generic [active] [ref=e1]:
+  - link "Skip to main content" [ref=e2] [cursor=pointer]:
+    - /url: "#main-content"
+  - generic [ref=e3]:
+    - banner [ref=e4]:
+      - generic [ref=e5]:
+        - link "Shree Shyam Restaurant Logo Shree Shyam Restaurant Est. Golaghat, Assam" [ref=e6] [cursor=pointer]:
+          - /url: "#/"
+          - img "Shree Shyam Restaurant Logo" [ref=e7]
+          - generic [ref=e8]:
+            - text: Shree Shyam
+            - text: Restaurant
+            - generic [ref=e9]: Est. Golaghat, Assam
+        - navigation "Main navigation" [ref=e10]:
+          - generic [ref=e11]:
+            - link "Home" [ref=e12] [cursor=pointer]:
+              - /url: "#/"
+            - link "Sweets & Snacks" [ref=e13] [cursor=pointer]:
+              - /url: "#/sweets"
+            - link "Restaurant" [ref=e14] [cursor=pointer]:
+              - /url: "#/restaurant"
+        - generic [ref=e15]:
+          - link "View Cart, 0 items" [ref=e16] [cursor=pointer]:
+            - /url: "#/cart"
+            - img [ref=e17]
+            - text: Cart
+          - button "Sign In" [ref=e20] [cursor=pointer]
+    - main [ref=e21]:
+      - generic [ref=e23]:
+        - generic [ref=e24]:
+          - heading "Sweets & Snacks" [level=1] [ref=e25]
+          - paragraph [ref=e26]: Traditional Rajasthani delicacies made with love and pure ghee
+        - generic [ref=e28]:
+          - button "All Items" [ref=e29] [cursor=pointer]
+          - button "Sweets" [ref=e30] [cursor=pointer]
+          - button "Snacks" [ref=e31] [cursor=pointer]
+        - generic [ref=e32]:
+          - generic [ref=e33]:
+            - generic [ref=e34]: 🔍
+            - textbox "Search products" [ref=e35]:
+              - /placeholder: Search sweets & snacks...
+          - combobox "Sort by" [ref=e36] [cursor=pointer]:
+            - 'option "Sort by: Default" [selected]'
+            - 'option "Price: Low to High"'
+            - 'option "Price: High to Low"'
+            - 'option "Name: A to Z"'
+        - generic [ref=e37]:
+          - generic [ref=e38]:
+            - generic [ref=e39]:
+              - img "Bhujia" [ref=e40]
+              - generic [ref=e41]: Pure Veg
+            - generic [ref=e43]:
+              - heading "Bhujia" [level=3] [ref=e44]
+              - paragraph [ref=e45]: Our signature thin-sev bhujia — crispy chickpea flour noodles tossed in a secret Rajasthani masala blend. A Shree Shyam bestseller.
+              - generic [ref=e46]: ₹80 per 250g
+              - button "Add Bhujia to cart" [ref=e48] [cursor=pointer]:
+                - img [ref=e49]
+                - text: Add to Cart
+          - generic [ref=e52]:
+            - generic [ref=e53]:
+              - img "Nankhatai Cookies" [ref=e54]
+              - generic [ref=e55]: Pure Veg
+            - generic [ref=e57]:
+              - heading "Nankhatai Cookies" [level=3] [ref=e58]
+              - paragraph [ref=e59]: Buttery, crumbly desi shortbread baked fresh daily with pure ghee, roasted besan, and crushed cardamom.
+              - generic [ref=e60]: ₹120 per 250g
+              - button "Add Nankhatai Cookies to cart" [ref=e62] [cursor=pointer]:
+                - img [ref=e63]
+                - text: Add to Cart
+          - generic [ref=e66]:
+            - generic [ref=e67]:
+              - img "Gulab Jamun" [ref=e68]
+              - generic [ref=e69]: Pure Veg
+            - generic [ref=e71]:
+              - heading "Gulab Jamun" [level=3] [ref=e72]
+              - paragraph [ref=e73]: Pillowy soft khoya dumplings, golden-fried and drenched in warm rose-cardamom sugar syrup.
+              - generic [ref=e74]: ₹150 per 500g
+              - button "Add Gulab Jamun to cart" [ref=e76] [cursor=pointer]:
+                - img [ref=e77]
+                - text: Add to Cart
+          - generic [ref=e80]:
+            - generic [ref=e81]:
+              - img "Rasgulla" [ref=e82]
+              - generic [ref=e83]: Pure Veg
+            - generic [ref=e85]:
+              - heading "Rasgulla" [level=3] [ref=e86]
+              - paragraph [ref=e87]: Feather-light, spongy chenna balls simmered gently in a delicate rosewater sugar syrup.
+              - generic [ref=e88]: ₹140 per 500g
+              - button "Add Rasgulla to cart" [ref=e90] [cursor=pointer]:
+                - img [ref=e91]
+                - text: Add to Cart
+          - generic [ref=e94]:
+            - generic [ref=e95]:
+              - img "Kaju Barfi" [ref=e96]
+              - generic [ref=e97]: Pure Veg
+            - generic [ref=e99]:
+              - heading "Kaju Barfi" [level=3] [ref=e100]
+              - paragraph [ref=e101]: Velvety smooth cashew fudge cut into perfect diamonds and adorned with edible silver vark.
+              - generic [ref=e102]: ₹280 per 500g
+              - button "Add Kaju Barfi to cart" [ref=e104] [cursor=pointer]:
+                - img [ref=e105]
+                - text: Add to Cart
+          - generic [ref=e108]:
+            - generic [ref=e109]:
+              - img "Besan Ladoo" [ref=e110]
+              - generic [ref=e111]: Pure Veg
+            - generic [ref=e113]:
+              - heading "Besan Ladoo" [level=3] [ref=e114]
+              - paragraph [ref=e115]: Aromatic golden ladoos made by slow-roasting chickpea flour in desi ghee with almonds.
+              - generic [ref=e116]: ₹160 per 500g
+              - button "Add Besan Ladoo to cart" [ref=e118] [cursor=pointer]:
+                - img [ref=e119]
+                - text: Add to Cart
+          - generic [ref=e122]:
+            - generic [ref=e123]:
+              - img "Jalebi" [ref=e124]
+              - generic [ref=e125]: Pure Veg
+            - generic [ref=e127]:
+              - heading "Jalebi" [level=3] [ref=e128]
+              - paragraph [ref=e129]: Crispy, juicy spirals fried to a bright saffron orange and dunked in hot sugar syrup.
+              - generic [ref=e130]: ₹100 per 500g
+              - button "Add Jalebi to cart" [ref=e132] [cursor=pointer]:
+                - img [ref=e133]
+                - text: Add to Cart
+          - generic [ref=e136]:
+            - generic [ref=e137]:
+              - img "Mathura Peda" [ref=e138]
+              - generic [ref=e139]: Pure Veg
+            - generic [ref=e141]:
+              - heading "Mathura Peda" [level=3] [ref=e142]
+              - paragraph [ref=e143]: Rich, dense milk fudge discs crafted by slow-reducing fresh khoya with cardamom and saffron.
+              - generic [ref=e144]: ₹200 per 500g
+              - button "Add Mathura Peda to cart" [ref=e146] [cursor=pointer]:
+                - img [ref=e147]
+                - text: Add to Cart
+          - generic [ref=e150]:
+            - generic [ref=e151]:
+              - img "Motichoor Ladoo" [ref=e152]
+              - generic [ref=e153]: Pure Veg
+            - generic [ref=e155]:
+              - heading "Motichoor Ladoo" [level=3] [ref=e156]
+              - paragraph [ref=e157]: Melt-in-your-mouth ladoos shaped from hundreds of tiny pearl-like boondi drops with saffron.
+              - generic [ref=e158]: ₹180 per 500g
+              - button "Add Motichoor Ladoo to cart" [ref=e160] [cursor=pointer]:
+                - img [ref=e161]
+                - text: Add to Cart
+          - generic [ref=e164]:
+            - generic [ref=e165]:
+              - img "Samosa" [ref=e166]
+              - generic [ref=e167]: Pure Veg
+            - generic [ref=e169]:
+              - heading "Samosa" [level=3] [ref=e170]
+              - paragraph [ref=e171]: Shatteringly crispy pastry shells stuffed with spicy hand-mashed potatoes, peas, and cumin.
+              - generic [ref=e172]: ₹50 per 2 pieces
+              - button "Add Samosa to cart" [ref=e174] [cursor=pointer]:
+                - img [ref=e175]
+                - text: Add to Cart
+          - generic [ref=e178]:
+            - generic [ref=e179]:
+              - img "Namak Pare" [ref=e180]
+              - generic [ref=e181]: Pure Veg
+            - generic [ref=e183]:
+              - heading "Namak Pare" [level=3] [ref=e184]
+              - paragraph [ref=e185]: Crunchy diamond-shaped crackers made with maida, ajwain seeds, and just the right salt.
+              - generic [ref=e186]: ₹70 per 250g
+              - button "Add Namak Pare to cart" [ref=e188] [cursor=pointer]:
+                - img [ref=e189]
+                - text: Add to Cart
+          - generic [ref=e192]:
+            - generic [ref=e193]:
+              - img "Mathri" [ref=e194]
+              - generic [ref=e195]: Pure Veg
+            - generic [ref=e197]:
+              - heading "Mathri" [level=3] [ref=e198]
+              - paragraph [ref=e199]: Flaky, layered Rajasthani crackers seasoned with ajwain and coarse black pepper.
+              - generic [ref=e200]: ₹90 per 250g
+              - button "Add Mathri to cart" [ref=e202] [cursor=pointer]:
+                - img [ref=e203]
+                - text: Add to Cart
+    - contentinfo [ref=e206]:
+      - generic [ref=e207]:
+        - generic [ref=e208]:
+          - generic [ref=e209]:
+            - heading "📍 Shree Shyam Restaurant" [level=3] [ref=e210]
+            - paragraph [ref=e211]: 🏠 NRL Road, Telagaram, Golaghat, Assam 785699
+            - paragraph [ref=e212]:
+              - text: 📞
+              - link "+91 86907 56828" [ref=e213] [cursor=pointer]:
+                - /url: tel:+918690756828
+            - paragraph [ref=e214]:
+              - text: 💬
+              - link "WhatsApp Us" [ref=e215] [cursor=pointer]:
+                - /url: https://wa.me/+918690756828
+            - paragraph [ref=e216]: "🕐 Monday - Sunday: 10:00 AM - 11:00 PM"
+          - navigation "Footer navigation" [ref=e217]:
+            - heading "Quick Links" [level=3] [ref=e218]
+            - link "Home" [ref=e219] [cursor=pointer]:
+              - /url: "#/"
+            - link "Sweets & Snacks" [ref=e220] [cursor=pointer]:
+              - /url: "#/sweets"
+            - link "Restaurant Menu" [ref=e221] [cursor=pointer]:
+              - /url: "#/restaurant"
+            - link "Cart & Checkout" [ref=e222] [cursor=pointer]:
+              - /url: "#/cart"
+            - link "Privacy Policy" [ref=e223] [cursor=pointer]:
+              - /url: "#/privacy"
+            - link "Terms & Conditions" [ref=e224] [cursor=pointer]:
+              - /url: "#/terms"
+          - generic [ref=e225]:
+            - heading "Connect With Us" [level=3] [ref=e226]
+            - paragraph [ref=e227]: Follow us on social media for daily specials, new items, and festive offers!
+            - generic [ref=e228]:
+              - link "Instagram" [ref=e229] [cursor=pointer]:
+                - /url: https://instagram.com/shreeshyamrestaurant
+                - img [ref=e230]
+              - link "Facebook" [ref=e232] [cursor=pointer]:
+                - /url: https://facebook.com/shreeshyamrestaurant
+                - img [ref=e233]
+              - link "Google Maps" [ref=e235] [cursor=pointer]:
+                - /url: https://share.google/XMipNElHF5Ap7e8QQ
+                - img [ref=e236]
+        - generic [ref=e238]:
+          - paragraph [ref=e239]: © 2026 Shree Shyam Restaurant. All rights reserved.
+          - paragraph [ref=e240]:
+            - link "Privacy Policy" [ref=e241] [cursor=pointer]:
+              - /url: "#/privacy"
+            - text: "|"
+            - link "Terms & Conditions" [ref=e242] [cursor=pointer]:
+              - /url: "#/terms"
+            - text: "|"
+            - link "Admin" [ref=e243] [cursor=pointer]:
+              - /url: "#/admin"

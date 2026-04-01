@@ -16,8 +16,7 @@ export function adminLogin(password) {
   if (password === SITE_CONFIG.admin.password) {
     const session = {
       loggedIn: true,
-      loginTime: Date.now(),
-      expires: Date.now() + (2 * 60 * 60 * 1000), // 2 hours
+      loginTime: Date.now()
     };
     sessionStorage.setItem(ADMIN_SESSION_KEY, JSON.stringify(session));
     return true;
@@ -28,11 +27,7 @@ export function adminLogin(password) {
 export function isAdminLoggedIn() {
   try {
     const session = JSON.parse(sessionStorage.getItem(ADMIN_SESSION_KEY));
-    if (session && session.loggedIn && Date.now() < session.expires) {
-      return true;
-    }
-    sessionStorage.removeItem(ADMIN_SESSION_KEY);
-    return false;
+    return session && session.loggedIn;
   } catch {
     return false;
   }

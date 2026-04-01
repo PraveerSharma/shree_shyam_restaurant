@@ -1,11 +1,10 @@
 // ============================================
 // AUTHENTICATION SERVICE
-// Google SSO (Firebase) + Email Magic Link (Supabase Auth)
-// Phone number collected after auth (no OTP)
+// Google SSO (Supabase) + Email Magic Link (Supabase Auth)
+// Phone number collected during checkout/subscription (no verification)
 // ============================================
 
 import { supabase } from '../config/supabase.js';
-import { firebaseAuth, GoogleAuthProvider, signInWithPopup, signOut } from '../config/firebase.js';
 import { refreshCartUI } from './cart.js';
 
 // ── Auth State ──
@@ -13,20 +12,6 @@ let currentAppUser = null;
 let authInitialized = false;
 let authInitResolve = null;
 const authInitPromise = new Promise(resolve => { authInitResolve = resolve; });
-let profileLoadedResolve = null;
-
-// Track which listeners have fired on init
-let firebaseReady = false;
-let supabaseReady = false;
-
-function markReady(source) {
-  if (source === 'firebase') firebaseReady = true;
-  if (source === 'supabase') supabaseReady = true;
-  if (firebaseReady && supabaseReady && !authInitialized) {
-    authInitialized = true;
-    authInitResolve();
-  }
-}
 
 // ── Helpers ──
 
@@ -54,104 +39,66 @@ function validatePhone(phone) {
   return /^(91)?[6-9]\d{9}$/.test(clean);
 }
 
-// ── Profile Lookup / Creation (Google SSO via Firebase) ──
-
-async function loadOrCreateProfile(fbUser) {
-  const uid = fbUser.uid;
-
-  if (fbUser.email) {
-    const { data } = await supabase.from('profiles').select('*').eq('email', fbUser.email).limit(1);
-    if (data?.[0]) {
-      const updates = {};
-      if (!data[0].name && fbUser.displayName) updates.name = fbUser.displayName;
-      if (!data[0].phone && fbUser.phoneNumber) updates.phone = fbUser.phoneNumber;
-      if (Object.keys(updates).length) {
-        await supabase.from('profiles').update(updates).eq('id', data[0].id).catch(() => {});
-        Object.assign(data[0], updates);
-      }
-      return formatUser(data[0], fbUser.photoURL);
-    }
-  }
-
-  if (fbUser.phoneNumber) {
-    const { data } = await supabase.from('profiles').select('*').eq('phone', fbUser.phoneNumber).limit(1);
-    if (data?.[0]) return formatUser(data[0], fbUser.photoURL);
-  }
-
-  const { data: byId } = await supabase.from('profiles').select('*').eq('id', uid).limit(1);
-  if (byId?.[0]) return formatUser(byId[0], fbUser.photoURL);
-
-  const { data: byLegacy } = await supabase.from('profiles').select('*').eq('id', 'fb_' + uid).limit(1);
-  if (byLegacy?.[0]) return formatUser(byLegacy[0], fbUser.photoURL);
-
-  const newProfile = { id: uid, name: fbUser.displayName || '', phone: fbUser.phoneNumber || '', email: fbUser.email || '' };
-  await supabase.from('profiles').upsert(newProfile, { onConflict: 'id' }).catch(() => {});
-  return formatUser(newProfile, fbUser.photoURL);
-}
-
-// ── Profile Lookup / Creation (Email Magic Link via Supabase Auth) ──
+// ── Profile Lookup / Creation (Supabase Auth) ──
 
 async function loadOrCreateSupabaseProfile(sbUser) {
   const email = sbUser.email;
+  const metadata = sbUser.user_metadata || {};
 
-  // Check existing profile by email
+  // 1. Check existing profile by email
   const { data } = await supabase.from('profiles').select('*').eq('email', email).limit(1);
-  if (data?.[0]) return formatUser(data[0]);
+  if (data?.[0]) {
+    const updates = {};
+    if (!data[0].name && metadata.full_name) updates.name = metadata.full_name;
+    if (!data[0].avatar && metadata.avatar_url) updates.avatar = metadata.avatar_url;
+    
+    if (Object.keys(updates).length) {
+      await supabase.from('profiles').update(updates).eq('id', data[0].id).catch(() => {});
+      Object.assign(data[0], updates);
+    }
+    return formatUser(data[0]);
+  }
 
-  // Check by Supabase auth ID
+  // 2. Check by Supabase auth ID
   const { data: byId } = await supabase.from('profiles').select('*').eq('id', sbUser.id).limit(1);
   if (byId?.[0]) return formatUser(byId[0]);
 
-  // Create new profile
-  const newProfile = { id: sbUser.id, name: '', phone: '', email };
+  // 3. Create new profile
+  const newProfile = { 
+    id: sbUser.id, 
+    name: metadata.full_name || '', 
+    phone: '', 
+    email,
+    avatar: metadata.avatar_url || ''
+  };
   await supabase.from('profiles').upsert(newProfile, { onConflict: 'id' }).catch(() => {});
   return formatUser(newProfile);
 }
 
-// ── Firebase Auth Listener (Google SSO) ──
-
-firebaseAuth.onAuthStateChanged(async (fbUser) => {
-  if (fbUser) {
-    currentAppUser = await loadOrCreateProfile(fbUser);
-  }
-  // Don't set null here — Supabase email session might exist
-
-  markReady('firebase');
-
-  if (profileLoadedResolve) {
-    profileLoadedResolve();
-    profileLoadedResolve = null;
-  }
-
-  refreshUserCount().catch(() => {});
-  refreshCartUI();
-  window.dispatchEvent(new CustomEvent('auth-changed', { detail: currentAppUser }));
-});
-
-// ── Supabase Auth Listener (Email Magic Link) ──
+// ── Supabase Auth Listener ──
 
 supabase.auth.onAuthStateChange(async (event, session) => {
   if ((event === 'SIGNED_IN' || event === 'INITIAL_SESSION') && session?.user) {
     const sbUser = session.user;
-    // Only handle Supabase email auth users (not Google SSO via Firebase)
-    if (!currentAppUser || currentAppUser.email === sbUser.email) {
-      const profile = await loadOrCreateSupabaseProfile(sbUser);
-      if (profile) {
-        currentAppUser = profile;
-        refreshUserCount().catch(() => {});
-        refreshCartUI();
-        window.dispatchEvent(new CustomEvent('auth-changed', { detail: currentAppUser }));
-      }
+    const profile = await loadOrCreateSupabaseProfile(sbUser);
+    if (profile) {
+      currentAppUser = profile;
+      refreshUserCount().catch(() => {});
+      refreshCartUI();
+      window.dispatchEvent(new CustomEvent('auth-changed', { detail: currentAppUser }));
     }
   }
 
-  if (event === 'SIGNED_OUT' && !firebaseAuth.currentUser) {
+  if (event === 'SIGNED_OUT') {
     currentAppUser = null;
     refreshCartUI();
     window.dispatchEvent(new CustomEvent('auth-changed', { detail: null }));
   }
 
-  markReady('supabase');
+  if (!authInitialized) {
+    authInitialized = true;
+    authInitResolve();
+  }
 });
 
 // ── Public API ──
@@ -161,24 +108,21 @@ export function isLoggedIn() { return currentAppUser !== null; }
 export async function waitForAuth() { return authInitPromise; }
 
 // ============================================
-// GOOGLE SSO (Firebase Popup)
+// GOOGLE SSO (Supabase)
 // ============================================
 
 export async function signInWithGoogle() {
   try {
-    const profileLoaded = new Promise(r => { profileLoadedResolve = r; });
-    const provider = new GoogleAuthProvider();
-    provider.setCustomParameters({ prompt: 'select_account' });
-    await signInWithPopup(firebaseAuth, provider);
-    await profileLoaded;
+    const { error } = await supabase.auth.signInWithOAuth({
+      provider: 'google',
+      options: {
+        redirectTo: window.location.origin + '/#/'
+      }
+    });
 
-    const user = getCurrentUser();
-    if (!user) return { success: false, error: 'Authentication failed.' };
-    return { success: true, user, needsPhone: !user.phone };
+    if (error) return { success: false, error: error.message };
+    return { success: true };
   } catch (err) {
-    if (err.code === 'auth/popup-closed-by-user') return { success: false, error: 'Sign-in was cancelled.' };
-    if (err.code === 'auth/popup-blocked') return { success: false, error: 'Pop-up blocked. Please allow pop-ups for this site.' };
-    if (err.code === 'auth/cancelled-popup-request') return { success: false, error: '' };
     return { success: false, error: 'Sign-in failed. Please try again.' };
   }
 }
@@ -251,7 +195,6 @@ export async function logout() {
     if (k.startsWith('ssr_cart_')) localStorage.removeItem(k);
   });
 
-  try { await signOut(firebaseAuth); } catch {}
   try { await supabase.auth.signOut(); } catch {}
 
   if (currentAppUser) {

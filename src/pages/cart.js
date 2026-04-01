@@ -7,9 +7,8 @@ import { createOrder } from '../services/orders.js';
 import { formatPrice, getTodayDate } from '../utils/format.js';
 import { showToast, sanitizeInput } from '../utils/dom.js';
 import { SITE_CONFIG } from '../config/site.js';
-import { getCurrentUser } from '../services/auth.js';
+import { getCurrentUser, savePhone } from '../services/auth.js';
 import { isSubscriber, subscribeUser } from '../services/subscription.js';
-import { requireVerifiedPhone } from '../components/phone-verify.js';
 
 export function renderCartPage() {
   const cart = getCart();
@@ -241,7 +240,7 @@ export function initCartPage() {
   });
 
   // Checkout form
-  document.getElementById('checkout-form')?.addEventListener('submit', (e) => {
+  document.getElementById('checkout-form')?.addEventListener('submit', async (e) => {
     e.preventDefault();
 
     // Require login before placing order
@@ -252,17 +251,6 @@ export function initCartPage() {
       }));
       return;
     }
-
-    // Require verified phone before placing order
-    const isVerified = requireVerifiedPhone((updatedUser) => {
-      // After verification, re-fill phone and re-submit
-      const phoneInput = document.getElementById('customer-phone');
-      if (phoneInput && updatedUser.phone) {
-        phoneInput.value = updatedUser.phone.replace('+91', '').trim();
-      }
-      showToast('Phone verified! You can now place your order.', 'success');
-    });
-    if (!isVerified) return;
 
     const phoneInput = document.getElementById('customer-phone');
     const phone = '+91' + phoneInput.value.trim();
@@ -290,6 +278,21 @@ export function initCartPage() {
     }
     if (hasError) return;
 
+    const placeOrderBtn = document.getElementById('place-order-btn');
+    placeOrderBtn.disabled = true;
+    placeOrderBtn.textContent = 'Processing...';
+
+    // Save phone to profile if needed (non-blocking, but wait for result to show errors if any)
+    if (!user.phone || user.phone !== phone) {
+      const res = await savePhone(phoneInput.value.trim());
+      if (!res.success) {
+        document.getElementById('phone-error').textContent = res.error;
+        placeOrderBtn.disabled = false;
+        placeOrderBtn.textContent = '🚀 Place Order';
+        return;
+      }
+    }
+
     // Auto-enroll non-subscribers if they choose monthly billing
     if (paymentMethod === 'Monthly Billing' && user && !isSubscriber(user.id)) {
       subscribeUser(user.id, {
@@ -308,6 +311,8 @@ export function initCartPage() {
       showToast('Order placed successfully!', 'success', 5000);
     } else {
       showToast(result.error, 'error');
+      placeOrderBtn.disabled = false;
+      placeOrderBtn.textContent = '🚀 Place Order';
     }
   });
 }

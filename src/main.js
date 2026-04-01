@@ -196,14 +196,13 @@ async function handleMagicLinkReturn() {
   return false;
 }
 
-// ── Post-Auth Setup (name + phone collection after magic link) ──
+// ── Post-Auth Setup (name collection after magic link) ──
 let postAuthHandled = false;
 window.addEventListener('auth-changed', (e) => {
   const user = e.detail;
   if (user && !postAuthHandled) {
     const needsName = !user.name || user.name.trim().length < 2;
-    const needsPhone = !user.phone;
-    if (needsName || needsPhone) {
+    if (needsName) {
       postAuthHandled = true;
       setTimeout(() => showPostAuthSetup(user), 500);
     }

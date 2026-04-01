@@ -2,7 +2,7 @@
 // AUTH MODAL — Email Magic Link + Google SSO
 // ============================================
 
-import { signInWithGoogle, savePhone, updateUserName, signInWithEmail } from '../services/auth.js';
+import { signInWithGoogle, updateUserName, signInWithEmail } from '../services/auth.js';
 import { showToast } from '../utils/dom.js';
 
 let successCallback = null;
@@ -49,28 +49,6 @@ function createOverlay(html) {
 function setContent(html) {
   const c = document.getElementById('auth-content');
   if (c) c.innerHTML = html;
-}
-
-function phoneInputSetup(inputId, wrapperId) {
-  const input = document.getElementById(inputId);
-  const wrap = document.getElementById(wrapperId);
-  if (input && wrap) {
-    input.addEventListener('focus', () => wrap.style.borderColor = 'var(--clr-saffron)');
-    input.addEventListener('blur', () => wrap.style.borderColor = 'var(--clr-gray-200)');
-    input.addEventListener('input', () => { input.value = input.value.replace(/\D/g, ''); });
-  }
-}
-
-function phoneInputHTML(id, wrapperId, errorId) {
-  return `
-    <div style="display:flex; border:1.5px solid var(--clr-gray-200); border-radius:var(--radius-md); overflow:hidden;" id="${wrapperId}">
-      <span style="padding:0 0.7rem; font-weight:600; color:var(--clr-gray-600); background:var(--clr-gray-100); height:44px; display:flex; align-items:center; font-size:0.9rem; border-right:1px solid var(--clr-gray-200);">+91</span>
-      <input type="tel" id="${id}" placeholder="10-digit mobile number" maxlength="10" required inputmode="numeric"
-             style="border:none; padding:0 0.7rem; height:44px; flex:1; font-size:0.95rem; outline:none; width:100%;"
-             aria-describedby="${errorId}">
-    </div>
-    <div class="form-error" id="${errorId}" aria-live="polite"></div>
-  `;
 }
 
 function authComplete(result, trigger) {
@@ -136,20 +114,14 @@ function bindMain(trigger) {
     const errEl = document.getElementById('auth-error');
     errEl.textContent = '';
     btn.disabled = true;
-    btn.innerHTML = '<div class="spinner" style="width:18px;height:18px;border-width:2px;" aria-hidden="true"></div> Signing in...';
+    btn.innerHTML = '<div class="spinner" style="width:18px;height:18px;border-width:2px;" aria-hidden="true"></div> Redirecting...';
     const r = await signInWithGoogle();
-    if (r.success) {
-      if (r.needsPhone) {
-        closeAuthModal(trigger);
-        showPhoneModal(r.user);
-      } else {
-        authComplete({ ...r, isNew: false }, trigger);
-      }
-    } else if (r.error) {
+    if (!r.success && r.error) {
       errEl.textContent = r.error;
       btn.disabled = false;
       btn.innerHTML = GOOGLE_BTN_HTML;
     }
+    // Success will redirect, so no need to handling r.success here
   });
 
   document.getElementById('email-btn')?.addEventListener('click', () => {
@@ -310,108 +282,16 @@ function bindNameInput(trigger) {
 }
 
 // ============================================
-// PHONE COLLECTION (after Google SSO or Email auth)
-// ============================================
-
-export function showPhoneModal(user, onComplete = null) {
-  const existing = document.getElementById('phone-modal-overlay');
-  if (existing) existing.remove();
-
-  const overlay = document.createElement('div');
-  overlay.className = 'modal-overlay';
-  overlay.id = 'phone-modal-overlay';
-  overlay.innerHTML = `
-    <div class="modal" role="dialog" aria-modal="true" style="max-width:400px; padding:2rem;">
-      <div style="text-align:center; margin-bottom:1.25rem;">
-        <div style="width:44px; height:44px; border-radius:50%; background:var(--grad-saffron); color:white; display:flex; align-items:center; justify-content:center; font-size:1.2rem; margin:0 auto 0.5rem; font-weight:700;">
-          ${(user?.name || 'U')[0].toUpperCase()}
-        </div>
-        <h2 style="margin:0 0 0.2rem; font-size:1.1rem;">Almost there${user?.name ? ', ' + user.name.split(' ')[0] : ''}!</h2>
-        <p style="color:var(--clr-gray-500); font-size:0.82rem; margin:0;">Add your mobile number for order updates</p>
-      </div>
-      <form id="phone-save-form" novalidate>
-        <div class="form-group" style="margin-bottom:0.75rem;">
-          ${phoneInputHTML('phone-save', 'phone-save-wrap', 'phone-save-err')}
-        </div>
-        <button type="submit" class="btn btn-primary" style="width:100%; height:46px; font-size:0.95rem;" id="phone-save-btn">
-          Save & Continue
-        </button>
-      </form>
-      <p style="text-align:center; font-size:0.7rem; color:var(--clr-gray-400); margin-top:0.75rem;">
-        Your number is used for order updates only.
-      </p>
-    </div>
-  `;
-
-  document.body.appendChild(overlay);
-  document.body.style.overflow = 'hidden';
-  setTimeout(() => { document.getElementById('phone-save')?.focus(); phoneInputSetup('phone-save', 'phone-save-wrap'); }, 50);
-
-  document.getElementById('phone-save-form').addEventListener('submit', async (e) => {
-    e.preventDefault();
-    const ph = document.getElementById('phone-save').value.trim();
-    const err = document.getElementById('phone-save-err');
-    const btn = document.getElementById('phone-save-btn');
-    err.textContent = '';
-    if (ph.length !== 10 || !/^[6-9]\d{9}$/.test(ph)) { err.textContent = 'Enter a valid 10-digit mobile number'; return; }
-    btn.disabled = true; btn.textContent = 'Saving...';
-    const r = await savePhone(ph);
-    if (r.success) {
-      overlay.remove(); document.body.style.overflow = '';
-      showToast(`Welcome, ${r.user.name || 'there'}!`, 'success');
-      if (onComplete) onComplete(r.user);
-      window.dispatchEvent(new HashChangeEvent('hashchange'));
-    } else { err.textContent = r.error; btn.disabled = false; btn.textContent = 'Save & Continue'; }
-  });
-
-  overlay.addEventListener('click', (e) => { if (e.target === overlay) showToast('Please add your phone number', 'info'); });
-}
-
-// ============================================
-// NAME + PHONE COLLECTION (after magic link return)
-// Called when auth-changed fires and user needs name/phone
+// POST-AUTH SETUP (Name collection only)
 // ============================================
 
 export function showPostAuthSetup(user) {
   const needsName = !user.name || user.name.trim().length < 2;
   if (needsName) {
     const trigger = createOverlay(renderNameInput());
-    bindNameInputWithPhone(trigger);
+    bindNameInput(trigger);
     setTimeout(() => document.getElementById('name-input')?.focus(), 50);
-  } else if (!user.phone) {
-    showPhoneModal(user);
   }
-}
-
-function bindNameInputWithPhone(trigger) {
-  document.getElementById('name-form')?.addEventListener('submit', async (e) => {
-    e.preventDefault();
-    const name = document.getElementById('name-input').value.trim();
-    const err = document.getElementById('name-err');
-    const btn = document.getElementById('name-btn');
-    err.textContent = '';
-
-    if (!name || name.length < 2) { err.textContent = 'Please enter your name (at least 2 characters)'; return; }
-
-    btn.disabled = true;
-    btn.textContent = 'Setting up...';
-
-    const r = await updateUserName(name);
-    if (r.success) {
-      closeAuthModal(trigger);
-      showToast(`Welcome, ${name}!`, 'success');
-      // Now collect phone
-      if (!r.user.phone) {
-        setTimeout(() => showPhoneModal(r.user), 300);
-      } else {
-        window.dispatchEvent(new HashChangeEvent('hashchange'));
-      }
-    } else {
-      err.textContent = r.error || 'Something went wrong.';
-      btn.disabled = false;
-      btn.textContent = 'Get Started';
-    }
-  });
 }
 
 // ============================================

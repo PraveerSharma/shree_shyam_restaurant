@@ -1,15 +1,9 @@
-// ============================================
-// MY ORDERS & SUBSCRIPTION PAGE
-// Handles order history and subscriber dashboard
-// ============================================
-
 import { getOrderHistory, updateOrderPickupTime } from '../services/orders.js';
-import { getCurrentUser } from '../services/auth.js';
+import { getCurrentUser, savePhone } from '../services/auth.js';
 import { formatPrice, isDueSoon, formatPhoneNumber } from '../utils/format.js';
 import { showToast } from '../utils/dom.js';
 import { isSubscriber, getSubscription, subscribeUser } from '../services/subscription.js';
 import { SITE_CONFIG } from '../config/site.js';
-import { requireVerifiedPhone } from '../components/phone-verify.js';
 
 let activeOrdersTab = 'history'; // 'history' or 'subscription'
 
@@ -169,18 +163,23 @@ function renderSubscriptionTab(user) {
           <h3 style="margin-bottom: 1.5rem; text-align: center;">Subscription Form</h3>
           <form id="subscribe-form">
             <div class="form-group">
-              <label class="form-label">Full Name</label>
+              <label class="form-label" for="sub-name">Full Name</label>
               <input type="text" class="form-input" id="sub-name" value="${user.name}" required>
             </div>
             <div class="form-group">
-              <label class="form-label">Mobile Number</label>
-              <input type="tel" class="form-input" id="sub-phone" value="${formatPhoneNumber(user.phone)}" required>
+              <label class="form-label" for="sub-phone">Mobile Number</label>
+              <div style="display:flex; border:1.5px solid var(--clr-gray-200); border-radius:var(--radius-md); overflow:hidden;">
+                <span style="padding:0 0.7rem; font-weight:600; color:var(--clr-gray-600); background:var(--clr-gray-100); height:44px; display:flex; align-items:center; font-size:0.9rem; border-right:1px solid var(--clr-gray-200);">+91</span>
+                <input type="tel" id="sub-phone" class="form-input" style="border:none; height:44px;" placeholder="10-digit number" maxlength="10" required 
+                       value="${user.phone ? user.phone.replace('+91', '').trim() : ''}">
+              </div>
+              <div class="form-error" id="sub-phone-err"></div>
             </div>
             <div class="form-group">
-              <label class="form-label">Residential Address</label>
+              <label class="form-label" for="sub-address">Residential Address</label>
               <textarea class="form-input" id="sub-address" placeholder="E.g. Sector 12, Vidhyadhar Nagar" required></textarea>
             </div>
-            <button type="submit" class="btn btn-primary" style="width: 100%; margin-top: 1rem;">Confirm Subscription</button>
+            <button type="submit" class="btn btn-primary" style="width: 100%; margin-top: 1rem;" id="sub-btn">Confirm Subscription</button>
           </form>
         </div>
       </div>
@@ -265,29 +264,48 @@ export function initOrdersPage() {
   });
 
   // Subscribe form
-  document.getElementById('subscribe-form')?.addEventListener('submit', (e) => {
+  document.getElementById('subscribe-form')?.addEventListener('submit', async (e) => {
     e.preventDefault();
 
-    // Require verified phone before subscribing
-    const isVerified = requireVerifiedPhone((updatedUser) => {
-      const phoneInput = document.getElementById('sub-phone');
-      if (phoneInput && updatedUser.phone) {
-        phoneInput.value = formatPhoneNumber(updatedUser.phone);
+    const subBtn = document.getElementById('sub-btn');
+    const phoneVal = document.getElementById('sub-phone').value.trim();
+    const phoneErr = document.getElementById('sub-phone-err');
+    
+    if (phoneVal.length !== 10 || !/^[6-9]\d{9}$/.test(phoneVal)) {
+      if (phoneErr) phoneErr.textContent = 'Please enter a valid 10-digit number';
+      return;
+    }
+
+    subBtn.disabled = true;
+    subBtn.textContent = 'Joining...';
+
+    // Save phone to profile if it's new or changed
+    const phone = '+91' + phoneVal;
+    if (!user.phone || user.phone !== phone) {
+      const res = await savePhone(phoneVal);
+      if (!res.success) {
+        if (phoneErr) phoneErr.textContent = res.error;
+        subBtn.disabled = false;
+        subBtn.textContent = 'Confirm Subscription';
+        return;
       }
-      showToast('Phone verified! You can now subscribe.', 'success');
-    });
-    if (!isVerified) return;
+    }
 
     const data = {
       name: document.getElementById('sub-name').value,
-      phone: document.getElementById('sub-phone').value,
+      phone: phone,
       address: document.getElementById('sub-address').value
     };
+
     const res = subscribeUser(user.id, data);
     if (res.success) {
       showToast('Welcome to the regular guests program!', 'success');
       activeOrdersTab = 'subscription';
       window.dispatchEvent(new HashChangeEvent('hashchange'));
+    } else {
+      showToast(res.error, 'error');
+      subBtn.disabled = false;
+      subBtn.textContent = 'Confirm Subscription';
     }
   });
 
@@ -323,6 +341,4 @@ export function initOrdersPage() {
       }
     });
   }
-
-
 }

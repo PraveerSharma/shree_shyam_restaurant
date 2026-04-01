@@ -1,0 +1,3 @@
+[     470ms] [LOG] [DB] Synced with Supabase @ http://localhost:3000/src/main.js?t=1775053520684:230
+[   16649ms] [LOG] [DB] Synced with Supabase @ http://localhost:3000/src/main.js?t=1775053520684:230
+[   53894ms] [ERROR] Failed to load resource: the server responded with a status of 422 () @ https://dufolyrnrbybeflhdsay.supabase.co/auth/v1/otp?redirect_to=http%3A%2F%2Flocalhost%3A3000%2F%23%2F:0

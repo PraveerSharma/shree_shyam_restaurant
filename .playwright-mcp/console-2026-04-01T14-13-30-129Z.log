@@ -1,0 +1,9 @@
+[    1025ms] [LOG] [DB] Synced with Supabase @ http://localhost:3000/src/main.js?t=1775052683550:197
+[   23658ms] [LOG] %c[DEV] OTP Code: 562993 color: #D4731A; font-size: 16px; font-weight: bold; @ http://localhost:3000/src/services/auth.js?t=1775052683550:188
+[   46969ms] [ERROR] Failed to load resource: the server responded with a status of 400 () @ https://dufolyrnrbybeflhdsay.supabase.co/rest/v1/rpc/verify_phone_otp:0
+[   46970ms] [WARNING] [OTP] Verify error: column "attempts" does not exist @ http://localhost:3000/src/services/auth.js?t=1775052683550:203
+[  569828ms] [LOG] [DB] Synced with Supabase @ http://localhost:3000/src/main.js?t=1775053375123:197
+[  599835ms] The requested module '/src/services/auth.js?t=1775053409713' does not provide an export named 'sendCustomOTP'
+[  679243ms] [LOG] [DB] Synced with Supabase @ http://localhost:3000/src/main.js?t=1775053487980:197
+[  698857ms] [LOG] [DB] Synced with Supabase @ http://localhost:3000/src/main.js?t=1775053508328:198
+[  711179ms] [LOG] [DB] Synced with Supabase @ http://localhost:3000/src/main.js?t=1775053520684:230

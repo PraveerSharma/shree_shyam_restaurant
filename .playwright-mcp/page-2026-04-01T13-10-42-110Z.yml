@@ -1,0 +1,85 @@
+- generic [active] [ref=e1]:
+  - link "Skip to main content" [ref=e2] [cursor=pointer]:
+    - /url: "#main-content"
+  - generic [ref=e3]:
+    - banner [ref=e458]:
+      - generic [ref=e459]:
+        - link "Shree Shyam Restaurant Logo Shree Shyam Restaurant Est. Golaghat, Assam" [ref=e460] [cursor=pointer]:
+          - /url: "#/"
+          - img "Shree Shyam Restaurant Logo" [ref=e461]
+          - generic [ref=e462]:
+            - text: Shree Shyam
+            - text: Restaurant
+            - generic [ref=e463]: Est. Golaghat, Assam
+        - navigation "Main navigation" [ref=e464]:
+          - generic [ref=e465]:
+            - link "Home" [ref=e466] [cursor=pointer]:
+              - /url: "#/"
+            - link "Sweets & Snacks" [ref=e467] [cursor=pointer]:
+              - /url: "#/sweets"
+            - link "Restaurant" [ref=e468] [cursor=pointer]:
+              - /url: "#/restaurant"
+        - generic [ref=e469]:
+          - link "View Cart, 0 items" [ref=e470] [cursor=pointer]:
+            - /url: "#/cart"
+            - img [ref=e471]
+            - text: Cart
+          - button "Sign In" [ref=e474] [cursor=pointer]
+    - main [ref=e475]:
+      - generic [ref=e477]:
+        - heading "Sign in to view your orders" [level=2] [ref=e478]
+        - paragraph [ref=e479]: Order history and subscriptions are available for signed-in users.
+        - button "Sign In" [ref=e480] [cursor=pointer]
+    - contentinfo [ref=e481]:
+      - generic [ref=e482]:
+        - generic [ref=e483]:
+          - generic [ref=e484]:
+            - heading "📍 Shree Shyam Restaurant" [level=3] [ref=e485]
+            - paragraph [ref=e486]: 🏠 NRL Road, Telagaram, Golaghat, Assam 785699
+            - paragraph [ref=e487]:
+              - text: 📞
+              - link "+91 86907 56828" [ref=e488] [cursor=pointer]:
+                - /url: tel:+918690756828
+            - paragraph [ref=e489]:
+              - text: 💬
+              - link "WhatsApp Us" [ref=e490] [cursor=pointer]:
+                - /url: https://wa.me/+918690756828
+            - paragraph [ref=e491]: "🕐 Monday - Sunday: 10:00 AM - 11:00 PM"
+          - navigation "Footer navigation" [ref=e492]:
+            - heading "Quick Links" [level=3] [ref=e493]
+            - link "Home" [ref=e494] [cursor=pointer]:
+              - /url: "#/"
+            - link "Sweets & Snacks" [ref=e495] [cursor=pointer]:
+              - /url: "#/sweets"
+            - link "Restaurant Menu" [ref=e496] [cursor=pointer]:
+              - /url: "#/restaurant"
+            - link "Cart & Checkout" [ref=e497] [cursor=pointer]:
+              - /url: "#/cart"
+            - link "Privacy Policy" [ref=e498] [cursor=pointer]:
+              - /url: "#/privacy"
+            - link "Terms & Conditions" [ref=e499] [cursor=pointer]:
+              - /url: "#/terms"
+          - generic [ref=e500]:
+            - heading "Connect With Us" [level=3] [ref=e501]
+            - paragraph [ref=e502]: Follow us on social media for daily specials, new items, and festive offers!
+            - generic [ref=e503]:
+              - link "Instagram" [ref=e504] [cursor=pointer]:
+                - /url: https://instagram.com/shreeshyamrestaurant
+                - img [ref=e505]
+              - link "Facebook" [ref=e507] [cursor=pointer]:
+                - /url: https://facebook.com/shreeshyamrestaurant
+                - img [ref=e508]
+              - link "Google Maps" [ref=e510] [cursor=pointer]:
+                - /url: https://share.google/XMipNElHF5Ap7e8QQ
+                - img [ref=e511]
+        - generic [ref=e513]:
+          - paragraph [ref=e514]: © 2026 Shree Shyam Restaurant. All rights reserved.
+          - paragraph [ref=e515]:
+            - link "Privacy Policy" [ref=e516] [cursor=pointer]:
+              - /url: "#/privacy"
+            - text: "|"
+            - link "Terms & Conditions" [ref=e517] [cursor=pointer]:
+              - /url: "#/terms"
+            - text: "|"
+            - link "Admin" [ref=e518] [cursor=pointer]:
+              - /url: "#/admin"

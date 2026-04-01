@@ -1,0 +1,24 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(npx vite:*)",
+      "Bash(git add:*)",
+      "Bash(git commit:*)",
+      "Bash(git push:*)",
+      "Bash(vercel --version)",
+      "Bash(npm i:*)",
+      "Bash(npx vercel:*)",
+      "Bash(curl -s -o /dev/null -w \"%{http_code}\" \"https://dufolyrnrbybeflhdsay.supabase.co/rest/v1/\" -H \"apikey: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImR1Zm9seXJucmJ5YmVmbGhkc2F5Iiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc3NDk3NzY0OSwiZXhwIjoyMDkwNTUzNjQ5fQ.VwNY29hGXj0tSgf_MIWykuFCXBXCqhB8ZYbKnMryCig\" -H \"Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImR1Zm9seXJucmJ5YmVmbGhkc2F5Iiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc3NDk3NzY0OSwiZXhwIjoyMDkwNTUzNjQ5fQ.VwNY29hGXj0tSgf_MIWykuFCXBXCqhB8ZYbKnMryCig\")",
+      "mcp__playwright__browser_click",
+      "mcp__playwright__browser_snapshot",
+      "mcp__playwright__browser_console_messages",
+      "mcp__playwright__browser_navigate",
+      "mcp__playwright__browser_evaluate",
+      "mcp__playwright__browser_tabs",
+      "mcp__playwright__browser_type",
+      "mcp__playwright__browser_wait_for",
+      "mcp__playwright__browser_close",
+      "Bash(grep -r \"SMS\\\\|TWILIO\\\\|PHONE.*OTP\\\\|WHATSAPP\" /Users/praveersharma/Desktop/wild/shree_shyam_restaurant --include=*.env* --include=*.js --include=*.ts)"
+    ]
+  }
+}
