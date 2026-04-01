@@ -180,15 +180,24 @@ import { syncAll, processRetryQueue, subscribeToOrders } from './services/db.js'
 import { showToast } from './utils/dom.js';
 
 // ── OAuth Redirect Intercept ──
-// After Google SSO, Supabase may put tokens in the URL fragment.
-// Detect and consume them before the router runs.
+// After Google SSO, Supabase puts tokens in the URL (hash or query params).
+// Let the SDK process them via detectSessionInUrl, then clean up.
 async function handleAuthRedirect() {
   const hash = window.location.hash || '';
-  if (hash.includes('access_token=')) {
+  const search = window.location.search || '';
+
+  // Supabase v2 may return tokens as hash fragment or query params
+  const hasAuthTokens = hash.includes('access_token=') || hash.includes('refresh_token=')
+    || search.includes('code=');
+
+  if (hasAuthTokens) {
     try {
-      const { error } = await supabase.auth.getSession();
+      // Let Supabase SDK exchange the tokens and establish the session
+      const { data, error } = await supabase.auth.getSession();
       if (error) showToast('Sign-in failed. Please try again.', 'error');
     } catch {}
+    // Clean URL: remove tokens from hash and query params
+    window.history.replaceState(null, '', window.location.pathname);
     window.location.hash = '#/';
     return true;
   }
