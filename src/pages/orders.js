@@ -14,9 +14,9 @@ export function renderOrdersPage() {
       <main class="page-content page-enter">
         <section class="section">
           <div class="container" style="text-align:center; padding: 4rem 2rem;">
-            <h2>Sign in to view your orders</h2>
-            <p>Order history and subscriptions are available for signed-in users.</p>
-            <button class="btn btn-primary" style="margin-top:2rem;" id="orders-login-btn">Sign In</button>
+            <h2>Sign in to continue</h2>
+            <p>View your order history, track pickups, and manage your subscription.</p>
+            <button class="btn btn-primary" style="margin-top:2rem;" id="orders-login-btn">Sign In with Google</button>
           </div>
         </section>
       </main>
@@ -30,8 +30,8 @@ export function renderOrdersPage() {
       <section class="section">
         <div class="container">
           <div class="page-header" style="margin-bottom: 2rem;">
-            <h1 class="page-title">📦 My Account</h1>
-            <p class="page-subtitle">Manage your orders and subscription details</p>
+            <h1 class="page-title">My Account</h1>
+            <p class="page-subtitle">Your orders, subscriptions, and billing — all in one place.</p>
           </div>
 
           <div class="orders-page-tabs">
@@ -59,7 +59,7 @@ function renderOrderHistory(orders) {
       <div class="empty-state" style="text-align:center; padding: 4rem 2rem; background: var(--clr-gray-100); border-radius: var(--radius-lg);">
         <div style="font-size: 4rem; margin-bottom: 1.5rem;">🛍️</div>
         <h2>No orders yet</h2>
-        <p>You haven't placed any orders yet. Our delicious food is waiting for you!</p>
+        <p>Once you place an order, it'll appear here with live status updates.</p>
         <div style="margin-top: 2rem;">
           <a href="#/sweets" class="btn btn-primary">Browse Sweets</a>
         </div>
@@ -154,10 +154,9 @@ function renderSubscriptionTab(user) {
     return `
       <div class="subscription-promo" style="background: linear-gradient(135deg, #FFF9F2 0%, #FFF1E0 100%); padding: 2rem; border-radius: var(--radius-lg); border: 2px solid #FFD8A8; text-align: center;">
         <div style="font-size: 3rem; margin-bottom: 1rem;">⭐</div>
-        <h2 style="color: #D35400; margin-bottom: 1rem; font-size: clamp(1.2rem, 4vw, 1.5rem);">Join Our Regular Guests Program</h2>
+        <h2 style="color: #D35400; margin-bottom: 1rem; font-size: clamp(1.2rem, 4vw, 1.5rem);">Monthly Billing for Regulars</h2>
         <p style="color: #873600; max-width: 600px; margin: 0 auto 2rem; line-height: 1.6;">
-          Become a regular subscriber and enjoy the convenience of <strong>Monthly Billing</strong>.
-          Order throughout the month and pay collectively whenever it's convenient for you.
+          Subscribe once, order all month, and settle the bill at your convenience. Perfect for families and daily customers.
         </p>
         <div style="background: white; padding: 1.5rem; border-radius: var(--radius-md); box-shadow: var(--shadow-md); text-align: left; max-width: 500px; margin: 0 auto;">
           <h3 style="margin-bottom: 1.5rem; text-align: center;">Subscription Form</h3>

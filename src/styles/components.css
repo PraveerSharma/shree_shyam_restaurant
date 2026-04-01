@@ -440,7 +440,7 @@
 .add-to-cart-btn {
   width: 100%;
   padding: 10px 16px;
-  background: var(--clr-saffron);
+  background: var(--clr-charcoal);
   color: white;
   border-radius: var(--radius-full);
   font-weight: 600;
@@ -453,7 +453,7 @@
   min-height: 42px;
 }
 .add-to-cart-btn:hover {
-  background: var(--clr-saffron-dark);
+  background: var(--clr-saffron);
   transform: translateY(-1px);
   box-shadow: var(--shadow-md);
 }

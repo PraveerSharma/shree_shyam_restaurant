@@ -21,7 +21,7 @@ export function renderHeader() {
           <img src="/images/logo.png" alt="${SITE_CONFIG.name} Logo" width="48" height="48" loading="eager">
           <div class="header-logo-text">
             Shree Shyam<br>Restaurant
-            <small>Est. Golaghat, Assam</small>
+            <small>Golaghat, Assam</small>
           </div>
         </a>
 
@@ -32,9 +32,9 @@ export function renderHeader() {
               <span class="nav-link active" style="color:var(--clr-saffron); font-weight:700;">🏠 Admin Dashboard</span>
             ` : `
               <a href="#/" class="nav-link" data-page="home">Home</a>
-              <a href="#/sweets" class="nav-link" data-page="sweets">Sweets & Snacks</a>
-              <a href="#/restaurant" class="nav-link" data-page="restaurant">Restaurant</a>
-              ${user ? `<a href="#/orders" class="nav-link" data-page="orders">My Orders</a>` : ''}
+              <a href="#/sweets" class="nav-link" data-page="sweets">Sweets</a>
+              <a href="#/restaurant" class="nav-link" data-page="restaurant">Menu</a>
+              ${user ? `<a href="#/orders" class="nav-link" data-page="orders">Orders</a>` : ''}
             `}
           </div>
         </nav>
@@ -79,11 +79,11 @@ export function renderHeader() {
           ⚙️ Admin Mode Active
         </div>
       ` : `
-        <a href="#/" class="nav-link" data-page="home">🏠 Home</a>
-        <a href="#/sweets" class="nav-link" data-page="sweets">🍬 Sweets & Snacks</a>
-        <a href="#/restaurant" class="nav-link" data-page="restaurant">🍛 Restaurant Menu</a>
-        ${user ? `<a href="#/orders" class="nav-link" data-page="orders">📦 My Orders</a>` : ''}
-        <a href="#/cart" class="nav-link" data-page="cart">🛒 Cart (${cartCount})</a>
+        <a href="#/" class="nav-link" data-page="home">Home</a>
+        <a href="#/sweets" class="nav-link" data-page="sweets">Sweets & Snacks</a>
+        <a href="#/restaurant" class="nav-link" data-page="restaurant">Restaurant Menu</a>
+        ${user ? `<a href="#/orders" class="nav-link" data-page="orders">My Orders</a>` : ''}
+        <a href="#/cart" class="nav-link" data-page="cart">Cart ${cartCount > 0 ? `(${cartCount})` : ''}</a>
       `}
       <div class="mobile-nav-auth">
         ${user ? `

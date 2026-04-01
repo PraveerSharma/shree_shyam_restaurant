@@ -75,8 +75,8 @@ function renderMain() {
   return `
     <div style="text-align:center; margin-bottom:1.5rem;">
       <img src="/images/logo.png" alt="" style="width:48px; height:48px; margin-bottom:0.5rem;" aria-hidden="true">
-      <h2 id="auth-heading" style="margin:0 0 0.2rem; font-size:1.2rem; color:var(--clr-charcoal);">Welcome to Shree Shyam</h2>
-      <p style="color:var(--clr-gray-500); font-size:0.82rem; margin:0;">Sign in to place orders and track them</p>
+      <h2 id="auth-heading" style="margin:0 0 0.2rem; font-size:1.2rem; color:var(--clr-charcoal);">Welcome</h2>
+      <p style="color:var(--clr-gray-500); font-size:0.82rem; margin:0;">Sign in to order sweets, meals & more</p>
     </div>
 
     <div style="display:flex; flex-direction:column; gap:0.65rem;">

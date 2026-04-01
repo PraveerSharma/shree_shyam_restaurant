@@ -50,7 +50,7 @@ export function renderRestaurantPage() {
         <div class="container">
           <div class="shop-page-header">
             <h1>Restaurant Menu</h1>
-            <p>Authentic North Indian vegetarian dishes, freshly prepared with love</p>
+            <p>Wholesome vegetarian meals — sabzis, rotis & thalis for every appetite</p>
             <div class="divider"></div>
           </div>
 

@@ -22,11 +22,11 @@ export function renderCartPage() {
           <div class="container">
             <div class="cart-empty">
               <div class="cart-empty-icon">🛒</div>
-              <h2>Your Cart is Empty</h2>
-              <p>Looks like you haven't added anything yet. Explore our delicious menu!</p>
+              <h2>Nothing Here Yet</h2>
+              <p>Browse our menu and add items you'd like to order.</p>
               <div style="display:flex;gap:1rem;justify-content:center;margin-top:2rem;flex-wrap:wrap;">
-                <a href="#/sweets" class="btn btn-primary">🍬 Browse Sweets</a>
-                <a href="#/restaurant" class="btn btn-secondary">🍛 Restaurant Menu</a>
+                <a href="#/sweets" class="btn btn-primary">Browse Sweets</a>
+                <a href="#/restaurant" class="btn btn-secondary">Restaurant Menu</a>
               </div>
             </div>
           </div>
@@ -87,7 +87,7 @@ export function renderCartPage() {
               </div>
 
               <div class="pickup-note">
-                📦 <strong>Pickup Order:</strong> Please pick up your order from our store at the selected date. We'll have it ready for you!
+                <strong>Pickup Order</strong> — Your order will be ready for collection at the store on your selected date and time.
               </div>
 
               <div class="payment-method-section" style="margin-bottom: 2rem;">
@@ -155,7 +155,7 @@ export function renderCartPage() {
                 </div>
 
                 <button type="submit" class="btn btn-primary btn-lg" style="width:100%;" id="place-order-btn">
-                  🚀 Place Order
+                  Place Order
                 </button>
               </form>
             </div>

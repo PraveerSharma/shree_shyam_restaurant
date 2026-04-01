@@ -50,7 +50,7 @@ export function renderSweetsPage() {
         <div class="container">
           <div class="shop-page-header">
             <h1>Sweets & Snacks</h1>
-            <p>Traditional Rajasthani delicacies made with love and pure ghee</p>
+            <p>Handcrafted with pure ghee, made fresh daily in Golaghat</p>
             <div class="divider"></div>
           </div>
 

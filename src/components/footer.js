@@ -10,11 +10,11 @@ export function renderFooter() {
       <div class="container">
         <div class="footer-grid">
           <div class="footer-section footer-info">
-            <h3>📍 ${SITE_CONFIG.name}</h3>
-            <p>🏠 ${SITE_CONFIG.address.full}</p>
-            <p>📞 <a href="${SITE_CONFIG.contact.phoneLink}">${SITE_CONFIG.contact.phone}</a></p>
-            <p>💬 <a href="${SITE_CONFIG.contact.whatsappLink}" target="_blank">WhatsApp Us</a></p>
-            <p>🕐 ${SITE_CONFIG.hours.display}</p>
+            <h3>${SITE_CONFIG.name}</h3>
+            <p>${SITE_CONFIG.address.full}</p>
+            <p><a href="${SITE_CONFIG.contact.phoneLink}">${SITE_CONFIG.contact.phone}</a></p>
+            <p><a href="${SITE_CONFIG.contact.whatsappLink}" target="_blank">WhatsApp Us</a></p>
+            <p>${SITE_CONFIG.hours.display}</p>
           </div>
 
           <nav class="footer-section footer-links" aria-label="Footer navigation">
