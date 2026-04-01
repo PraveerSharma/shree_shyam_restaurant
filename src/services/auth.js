@@ -9,6 +9,61 @@ import { firebaseAuth, RecaptchaVerifier, signInWithPhoneNumber, signOut as fbSi
 import { refreshCartUI } from './cart.js';
 
 const SESSION_KEY = 'ssr_session';
+const TAB_TOKEN_KEY = 'ssr_active_tab';
+const TAB_LOCK_KEY = 'ssr_tab_lock';
+
+// ── Single-Tab Session Management ──
+// Each tab gets a unique token. When a new tab logs in or loads with a session,
+// it writes its token. Other tabs detect this and force logout.
+
+const MY_TAB_TOKEN = 'tab_' + Date.now() + '_' + Math.random().toString(36).slice(2, 8);
+
+// BroadcastChannel for instant cross-tab communication
+let tabChannel = null;
+try {
+  tabChannel = new BroadcastChannel('ssr_auth_channel');
+  tabChannel.onmessage = (event) => {
+    if (event.data?.type === 'SESSION_CLAIMED' && event.data.tabToken !== MY_TAB_TOKEN) {
+      // Another tab claimed the session — force logout this tab
+      forceLogoutThisTab();
+    }
+    if (event.data?.type === 'LOGOUT') {
+      // Another tab logged out — clear this tab too
+      forceLogoutThisTab();
+    }
+  };
+} catch {
+  // BroadcastChannel not supported — fall back to storage events
+}
+
+// Also listen for localStorage changes (fallback for browsers without BroadcastChannel)
+window.addEventListener('storage', (e) => {
+  if (e.key === TAB_LOCK_KEY && e.newValue && e.newValue !== MY_TAB_TOKEN) {
+    // Another tab claimed the session
+    forceLogoutThisTab();
+  }
+  if (e.key === SESSION_KEY && !e.newValue) {
+    // Session was cleared by another tab
+    forceLogoutThisTab();
+  }
+});
+
+function forceLogoutThisTab() {
+  localStorage.removeItem(SESSION_KEY);
+  sessionStorage.removeItem(TAB_TOKEN_KEY);
+  refreshCartUI();
+  window.dispatchEvent(new CustomEvent('auth-changed', { detail: null }));
+  // Re-render to show logged-out state
+  window.dispatchEvent(new HashChangeEvent('hashchange'));
+}
+
+function claimSession() {
+  // Mark this tab as the active one
+  sessionStorage.setItem(TAB_TOKEN_KEY, MY_TAB_TOKEN);
+  localStorage.setItem(TAB_LOCK_KEY, MY_TAB_TOKEN);
+  // Notify other tabs
+  try { tabChannel?.postMessage({ type: 'SESSION_CLAIMED', tabToken: MY_TAB_TOKEN }); } catch {}
+}
 
 // ── Helpers ──
 
@@ -37,8 +92,14 @@ function formatUser(profile) {
 }
 
 function cacheSession(user) {
-  if (user) localStorage.setItem(SESSION_KEY, JSON.stringify(user));
-  else localStorage.removeItem(SESSION_KEY);
+  if (user) {
+    localStorage.setItem(SESSION_KEY, JSON.stringify(user));
+    claimSession(); // This tab owns the session
+  } else {
+    localStorage.removeItem(SESSION_KEY);
+    localStorage.removeItem(TAB_LOCK_KEY);
+    sessionStorage.removeItem(TAB_TOKEN_KEY);
+  }
 }
 
 // ============================================
@@ -190,21 +251,54 @@ export async function verifyFirebaseOTP(otp, name = '') {
 // ============================================
 
 export async function logout() {
+  // Clear all auth providers
   try { await supabase.auth.signOut(); } catch {}
   try { await fbSignOut(firebaseAuth); } catch {}
+
+  // Clear all session state
   localStorage.removeItem(SESSION_KEY);
+  localStorage.removeItem(TAB_LOCK_KEY);
+  sessionStorage.removeItem(TAB_TOKEN_KEY);
+
+  // Clear user-specific cart
+  const keys = Object.keys(localStorage);
+  keys.forEach(k => { if (k.startsWith('ssr_cart_')) localStorage.removeItem(k); });
+
+  // Broadcast logout to other tabs
+  try { tabChannel?.postMessage({ type: 'LOGOUT' }); } catch {}
+
   refreshCartUI();
   window.dispatchEvent(new CustomEvent('auth-changed', { detail: null }));
 }
 
 export function getCurrentUser() {
-  try { return JSON.parse(localStorage.getItem(SESSION_KEY)) || null; } catch { return null; }
+  try {
+    // Check if this tab owns the session
+    const lock = localStorage.getItem(TAB_LOCK_KEY);
+    const myToken = sessionStorage.getItem(TAB_TOKEN_KEY);
+    if (lock && lock !== MY_TAB_TOKEN && !myToken) {
+      // Another tab owns the session — this tab is not logged in
+      return null;
+    }
+    return JSON.parse(localStorage.getItem(SESSION_KEY)) || null;
+  } catch { return null; }
 }
 
 export function isLoggedIn() { return getCurrentUser() !== null; }
 
 export async function restoreSession() {
   refreshUserCount().catch(() => {});
+
+  // ── Single-tab enforcement ──
+  // Check if another tab already owns the session
+  const existingLock = localStorage.getItem(TAB_LOCK_KEY);
+  const myToken = sessionStorage.getItem(TAB_TOKEN_KEY);
+
+  if (existingLock && existingLock !== MY_TAB_TOKEN && !myToken) {
+    // Another tab owns the session — this is a new tab, don't restore
+    localStorage.removeItem(SESSION_KEY);
+    return null;
+  }
 
   // Check Supabase session (Google SSO)
   const { data: { session } } = await supabase.auth.getSession();
@@ -225,7 +319,7 @@ export async function restoreSession() {
         const { data } = await supabase.from('profiles').select('*').eq('phone', fbUser.phoneNumber).limit(1);
         if (data?.[0]) { cacheSession(formatUser(data[0])); resolve(formatUser(data[0])); return; }
       }
-      // Check localStorage cache (WhatsApp OTP sessions)
+      // Check localStorage cache
       const cached = getCurrentUser();
       if (cached?.phone) {
         const { data } = await supabase.from('profiles').select('*').eq('phone', cached.phone).limit(1);
