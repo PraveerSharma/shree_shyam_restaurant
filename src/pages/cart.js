@@ -244,6 +244,15 @@ export function initCartPage() {
   document.getElementById('checkout-form')?.addEventListener('submit', (e) => {
     e.preventDefault();
 
+    // Require login before placing order
+    const user = getCurrentUser();
+    if (!user) {
+      window.dispatchEvent(new CustomEvent('show-auth-modal', {
+        detail: { tab: 'login', onSuccess: () => window.dispatchEvent(new HashChangeEvent('hashchange')) }
+      }));
+      return;
+    }
+
     // Require verified phone before placing order
     const isVerified = requireVerifiedPhone((updatedUser) => {
       // After verification, re-fill phone and re-submit
@@ -281,7 +290,6 @@ export function initCartPage() {
     }
     if (hasError) return;
 
-    const user = getCurrentUser();
     // Auto-enroll non-subscribers if they choose monthly billing
     if (paymentMethod === 'Monthly Billing' && user && !isSubscriber(user.id)) {
       subscribeUser(user.id, {

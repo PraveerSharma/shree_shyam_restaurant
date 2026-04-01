@@ -1,5 +1,6 @@
 // ============================================
-// FIREBASE CONFIG (Auth: Google SSO + Phone OTP)
+// FIREBASE CONFIG (Auth: Google SSO only)
+// Phone OTP is now handled by custom Supabase RPC
 // ============================================
 
 import { initializeApp } from 'firebase/app';
@@ -7,8 +8,6 @@ import {
   getAuth,
   GoogleAuthProvider,
   signInWithPopup,
-  RecaptchaVerifier,
-  signInWithPhoneNumber,
   signOut,
 } from 'firebase/auth';
 
@@ -24,4 +23,4 @@ const firebaseConfig = {
 const app = initializeApp(firebaseConfig);
 export const firebaseAuth = getAuth(app);
 
-export { GoogleAuthProvider, signInWithPopup, RecaptchaVerifier, signInWithPhoneNumber, signOut };
+export { GoogleAuthProvider, signInWithPopup, signOut };

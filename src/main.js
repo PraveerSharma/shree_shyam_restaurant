@@ -12,7 +12,8 @@ import './styles/responsive.css';
 import { renderHeader, initHeader, updateActiveLink, updateCartBadge } from './components/header.js';
 import { renderFooter } from './components/footer.js';
 import { trackPageView } from './services/analytics.js';
-import { showAuthModal } from './components/auth-modal.js';
+import { showAuthModal, showPostAuthSetup } from './components/auth-modal.js';
+import { supabase } from './config/supabase.js';
 import { initScrollReveal } from './utils/animations.js';
 
 // Page imports
@@ -178,10 +179,42 @@ document.addEventListener('securitypolicyviolation', (e) => {
 import { syncAll, processRetryQueue, subscribeToOrders } from './services/db.js';
 import { showToast } from './utils/dom.js';
 
+// ── Magic Link Intercept ──
+// Supabase magic links put tokens in the URL fragment (#access_token=...).
+// Detect and consume them before the router runs.
+async function handleMagicLinkReturn() {
+  const hash = window.location.hash || '';
+  if (hash.includes('access_token=') && (hash.includes('type=magiclink') || hash.includes('type=signup'))) {
+    try {
+      const { error } = await supabase.auth.getSession();
+      if (error) showToast('Sign-in link expired. Please try again.', 'error');
+    } catch {}
+    // Restore clean route
+    window.location.hash = '#/';
+    return true;
+  }
+  return false;
+}
+
+// ── Post-Auth Setup (name + phone collection after magic link) ──
+let postAuthHandled = false;
+window.addEventListener('auth-changed', (e) => {
+  const user = e.detail;
+  if (user && !postAuthHandled) {
+    const needsName = !user.name || user.name.trim().length < 2;
+    const needsPhone = !user.phone;
+    if (needsName || needsPhone) {
+      postAuthHandled = true;
+      setTimeout(() => showPostAuthSetup(user), 500);
+    }
+  }
+  if (!user) postAuthHandled = false;
+});
+
 // ── Initial render ──
-// Firebase onAuthStateChanged fires shortly and dispatches 'auth-changed',
-// which triggers scheduleRoute() to re-render with authoritative auth state.
-handleRoute();
+handleMagicLinkReturn().then(() => {
+  handleRoute();
+});
 
 // ── Supabase Sync (background) ──
 const syncBar = document.createElement('div');

@@ -1,14 +1,11 @@
 // ============================================
-// AUTHENTICATION SERVICE (Firebase Auth Only)
-// Google SSO (popup) + Phone OTP via Firebase
-// Supabase for profile data storage only
+// AUTHENTICATION SERVICE
+// Google SSO (Firebase) + Email Magic Link (Supabase Auth)
+// Phone number collected after auth (no OTP)
 // ============================================
 
 import { supabase } from '../config/supabase.js';
-import {
-  firebaseAuth, GoogleAuthProvider, signInWithPopup,
-  RecaptchaVerifier, signInWithPhoneNumber, signOut,
-} from '../config/firebase.js';
+import { firebaseAuth, GoogleAuthProvider, signInWithPopup, signOut } from '../config/firebase.js';
 import { refreshCartUI } from './cart.js';
 
 // ── Auth State ──
@@ -17,6 +14,19 @@ let authInitialized = false;
 let authInitResolve = null;
 const authInitPromise = new Promise(resolve => { authInitResolve = resolve; });
 let profileLoadedResolve = null;
+
+// Track which listeners have fired on init
+let firebaseReady = false;
+let supabaseReady = false;
+
+function markReady(source) {
+  if (source === 'firebase') firebaseReady = true;
+  if (source === 'supabase') supabaseReady = true;
+  if (firebaseReady && supabaseReady && !authInitialized) {
+    authInitialized = true;
+    authInitResolve();
+  }
+}
 
 // ── Helpers ──
 
@@ -44,12 +54,11 @@ function validatePhone(phone) {
   return /^(91)?[6-9]\d{9}$/.test(clean);
 }
 
-// ── Profile Lookup / Creation ──
+// ── Profile Lookup / Creation (Google SSO via Firebase) ──
 
 async function loadOrCreateProfile(fbUser) {
   const uid = fbUser.uid;
 
-  // 1. Try by email (Google SSO — existing users may have Supabase UUID as ID)
   if (fbUser.email) {
     const { data } = await supabase.from('profiles').select('*').eq('email', fbUser.email).limit(1);
     if (data?.[0]) {
@@ -64,53 +73,50 @@ async function loadOrCreateProfile(fbUser) {
     }
   }
 
-  // 2. Try by phone (Phone OTP users)
   if (fbUser.phoneNumber) {
     const { data } = await supabase.from('profiles').select('*').eq('phone', fbUser.phoneNumber).limit(1);
-    if (data?.[0]) {
-      const updates = {};
-      if (!data[0].name && fbUser.displayName) updates.name = fbUser.displayName;
-      if (!data[0].email && fbUser.email) updates.email = fbUser.email;
-      if (Object.keys(updates).length) {
-        await supabase.from('profiles').update(updates).eq('id', data[0].id).catch(() => {});
-        Object.assign(data[0], updates);
-      }
-      return formatUser(data[0], fbUser.photoURL);
-    }
+    if (data?.[0]) return formatUser(data[0], fbUser.photoURL);
   }
 
-  // 3. Try by Firebase UID or legacy fb_ prefix
   const { data: byId } = await supabase.from('profiles').select('*').eq('id', uid).limit(1);
   if (byId?.[0]) return formatUser(byId[0], fbUser.photoURL);
 
   const { data: byLegacy } = await supabase.from('profiles').select('*').eq('id', 'fb_' + uid).limit(1);
   if (byLegacy?.[0]) return formatUser(byLegacy[0], fbUser.photoURL);
 
-  // 4. New user — create profile
-  const newProfile = {
-    id: uid,
-    name: fbUser.displayName || '',
-    phone: fbUser.phoneNumber || '',
-    email: fbUser.email || '',
-  };
+  const newProfile = { id: uid, name: fbUser.displayName || '', phone: fbUser.phoneNumber || '', email: fbUser.email || '' };
   await supabase.from('profiles').upsert(newProfile, { onConflict: 'id' }).catch(() => {});
   return formatUser(newProfile, fbUser.photoURL);
 }
 
-// ── Firebase Auth State Listener (single source of truth) ──
-// This fires on: sign-in, sign-out, page load (session restore), token refresh
+// ── Profile Lookup / Creation (Email Magic Link via Supabase Auth) ──
+
+async function loadOrCreateSupabaseProfile(sbUser) {
+  const email = sbUser.email;
+
+  // Check existing profile by email
+  const { data } = await supabase.from('profiles').select('*').eq('email', email).limit(1);
+  if (data?.[0]) return formatUser(data[0]);
+
+  // Check by Supabase auth ID
+  const { data: byId } = await supabase.from('profiles').select('*').eq('id', sbUser.id).limit(1);
+  if (byId?.[0]) return formatUser(byId[0]);
+
+  // Create new profile
+  const newProfile = { id: sbUser.id, name: '', phone: '', email };
+  await supabase.from('profiles').upsert(newProfile, { onConflict: 'id' }).catch(() => {});
+  return formatUser(newProfile);
+}
+
+// ── Firebase Auth Listener (Google SSO) ──
 
 firebaseAuth.onAuthStateChanged(async (fbUser) => {
   if (fbUser) {
     currentAppUser = await loadOrCreateProfile(fbUser);
-  } else {
-    currentAppUser = null;
   }
+  // Don't set null here — Supabase email session might exist
 
-  if (!authInitialized) {
-    authInitialized = true;
-    authInitResolve();
-  }
+  markReady('firebase');
 
   if (profileLoadedResolve) {
     profileLoadedResolve();
@@ -122,14 +128,36 @@ firebaseAuth.onAuthStateChanged(async (fbUser) => {
   window.dispatchEvent(new CustomEvent('auth-changed', { detail: currentAppUser }));
 });
 
+// ── Supabase Auth Listener (Email Magic Link) ──
+
+supabase.auth.onAuthStateChange(async (event, session) => {
+  if ((event === 'SIGNED_IN' || event === 'INITIAL_SESSION') && session?.user) {
+    const sbUser = session.user;
+    // Only handle Supabase email auth users (not Google SSO via Firebase)
+    if (!currentAppUser || currentAppUser.email === sbUser.email) {
+      const profile = await loadOrCreateSupabaseProfile(sbUser);
+      if (profile) {
+        currentAppUser = profile;
+        refreshUserCount().catch(() => {});
+        refreshCartUI();
+        window.dispatchEvent(new CustomEvent('auth-changed', { detail: currentAppUser }));
+      }
+    }
+  }
+
+  if (event === 'SIGNED_OUT' && !firebaseAuth.currentUser) {
+    currentAppUser = null;
+    refreshCartUI();
+    window.dispatchEvent(new CustomEvent('auth-changed', { detail: null }));
+  }
+
+  markReady('supabase');
+});
+
 // ── Public API ──
 
-export function getCurrentUser() {
-  return currentAppUser;
-}
-
-export function isLoggedIn() { return getCurrentUser() !== null; }
-
+export function getCurrentUser() { return currentAppUser; }
+export function isLoggedIn() { return currentAppUser !== null; }
 export async function waitForAuth() { return authInitPromise; }
 
 // ============================================
@@ -156,52 +184,27 @@ export async function signInWithGoogle() {
 }
 
 // ============================================
-// PHONE OTP (Firebase)
+// EMAIL MAGIC LINK (Supabase Auth)
 // ============================================
 
-let recaptchaVerifier = null;
-let confirmationResult = null;
-
-export function setupRecaptcha(containerId) {
-  if (recaptchaVerifier) { recaptchaVerifier.clear(); recaptchaVerifier = null; }
-  recaptchaVerifier = new RecaptchaVerifier(firebaseAuth, containerId, { size: 'invisible' });
-  return recaptchaVerifier;
-}
-
-export async function sendFirebaseOTP(phone) {
-  if (!validatePhone(phone)) return { success: false, error: 'Enter a valid 10-digit mobile number' };
-  const formatted = normalizePhone(phone);
-  try {
-    if (!recaptchaVerifier) return { success: false, error: 'reCAPTCHA not ready. Try again.' };
-    confirmationResult = await signInWithPhoneNumber(firebaseAuth, formatted, recaptchaVerifier);
-    return { success: true, phone: formatted };
-  } catch (err) {
-    recaptchaVerifier = null;
-    if (err.code === 'auth/too-many-requests') return { success: false, error: 'Too many attempts. Try later.' };
-    if (err.code === 'auth/invalid-phone-number') return { success: false, error: 'Invalid phone number.' };
-    return { success: false, error: 'Failed to send OTP. Try again.' };
+export async function signInWithEmail(email) {
+  if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+    return { success: false, error: 'Please enter a valid email address.' };
   }
-}
-
-export async function verifyFirebaseOTP(otp) {
-  if (!confirmationResult) return { success: false, error: 'No OTP sent. Request a new one.' };
-  if (!otp || otp.length !== 6) return { success: false, error: 'Enter the 6-digit OTP' };
 
   try {
-    const profileLoaded = new Promise(r => { profileLoadedResolve = r; });
-    await confirmationResult.confirm(otp);
-    confirmationResult = null;
-    await profileLoaded; // Wait for onAuthStateChanged to load/create profile
-
-    const user = getCurrentUser();
-    if (!user) return { success: false, error: 'Verification failed.' };
-
-    const needsName = !user.name || user.name.trim().length < 2;
-    return { success: true, user, isNew: needsName, needsName };
-  } catch (err) {
-    if (err.code === 'auth/invalid-verification-code') return { success: false, error: 'Incorrect OTP.' };
-    if (err.code === 'auth/code-expired') return { success: false, error: 'OTP expired. Request a new one.' };
-    return { success: false, error: 'Verification failed. Try again.' };
+    const redirectTo = window.location.origin + '/#/';
+    const { error } = await supabase.auth.signInWithOtp({
+      email,
+      options: { emailRedirectTo: redirectTo },
+    });
+    if (error) {
+      if (error.message?.includes('rate limit')) return { success: false, error: 'Too many attempts. Please wait a minute.' };
+      return { success: false, error: error.message || 'Failed to send link. Try again.' };
+    }
+    return { success: true };
+  } catch {
+    return { success: false, error: 'Something went wrong. Please try again.' };
   }
 }
 
@@ -217,7 +220,6 @@ export async function updateUserName(name) {
   if (error) return { success: false, error: 'Failed to save name.' };
 
   currentAppUser = { ...currentAppUser, name: name.trim() };
-
   window.dispatchEvent(new CustomEvent('auth-changed', { detail: currentAppUser }));
   return { success: true, user: currentAppUser };
 }
@@ -228,7 +230,6 @@ export async function savePhone(phone) {
 
   const formatted = normalizePhone(phone);
 
-  // Check for duplicate phone
   const { data: dup } = await supabase.from('profiles').select('id').eq('phone', formatted).neq('id', currentAppUser.id).limit(1);
   if (dup?.length > 0) return { success: false, error: 'This number is already linked to another account' };
 
@@ -236,7 +237,6 @@ export async function savePhone(phone) {
   if (error) return { success: false, error: 'Failed to save. Try again.' };
 
   currentAppUser = { ...currentAppUser, phone: formatted };
-
   refreshCartUI();
   window.dispatchEvent(new CustomEvent('auth-changed', { detail: currentAppUser }));
   return { success: true, user: currentAppUser };
@@ -247,13 +247,18 @@ export async function savePhone(phone) {
 // ============================================
 
 export async function logout() {
-  // Clear user-specific carts before sign-out
   Object.keys(localStorage).forEach(k => {
     if (k.startsWith('ssr_cart_')) localStorage.removeItem(k);
   });
 
   try { await signOut(firebaseAuth); } catch {}
-  // onAuthStateChanged handles clearing state and dispatching events
+  try { await supabase.auth.signOut(); } catch {}
+
+  if (currentAppUser) {
+    currentAppUser = null;
+    refreshCartUI();
+    window.dispatchEvent(new CustomEvent('auth-changed', { detail: null }));
+  }
 }
 
 // ============================================
