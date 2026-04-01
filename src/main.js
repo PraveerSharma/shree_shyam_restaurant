@@ -178,8 +178,8 @@ document.addEventListener('securitypolicyviolation', (e) => {
 import { syncAll, processRetryQueue, subscribeToOrders } from './services/db.js';
 import { showToast } from './utils/dom.js';
 
-// ── Initial render (uses cached user from localStorage for instant display) ──
-// Firebase onAuthStateChanged will fire shortly and dispatch 'auth-changed'
+// ── Initial render ──
+// Firebase onAuthStateChanged fires shortly and dispatches 'auth-changed',
 // which triggers scheduleRoute() to re-render with authoritative auth state.
 handleRoute();
 

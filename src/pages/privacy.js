@@ -31,13 +31,13 @@ export function renderPrivacyPage() {
           </ul>
 
           <h2>3. Data Storage</h2>
-          <p>Your account data is stored locally in your browser's localStorage. We do not currently store personal data on external servers. Order details sent via WhatsApp are subject to WhatsApp's privacy policy.</p>
+          <p>Your account is managed securely via Firebase Authentication. Profile and order data is stored in our database. Cart and menu data is cached locally in your browser for faster access.</p>
 
           <h2>4. Data Sharing</h2>
           <p>We do not sell, trade, or share your personal information with third parties, except as required to process your orders or as mandated by law.</p>
 
           <h2>5. Cookies</h2>
-          <p>We use essential cookies and localStorage to remember your cart, preferences, and login session. No third-party tracking cookies are used.</p>
+          <p>We use essential browser storage to cache your cart and menu preferences. Authentication is handled by Firebase. No third-party tracking cookies are used.</p>
 
           <h2>6. Your Rights</h2>
           <p>You have the right to:</p>
