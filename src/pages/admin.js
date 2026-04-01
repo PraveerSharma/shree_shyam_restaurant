@@ -955,10 +955,10 @@ export function initAdminPage() {
 
     document.getElementById('new-sub-form')?.addEventListener('submit', (e) => {
       e.preventDefault();
+      const phoneVal = document.getElementById('new-sub-phone').value.trim();
       const data = {
-        name: document.getElementById('new-sub-name').value,
-        phone: document.getElementById('new-sub-phone').value,
-        address: document.getElementById('new-sub-address').value
+        name: document.getElementById('new-sub-name').value.trim(),
+        phone: phoneVal.startsWith('+91') ? phoneVal : '+91' + phoneVal,
       };
       const res = createAdminSubscriber(data);
       if (res.success) {
@@ -1198,13 +1198,13 @@ function renderSubscribersDashboard() {
             <h3 style="margin: 0; font-size: 1rem; color: var(--clr-charcoal);">New Subscriber</h3>
             <button type="button" style="background: none; border: none; color: var(--clr-gray-400); cursor: pointer; font-size: 1.2rem;" id="cancel-sub-btn">✕</button>
           </div>
-          <form id="new-sub-form" style="display: flex; flex-direction: column; gap: 0.75rem;">
-            <input type="text" class="form-input" id="new-sub-name" required placeholder="Full name">
-            <div class="form-row-2col">
-              <input type="tel" class="form-input" id="new-sub-phone" required placeholder="Phone number">
-              <input type="text" class="form-input" id="new-sub-address" placeholder="Address (optional)">
+          <form id="new-sub-form" style="display: flex; gap: 0.5rem; align-items: center; flex-wrap: wrap;">
+            <input type="text" class="form-input" id="new-sub-name" required placeholder="Name" style="flex: 1; min-width: 120px; height: 40px; font-size: 0.9rem;">
+            <div class="phone-input-group" style="flex: 1; min-width: 150px; height: 40px;">
+              <span class="phone-prefix" style="font-size: 0.85rem;">+91</span>
+              <input type="tel" class="form-input" id="new-sub-phone" required placeholder="Phone number" maxlength="10" style="height: 40px; font-size: 0.9rem;">
             </div>
-            <button type="submit" class="btn btn-primary" style="align-self: flex-end;">Save</button>
+            <button type="submit" class="btn btn-primary btn-sm" style="height: 40px; white-space: nowrap;">Add</button>
           </form>
         </div>
       ` : ''}
@@ -1233,8 +1233,7 @@ function filterSubscribers(subs, query) {
   return subs.filter(s => {
     const name = s.name.toLowerCase();
     const phone = s.phone.replace(/[\s\-\+]/g, '');
-    const address = (s.address || '').toLowerCase();
-    return name.includes(q) || phone.includes(q) || address.includes(q);
+    return name.includes(q) || phone.includes(q);
   });
 }
 
@@ -1260,7 +1259,7 @@ function renderSubscriberCards(filtered, query, totalCount) {
           <div class="sub-avatar" style="width: 38px; height: 38px; font-size: 0.9rem; flex-shrink: 0;">${sub.name.charAt(0).toUpperCase()}</div>
           <div style="flex: 1; min-width: 0;">
             <div style="font-weight: 600; font-size: 0.95rem; color: var(--clr-charcoal); overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">${sub.name}</div>
-            <div style="font-size: 0.75rem; color: var(--clr-gray-500); overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">${formatPhoneNumber(sub.phone)}${sub.address ? ` · ${sub.address}` : ''}</div>
+            <div style="font-size: 0.75rem; color: var(--clr-gray-500); overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">${formatPhoneNumber(sub.phone)}</div>
           </div>
           <div style="text-align: right; flex-shrink: 0;">
             <div style="font-weight: 700; font-size: 1rem; color: ${hasBalance ? 'var(--clr-error)' : 'var(--clr-veg)'};">${formatPrice(sub.outstandingBalance)}</div>
@@ -1316,7 +1315,7 @@ function renderSubscriberDetail() {
             <div>
               <h2 style="margin: 0; font-size: 1.2rem; color: var(--clr-charcoal);">${sub.name}</h2>
               <div style="font-size: 0.8rem; color: var(--clr-gray-500); margin-top: 2px;">
-                ${formatPhoneNumber(sub.phone)}${sub.address ? ` · ${sub.address}` : ''}
+                ${formatPhoneNumber(sub.phone)} · Joined ${new Date(sub.joinedAt).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })}
               </div>
             </div>
           </div>

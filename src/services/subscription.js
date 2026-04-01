@@ -36,10 +36,9 @@ export function subscribeUser(userId, data) {
     userId,
     name: data.name,
     phone: data.phone,
-    address: data.address || '',
     outstandingBalance: 0,
     joinedAt: new Date().toISOString(),
-    billingHistory: [] // { orderId, amount, date, description, status: 'pending' | 'cleared' }
+    billingHistory: []
   };
   
   subs.push(newSub);

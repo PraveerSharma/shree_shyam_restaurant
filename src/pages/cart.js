@@ -298,7 +298,6 @@ export function initCartPage() {
       subscribeUser(user.id, {
         name: user.name,
         phone: phone,
-        address: 'Auto-enrolled via checkout'
       });
       showToast('You have been enrolled as a subscriber!', 'success');
     }

@@ -194,7 +194,6 @@ async function syncSubscribers() {
     userId: s.user_id,
     name: s.name,
     phone: s.phone,
-    address: s.address || '',
     outstandingBalance: Number(s.outstanding_balance),
     joinedAt: s.joined_at,
     billingHistory: historyByUser[s.user_id] || [],
@@ -301,7 +300,6 @@ export async function dbSaveSubscriber(sub) {
     user_id: sub.userId,
     name: sub.name,
     phone: sub.phone,
-    address: sub.address || '',
     outstanding_balance: sub.outstandingBalance || 0,
   });
 }

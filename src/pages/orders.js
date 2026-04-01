@@ -174,11 +174,7 @@ function renderSubscriptionTab(user) {
               </div>
               <div class="form-error" id="sub-phone-err"></div>
             </div>
-            <div class="form-group">
-              <label class="form-label" for="sub-address">Residential Address</label>
-              <textarea class="form-input" id="sub-address" placeholder="E.g. Sector 12, Vidhyadhar Nagar" required></textarea>
-            </div>
-            <button type="submit" class="btn btn-primary" style="width: 100%; margin-top: 1rem;" id="sub-btn">Confirm Subscription</button>
+            <button type="submit" class="btn btn-primary" style="width: 100%; margin-top: 1rem;" id="sub-btn">Start Monthly Billing</button>
           </form>
         </div>
       </div>
@@ -202,9 +198,8 @@ function renderSubscriptionTab(user) {
           <div style="font-size: 1.75rem; font-weight: 800; color: ${sub.outstandingBalance > 0 ? 'var(--clr-error)' : 'var(--clr-veg)'};">${formatPrice(sub.outstandingBalance)}</div>
         </div>
 
-        <div style="background: var(--clr-gray-50); padding: 0.75rem; border-radius: var(--radius-md); font-size: 0.85rem; color: var(--clr-gray-600);">
-          <div style="margin-bottom: 0.5rem;">📞 ${formatPhoneNumber(sub.phone)}</div>
-          <div>📍 ${sub.address}</div>
+        <div style="background: var(--clr-gray-50); padding: 0.75rem; border-radius: var(--radius-md); font-size: 0.85rem; color: var(--clr-gray-600); text-align: center;">
+          ${formatPhoneNumber(sub.phone)}
         </div>
       </div>
 
@@ -293,7 +288,6 @@ export function initOrdersPage() {
     const data = {
       name: document.getElementById('sub-name').value,
       phone: phone,
-      address: document.getElementById('sub-address').value
     };
 
     const res = subscribeUser(user.id, data);
