@@ -24,9 +24,11 @@ function saveCart(cart) {
   localStorage.setItem(key, JSON.stringify(cart));
   window.dispatchEvent(new CustomEvent('cart-updated', { detail: { cart, count: getCartCount(), total: getCartTotal() } }));
 
-  // Sync to Supabase (background)
+  // Sync to Supabase (background) — only for new auth users (not old localStorage users)
   const user = getCurrentUser();
-  if (user) dbSyncCart(user.id, cart).catch(err => console.warn('[DB] cart sync failed:', err));
+  if (user?.id && !user.id.startsWith('user_')) {
+    dbSyncCart(user.id, cart).catch(() => {});
+  }
 }
 
 export function getCart() {

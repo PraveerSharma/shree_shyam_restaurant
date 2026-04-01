@@ -390,27 +390,26 @@ export async function dbSaveAllMenuItems(items, menuType) {
 export async function dbSyncCart(userId, cart) {
   if (!userId) return;
 
-  // Delete all existing cart items for this user first
-  await supabase.from('cart_items').delete().eq('user_id', userId);
+  try {
+    // Delete all existing cart items for this user
+    await supabase.from('cart_items').delete().eq('user_id', userId);
 
-  // Small delay to ensure delete completes before insert
-  await new Promise(r => setTimeout(r, 100));
-
-  if (cart.length) {
-    // Use upsert to avoid conflict errors
-    const { error } = await supabase.from('cart_items').upsert(
-      cart.map(item => ({
-        user_id: userId,
-        item_id: item.id,
-        item_name: item.name,
-        price: item.price,
-        unit: item.unit || '',
-        quantity: item.quantity,
-        image: item.image || '',
-      })),
-      { onConflict: 'user_id,item_id' }
-    );
-    if (error) console.warn('[DB] cart sync:', error.message);
+    if (cart.length) {
+      await supabase.from('cart_items').upsert(
+        cart.map(item => ({
+          user_id: userId,
+          item_id: item.id,
+          item_name: item.name,
+          price: item.price,
+          unit: item.unit || '',
+          quantity: item.quantity,
+          image: item.image || '',
+        })),
+        { onConflict: 'user_id,item_id', ignoreDuplicates: true }
+      );
+    }
+  } catch {
+    // Silently fail — cart is already saved in localStorage
   }
 }
 
