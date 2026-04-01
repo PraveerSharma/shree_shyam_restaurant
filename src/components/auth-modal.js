@@ -3,7 +3,7 @@
 // ============================================
 
 import {
-  signInWithGoogle, savePhone,
+  signInWithGoogle, savePhone, updateUserName,
   setupRecaptcha, sendFirebaseOTP, verifyFirebaseOTP,
 } from '../services/auth.js';
 import { showToast } from '../utils/dom.js';
@@ -152,7 +152,18 @@ function bindMain(trigger) {
     btn.disabled = true;
     btn.innerHTML = '<div class="spinner" style="width:18px;height:18px;border-width:2px;" aria-hidden="true"></div> Signing in...';
     const r = await signInWithGoogle();
-    if (!r.success && !r.redirecting) { errEl.textContent = r.error; btn.disabled = false; btn.textContent = 'Continue with Google'; }
+    if (r.success) {
+      if (r.needsPhone) {
+        closeAuthModal(trigger);
+        showPhoneModal(r.user);
+      } else {
+        authComplete({ ...r, isNew: false }, trigger);
+      }
+    } else if (r.error) {
+      errEl.textContent = r.error;
+      btn.disabled = false;
+      btn.textContent = 'Continue with Google';
+    }
   });
 
   document.getElementById('sms-otp-btn')?.addEventListener('click', () => {
@@ -303,11 +314,13 @@ function bindSMSOTP(trigger) {
     const r = await verifyFirebaseOTP(otp);
 
     if (r.success) {
-      authComplete(r, trigger);
-    } else if (r.needsName) {
-      setContent(renderSMSName());
-      bindSMSName(trigger);
-      setTimeout(() => document.getElementById('sms-name')?.focus(), 50);
+      if (r.needsName) {
+        setContent(renderSMSName());
+        bindSMSName(trigger);
+        setTimeout(() => document.getElementById('sms-name')?.focus(), 50);
+      } else {
+        authComplete(r, trigger);
+      }
     } else {
       err.textContent = r.error;
       btn.disabled = false;
@@ -350,8 +363,8 @@ function bindSMSName(trigger) {
     btn.disabled = true;
     btn.textContent = 'Setting up...';
 
-    const r = await verifyFirebaseOTP(null, name);
-    if (r.success) authComplete(r, trigger);
+    const r = await updateUserName(name);
+    if (r.success) authComplete({ ...r, isNew: true }, trigger);
     else { err.textContent = r.error || 'Something went wrong. Please start over.'; btn.disabled = false; btn.textContent = 'Get Started'; }
   });
 }

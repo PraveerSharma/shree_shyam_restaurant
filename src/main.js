@@ -174,47 +174,14 @@ document.addEventListener('securitypolicyviolation', (e) => {
   console.warn('CSP Violation:', e.violatedDirective, e.blockedURI);
 });
 
-// ── Imports for sync & auth ──
+// ── Imports for sync ──
 import { syncAll, processRetryQueue, subscribeToOrders } from './services/db.js';
 import { showToast } from './utils/dom.js';
-import { restoreSession, handleAuthCallback } from './services/auth.js';
-import { showPhoneModal } from './components/auth-modal.js';
 
-// ── Detect Google OAuth return BEFORE first render ──
-const isOAuthReturn = window.location.hash.includes('access_token') || window.location.href.includes('access_token');
-
-if (isOAuthReturn) {
-  // Show loading instead of 404 while processing OAuth
-  app.innerHTML = `
-    ${renderHeader()}
-    <main class="page-content page-enter">
-      <section class="section" style="text-align:center;padding:6rem 1rem;">
-        <div class="spinner" style="margin:0 auto 1rem;" aria-hidden="true"></div>
-        <p style="color:var(--clr-gray-500);">Signing you in...</p>
-      </section>
-    </main>
-    ${renderFooter()}
-  `;
-
-  handleAuthCallback().then(result => {
-    window.location.hash = '#/';
-    setTimeout(() => {
-      handleRoute();
-      if (result.success) {
-        if (result.needsPhone) {
-          showPhoneModal(result.user);
-        } else {
-          showToast(`Welcome back, ${result.user.name}!`, 'success');
-        }
-      } else {
-        showToast(result.error || 'Sign in failed', 'error');
-      }
-    }, 100);
-  }).catch(() => { window.location.hash = '#/'; handleRoute(); });
-} else {
-  // Normal flow — render immediately
-  handleRoute();
-}
+// ── Initial render (uses cached user from localStorage for instant display) ──
+// Firebase onAuthStateChanged will fire shortly and dispatch 'auth-changed'
+// which triggers scheduleRoute() to re-render with authoritative auth state.
+handleRoute();
 
 // ── Supabase Sync (background) ──
 const syncBar = document.createElement('div');
@@ -223,10 +190,6 @@ syncBar.style.cssText = 'position:fixed;top:0;left:0;height:3px;background:var(-
 document.body.appendChild(syncBar);
 
 processRetryQueue().catch(() => {});
-
-if (!isOAuthReturn) {
-  restoreSession().then(() => scheduleRoute()).catch(() => {});
-}
 
 syncAll().then(ok => {
   syncBar.style.width = '100%';
