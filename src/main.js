@@ -174,6 +174,7 @@ handleRoute();
 // ── Supabase Sync (background — doesn't block initial render) ──
 import { syncAll, processRetryQueue, subscribeToOrders } from './services/db.js';
 import { showToast } from './utils/dom.js';
+import { restoreSession } from './services/auth.js';
 
 // Show sync indicator
 const syncBar = document.createElement('div');
@@ -183,6 +184,9 @@ document.body.appendChild(syncBar);
 
 // Process retry queue first (for any previously failed writes)
 processRetryQueue().catch(() => {});
+
+// Restore auth session from Supabase JWT
+restoreSession().then(() => handleRoute()).catch(() => {});
 
 syncAll().then(ok => {
   syncBar.style.width = '100%';

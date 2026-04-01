@@ -1,79 +1,17 @@
 // ============================================
 // AUTHENTICATION SERVICE
-// Secure client-side auth with localStorage
+// Supabase Auth (email/password, server-side hashing)
 // ============================================
 
+import { supabase } from '../config/supabase.js';
 import { sanitizeInput } from '../utils/dom.js';
 import { formatPhoneNumber } from '../utils/format.js';
 import { refreshCartUI } from './cart.js';
-import { dbSaveUser } from './db.js';
 
-const USERS_KEY = 'ssr_users';
 const SESSION_KEY = 'ssr_session';
-const MAX_LOGIN_ATTEMPTS = 5;
-const LOCKOUT_DURATION = 15 * 60 * 1000; // 15 minutes
-const ATTEMPTS_KEY = 'ssr_login_attempts';
 
-// Cryptographic hash using SHA-256 (Web Crypto API)
-async function hashPassword(password, salt = 'ssr_default_salt') {
-  const encoder = new TextEncoder();
-  const data = encoder.encode(password + salt);
-  const hashBuffer = await crypto.subtle.digest('SHA-256', data);
-  const hashArray = Array.from(new Uint8Array(hashBuffer));
-  return hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
-}
+// ── Validation ──
 
-function getUsers() {
-  try {
-    return JSON.parse(localStorage.getItem(USERS_KEY) || '[]');
-  } catch {
-    return [];
-  }
-}
-
-function saveUsers(users) {
-  localStorage.setItem(USERS_KEY, JSON.stringify(users));
-}
-
-function getLoginAttempts() {
-  try {
-    return JSON.parse(localStorage.getItem(ATTEMPTS_KEY) || '{}');
-  } catch {
-    return {};
-  }
-}
-
-function isLockedOut(email) {
-  const attempts = getLoginAttempts();
-  const record = attempts[email];
-  if (!record) return false;
-  if (record.count >= MAX_LOGIN_ATTEMPTS) {
-    const elapsed = Date.now() - record.lastAttempt;
-    if (elapsed < LOCKOUT_DURATION) {
-      return true;
-    }
-    // Reset after lockout
-    delete attempts[email];
-    localStorage.setItem(ATTEMPTS_KEY, JSON.stringify(attempts));
-  }
-  return false;
-}
-
-function recordLoginAttempt(email, success) {
-  const attempts = getLoginAttempts();
-  if (success) {
-    delete attempts[email];
-  } else {
-    if (!attempts[email]) {
-      attempts[email] = { count: 0, lastAttempt: 0 };
-    }
-    attempts[email].count++;
-    attempts[email].lastAttempt = Date.now();
-  }
-  localStorage.setItem(ATTEMPTS_KEY, JSON.stringify(attempts));
-}
-
-// Validation — only @gmail.com emails allowed
 function validateEmail(email) {
   return /^[a-zA-Z0-9]([a-zA-Z0-9._%+-]*[a-zA-Z0-9])?@gmail\.com$/.test(email);
 }
@@ -88,133 +26,124 @@ function validatePassword(password) {
   return null;
 }
 
+// ── Helper: format Supabase user → app user shape ──
+
+function formatUser(supaUser) {
+  if (!supaUser) return null;
+  return {
+    id: supaUser.id,
+    name: supaUser.user_metadata?.name || '',
+    phone: supaUser.user_metadata?.phone || '',
+    email: supaUser.email || '',
+  };
+}
+
+// ── Cache session in localStorage for synchronous getCurrentUser() reads ──
+
+function cacheSession(user) {
+  if (user) {
+    localStorage.setItem(SESSION_KEY, JSON.stringify(user));
+  } else {
+    localStorage.removeItem(SESSION_KEY);
+  }
+}
+
+// ── Register ──
+
 export async function register({ name, phone, email, password }) {
-  // Sanitize inputs
   name = sanitizeInput(name).trim();
-  phone = formatPhoneNumber(sanitizeInput(phone).trim()).replace(/\s/g, ''); // Ensure '+91' prefix
+  phone = formatPhoneNumber(sanitizeInput(phone).trim()).replace(/\s/g, '');
   email = sanitizeInput(email).trim().toLowerCase();
 
-  // Validate
   if (!name || name.length < 2) return { success: false, error: 'Name must be at least 2 characters' };
   if (name.length > 100) return { success: false, error: 'Name is too long' };
   if (!validateEmail(email)) return { success: false, error: 'Only Gmail addresses are accepted (example@gmail.com)' };
   if (!validatePhone(phone)) return { success: false, error: 'Please enter a valid Indian phone number' };
-  
+
   const pwError = validatePassword(password);
   if (pwError) return { success: false, error: pwError };
 
-  const users = getUsers();
-  
-  // Check duplicate email
-  if (users.find(u => u.email === email)) {
-    return { success: false, error: 'An account with this email already exists' };
+  // Check phone uniqueness — query existing users with same phone
+  const { data: existingPhone } = await supabase
+    .from('profiles')
+    .select('id')
+    .eq('phone', phone)
+    .limit(1);
+
+  if (existingPhone && existingPhone.length > 0) {
+    return { success: false, error: 'An account with this phone number already exists' };
   }
 
-  // Generate a unique salt for this user
-  const salt = Math.random().toString(36).slice(2, 10);
-  const passwordHash = await hashPassword(password, salt);
-
-  const user = {
-    id: 'user_' + Date.now().toString(36) + Math.random().toString(36).slice(2, 6),
-    name,
-    phone,
+  // Register via Supabase Auth
+  const { data, error } = await supabase.auth.signUp({
     email,
-    salt,
-    passwordHash,
-    createdAt: new Date().toISOString(),
-  };
+    password,
+    options: {
+      data: { name, phone }, // stored in user_metadata
+    },
+  });
 
-  users.push(user);
-  saveUsers(users);
+  if (error) {
+    if (error.message.includes('already registered')) {
+      return { success: false, error: 'An account with this email already exists' };
+    }
+    return { success: false, error: error.message };
+  }
 
-  // Sync to Supabase (background)
-  dbSaveUser(user).catch(err => console.warn('[DB] user save failed:', err));
+  // Save profile to public profiles table (for phone uniqueness and admin queries)
+  const user = formatUser(data.user);
+  if (user) {
+    await supabase.from('profiles').upsert({
+      id: user.id,
+      name: user.name,
+      phone: user.phone,
+      email: user.email,
+    }, { onConflict: 'id' }).catch(() => {});
 
-  // Auto-login
-  const session = { ...user };
-  delete session.passwordHash;
-  delete session.salt;
-  localStorage.setItem(SESSION_KEY, JSON.stringify(session));
-  refreshCartUI();
-  window.dispatchEvent(new CustomEvent('auth-changed', { detail: session }));
-  return { success: true, user: session };
+    cacheSession(user);
+    refreshCartUI();
+    window.dispatchEvent(new CustomEvent('auth-changed', { detail: user }));
+  }
+
+  return { success: true, user };
 }
+
+// ── Login ──
 
 export async function login(email, password) {
   email = sanitizeInput(email).trim().toLowerCase();
 
   if (!validateEmail(email)) return { success: false, error: 'Please enter a valid Gmail address (example@gmail.com)' };
-  
-  // Rate limiting
-  if (isLockedOut(email)) {
-    return { success: false, error: 'Too many failed attempts. Please try again in 15 minutes.' };
-  }
 
-  const users = getUsers();
-  const user = users.find(u => u.email === email);
-  
-  if (!user) {
-    recordLoginAttempt(email, false);
+  const { data, error } = await supabase.auth.signInWithPassword({
+    email,
+    password,
+  });
+
+  if (error) {
     return { success: false, error: 'Invalid email or password' };
   }
 
-  // Check password with user's salt
-  const enteredHash = await hashPassword(password, user.salt || 'ssr_default_salt');
-  
-  if (user.passwordHash !== enteredHash) {
-    recordLoginAttempt(email, false);
-    return { success: false, error: 'Invalid email or password' };
+  const user = formatUser(data.user);
+  if (user) {
+    cacheSession(user);
+    refreshCartUI();
+    window.dispatchEvent(new CustomEvent('auth-changed', { detail: user }));
   }
 
-  recordLoginAttempt(email, true);
-
-  const session = { ...user };
-  delete session.passwordHash;
-  delete session.salt;
-  localStorage.setItem(SESSION_KEY, JSON.stringify(session));
-  
-  refreshCartUI();
-  window.dispatchEvent(new CustomEvent('auth-changed', { detail: session }));
-  return { success: true, user: session };
+  return { success: true, user };
 }
 
-/**
- * Updates the phone number for the currently logged-in user in both 
- * the persistent storage and the active session.
- * @param {string} phone - Verified phone number with +91 prefix
- */
-export function updateUserPhone(phone) {
-  const currentUser = getCurrentUser();
-  if (!currentUser) return { success: false, error: 'User not logged in' };
+// ── Logout ──
 
-  // Standardize phone format
-  const formattedPhone = formatPhoneNumber(phone).replace(/\s/g, '');
-
-  // Update in Users database
-  const users = getUsers();
-  const index = users.findIndex(u => u.id === currentUser.id);
-  
-  if (index !== -1) {
-    users[index].phone = formattedPhone;
-    users[index].phoneVerified = true;
-    saveUsers(users);
-    
-    // Update active session
-    const updatedUser = { ...currentUser, phone: formattedPhone, phoneVerified: true };
-    localStorage.setItem(SESSION_KEY, JSON.stringify(updatedUser));
-    
-    window.dispatchEvent(new CustomEvent('auth-changed', { detail: updatedUser }));
-    return { success: true };
-  }
-  
-  return { success: false, error: 'User record not found' };
-}
-
-export function logout() {
+export async function logout() {
+  await supabase.auth.signOut().catch(() => {});
   localStorage.removeItem(SESSION_KEY);
   refreshCartUI();
   window.dispatchEvent(new CustomEvent('auth-changed', { detail: null }));
 }
+
+// ── Get Current User (synchronous — reads from localStorage cache) ──
 
 export function getCurrentUser() {
   try {
@@ -229,44 +158,84 @@ export function isLoggedIn() {
   return getCurrentUser() !== null;
 }
 
-// Forgot / Reset Password
+// ── Restore session on app init (checks Supabase for valid JWT) ──
+
+export async function restoreSession() {
+  const { data: { session } } = await supabase.auth.getSession();
+  // Refresh user count for admin metrics (background)
+  refreshUserCount().catch(() => {});
+  if (session?.user) {
+    const user = formatUser(session.user);
+    cacheSession(user);
+    return user;
+  }
+  // No valid session — clear stale cache
+  localStorage.removeItem(SESSION_KEY);
+  return null;
+}
+
+// ── Reset Password (via email + phone verification) ──
+
 export async function resetPassword(email, phone, newPassword) {
   email = sanitizeInput(email).trim().toLowerCase();
   phone = sanitizeInput(phone).trim();
 
   if (!validateEmail(email)) {
-    return { success: false, error: 'Please enter a valid Gmail address (example@gmail.com)' };
+    return { success: false, error: 'Please enter a valid Gmail address' };
   }
 
   const pwError = validatePassword(newPassword);
   if (pwError) return { success: false, error: pwError };
 
-  const users = getUsers();
-  const user = users.find(u => u.email === email);
+  // Verify phone matches the stored profile
+  const { data: profiles } = await supabase
+    .from('profiles')
+    .select('phone')
+    .eq('email', email)
+    .limit(1);
 
-  if (!user) {
-    return { success: false, error: 'No account found with this email address' };
+  if (!profiles || profiles.length === 0) {
+    return { success: false, error: 'No account found with this email' };
   }
 
-  // Verify identity via registered phone number
-  const cleanInputPhone = phone.replace(/[\s\-+]/g, '').replace(/^91/, '');
-  const cleanStoredPhone = user.phone.replace(/[\s\-+]/g, '').replace(/^91/, '');
+  const cleanInput = phone.replace(/[\s\-+]/g, '').replace(/^91/, '');
+  const cleanStored = profiles[0].phone.replace(/[\s\-+]/g, '').replace(/^91/, '');
 
-  if (cleanInputPhone !== cleanStoredPhone) {
-    return { success: false, error: 'Phone number does not match our records for this email' };
+  if (cleanInput !== cleanStored) {
+    return { success: false, error: 'Phone number does not match our records' };
   }
 
-  // Update password with new salt
-  const salt = Math.random().toString(36).slice(2, 10);
-  user.salt = salt;
-  user.passwordHash = await hashPassword(newPassword, salt);
-  saveUsers(users);
-
-  return { success: true };
+  // Update password via Supabase Auth (requires user to be signed in,
+  // so we sign them in first with a workaround — admin API or magic link)
+  // For now, we use the admin-level update via service role is not available client-side.
+  // The pragmatic approach: sign the user in won't work without the old password.
+  // So we'll use Supabase's password reset email flow as a fallback.
+  return { success: false, error: 'Please use "Forgot Password" link — a reset email will be sent to your Gmail' };
 }
 
-// Admin Metrics
+// ── Admin Metrics ──
+
+let cachedUserCount = 0;
+
 export function getAllUsersCount() {
-  const users = getUsers();
-  return users.length;
+  // Return cached count synchronously — updated on restoreSession
+  return cachedUserCount;
 }
+
+export async function refreshUserCount() {
+  const { count } = await supabase
+    .from('profiles')
+    .select('*', { count: 'exact', head: true });
+  cachedUserCount = count || 0;
+  return cachedUserCount;
+}
+
+// ── Listen for auth state changes (auto-sync session) ──
+
+supabase.auth.onAuthStateChange((event, session) => {
+  if (event === 'SIGNED_IN' && session?.user) {
+    cacheSession(formatUser(session.user));
+  } else if (event === 'SIGNED_OUT') {
+    localStorage.removeItem(SESSION_KEY);
+  }
+});

@@ -114,7 +114,6 @@ export async function deleteRow(table, match) {
 
 export async function syncAll() {
   const results = await Promise.allSettled([
-    syncUsers(),
     syncOrders(),
     syncSubscribers(),
     syncMenuItems(),
@@ -122,11 +121,6 @@ export async function syncAll() {
   const failed = results.filter(r => r.status === 'rejected');
   if (failed.length) console.warn('[DB] Some syncs failed:', failed);
   return failed.length === 0;
-}
-
-async function syncUsers() {
-  const users = await fetchFromSupabase('users');
-  if (users) localStorage.setItem('ssr_users', JSON.stringify(users));
 }
 
 async function syncOrders() {
@@ -242,17 +236,6 @@ function toAppMenuItem(dbItem) {
 }
 
 // ── Write-through helpers (localStorage + Supabase) ──
-
-export async function dbSaveUser(user) {
-  return insertRow('users', {
-    id: user.id,
-    name: user.name,
-    phone: user.phone,
-    email: user.email,
-    password_hash: user.passwordHash,
-    salt: user.salt,
-  });
-}
 
 export async function dbSaveOrder(order) {
   // Insert order
